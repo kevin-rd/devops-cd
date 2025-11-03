@@ -1,0 +1,2291 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "DevOps 持续交付平台 API 文档\n提供代码库管理、应用管理、批次管理、部署管理等功能",
+        "title": "DevOps CD API",
+        "contact": {
+            "name": "API Support",
+            "email": "support@example.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/api/v1/application": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "获取应用详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "应用ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ApplicationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "更新应用",
+                "parameters": [
+                    {
+                        "description": "更新应用请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ApplicationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/application/builds": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "获取应用的构建历史",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "应用ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/application/delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "删除应用",
+                "parameters": [
+                    {
+                        "description": "删除应用请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.DeleteApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/application/types": {
+            "get": {
+                "description": "获取所有可用的应用类型及其元数据（显示名称、描述、图标、颜色等）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "获取应用类型列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.AppTypesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/application_builds": {
+            "get": {
+                "description": "搜索应用列表，支持模糊查询 app、repo、commit、tag 等字段，返回包含最新构建信息的应用列表，按构建时间倒序排序",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "搜索应用（包含构建信息）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "模糊查询关键字（支持查询 app、repo、commit、tag 等字段）",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码（默认1）",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量（默认20，最大100）",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "按代码库ID过滤",
+                        "name": "repo_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "按团队ID过滤",
+                        "name": "team_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按应用类型过滤",
+                        "name": "app_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "按状态过滤（0/1）",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/applications": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "获取应用列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "代码库ID",
+                        "name": "repo_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "团队ID",
+                        "name": "team_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "应用类型",
+                        "name": "app_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "关键字",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "状态",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "创建应用",
+                "parameters": [
+                    {
+                        "description": "创建应用请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ApplicationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "支持LDAP和本地用户登录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "用户登录",
+                "parameters": [
+                    {
+                        "description": "登录请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.LoginResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "从JWT Token中获取当前登录用户信息",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "获取当前用户信息",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UserInfo"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "使用RefreshToken获取新的AccessToken",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "刷新访问Token",
+                "parameters": [
+                    {
+                        "description": "刷新Token请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.LoginResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/verify": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "验证Token是否有效(内部API)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "验证Token有效性",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UserInfo"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batch": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取批次详细信息和应用列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "获取批次详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "批次ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "更新批次基本信息、添加或删除应用",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "更新批次",
+                "parameters": [
+                    {
+                        "description": "批次更新请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_service.UpdateBatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "批次已封板",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "应用冲突",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "创建新的发布批次，自动扫描指定应用的最新成功构建",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "创建批次",
+                "parameters": [
+                    {
+                        "description": "批次创建请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_service.CreateBatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "应用冲突",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batch/action": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "处理批次的各种状态操作，如封板、部署、验收等。支持的action: seal(封板)/start_pre_deploy(开始预发布)/finish_pre_deploy(完成预发布)/start_prod_deploy(开始生产部署)/finish_prod_deploy(完成生产部署)/complete(最终验收)/cancel(取消)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "批次状态操作",
+                "parameters": [
+                    {
+                        "description": "操作请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handler.ProcessActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "操作失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batch/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "审批通过批次，更新审批状态为approved",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "批次审批通过",
+                "parameters": [
+                    {
+                        "description": "审批请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handler.ApproveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "审批失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batch/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "审批拒绝批次，更新审批状态为rejected",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "批次审批拒绝",
+                "parameters": [
+                    {
+                        "description": "拒绝请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handler.RejectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "拒绝失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batches": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "分页查询批次列表，支持状态、发起人、审批状态、时间范围、关键字过滤。status支持多值，例如：?status=1\u0026status=2\u0026status=3",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "查询批次列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "状态过滤（支持多个）",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "发起人过滤",
+                        "name": "initiator",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "审批状态过滤：pending/approved/rejected",
+                        "name": "approval_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建时间起始（RFC3339格式）",
+                        "name": "created_at_start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建时间结束（RFC3339格式）",
+                        "name": "created_at_end",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "关键字搜索（批次编号、发起人、发布说明）",
+                        "name": "keyword",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/build": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Build"
+                ],
+                "summary": "获取构建记录详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "构建记录ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.BuildResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/build/app": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Build"
+                ],
+                "summary": "根据应用和构建号查询构建记录",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "应用ID",
+                        "name": "app_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "构建号",
+                        "name": "build_number",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.BuildResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/builds": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Build"
+                ],
+                "summary": "查询构建记录列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "仓库ID",
+                        "name": "repo_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "应用ID",
+                        "name": "app_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "构建状态",
+                        "name": "build_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "触发事件",
+                        "name": "build_event",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "镜像标签",
+                        "name": "image_tag",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Commit SHA",
+                        "name": "commit_sha",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "环境",
+                        "name": "environment",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "关键字",
+                        "name": "keyword",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repositories": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Repository"
+                ],
+                "summary": "获取代码库列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "团队ID",
+                        "name": "team_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Git类型",
+                        "name": "git_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "关键字",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "状态",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "是否包含应用列表",
+                        "name": "with_applications",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repository": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Repository"
+                ],
+                "summary": "获取代码库详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "代码库ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.RepositoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Repository"
+                ],
+                "summary": "更新代码库",
+                "parameters": [
+                    {
+                        "description": "更新代码库请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateRepositoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.RepositoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Repository"
+                ],
+                "summary": "创建代码库",
+                "parameters": [
+                    {
+                        "description": "创建代码库请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateRepositoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.RepositoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repository/delete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Repository"
+                ],
+                "summary": "删除代码库",
+                "parameters": [
+                    {
+                        "description": "删除代码库请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.DeleteRepositoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/build/notify": {
+            "post": {
+                "description": "接收 Drone CI/CD 构建完成通知，记录构建信息并更新应用状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Build"
+                ],
+                "summary": "接收构建通知",
+                "parameters": [
+                    {
+                        "description": "构建通知请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.BuildNotifyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "devops-cd_internal_dto.AppTypeInfo": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "description": "颜色标识（可选）",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "描述（可选）",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "图标（可选）",
+                    "type": "string"
+                },
+                "label": {
+                    "description": "显示名称",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "类型值（用于API传参）",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.AppTypesResponse": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "description": "类型总数",
+                    "type": "integer"
+                },
+                "types": {
+                    "description": "应用类型列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.AppTypeInfo"
+                    }
+                }
+            }
+        },
+        "devops-cd_internal_dto.ApplicationResponse": {
+            "type": "object",
+            "properties": {
+                "app_type": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deployed_tag": {
+                    "description": "当前部署的镜像标签",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "project": {
+                    "type": "string"
+                },
+                "repo_id": {
+                    "type": "integer"
+                },
+                "repo_name": {
+                    "description": "Repository的project/name",
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "team_id": {
+                    "type": "integer"
+                },
+                "team_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.BuildNotifyApp": {
+            "type": "object",
+            "required": [
+                "image_tag",
+                "name"
+            ],
+            "properties": {
+                "build_success": {
+                    "description": "可选：该应用是否构建成功",
+                    "type": "boolean"
+                },
+                "image": {
+                    "description": "可选：完整镜像地址",
+                    "type": "string"
+                },
+                "image_tag": {
+                    "description": "v2025.1027.01-ga (原字段名)",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "zkme-kyb-admin (应用名称，不是image_tag)",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.BuildNotifyRequest": {
+            "type": "object",
+            "required": [
+                "apps",
+                "build_created",
+                "build_event",
+                "build_finished",
+                "build_link",
+                "build_number",
+                "build_started",
+                "build_status",
+                "commit_after",
+                "commit_id",
+                "commit_ref",
+                "repo",
+                "repo_name"
+            ],
+            "properties": {
+                "apps": {
+                    "description": "========== 应用列表 ==========",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.BuildNotifyApp"
+                    }
+                },
+                "build_created": {
+                    "description": "Unix timestamp (秒)",
+                    "type": "integer"
+                },
+                "build_event": {
+                    "description": "触发事件",
+                    "type": "string",
+                    "enum": [
+                        "push",
+                        "tag",
+                        "pull_request",
+                        "promote",
+                        "rollback"
+                    ]
+                },
+                "build_finished": {
+                    "description": "Unix timestamp (秒)",
+                    "type": "integer"
+                },
+                "build_link": {
+                    "description": "构建链接",
+                    "type": "string"
+                },
+                "build_number": {
+                    "description": "========== 构建信息 ==========",
+                    "type": "integer"
+                },
+                "build_started": {
+                    "description": "Unix timestamp (秒)",
+                    "type": "integer"
+                },
+                "build_status": {
+                    "description": "构建状态",
+                    "type": "string",
+                    "enum": [
+                        "success",
+                        "failure",
+                        "error",
+                        "killed"
+                    ]
+                },
+                "commit_after": {
+                    "description": "e8c7e9bfe6fb09a7fa1a599b591993c1ab8da47d",
+                    "type": "string"
+                },
+                "commit_author": {
+                    "description": "提交者用户名（可选）",
+                    "type": "string"
+                },
+                "commit_author_email": {
+                    "description": "提交者邮箱",
+                    "type": "string"
+                },
+                "commit_author_name": {
+                    "description": "提交者名称",
+                    "type": "string"
+                },
+                "commit_before": {
+                    "description": "可选：前一个 commit",
+                    "type": "string"
+                },
+                "commit_branch": {
+                    "description": "branch_dev@zkme-kyb-popup-api",
+                    "type": "string"
+                },
+                "commit_id": {
+                    "description": "e8c7e9bfe6fb09a7fa1a599b591993c1ab8da47d",
+                    "type": "string"
+                },
+                "commit_link": {
+                    "description": "提交链接（可选）",
+                    "type": "string"
+                },
+                "commit_message": {
+                    "description": "新增测试环境配置文件",
+                    "type": "string"
+                },
+                "commit_ref": {
+                    "description": "refs/tags/v2025.1027.01-ga",
+                    "type": "string"
+                },
+                "env": {
+                    "description": "========== 环境信息 ==========",
+                    "type": "string"
+                },
+                "git_author_email": {
+                    "description": "原作者邮箱（可选）",
+                    "type": "string"
+                },
+                "git_author_name": {
+                    "description": "========== Git 提交信息 ==========\nDrone 原始字段（保留以兼容）",
+                    "type": "string"
+                },
+                "repo": {
+                    "description": "========== 仓库信息 ==========",
+                    "type": "string"
+                },
+                "repo_name": {
+                    "description": "zkme-kyb",
+                    "type": "string"
+                },
+                "repo_namespace": {
+                    "description": "zkme (可选，兼容 Drone)",
+                    "type": "string"
+                },
+                "repo_owner": {
+                    "description": "zkme (可选，兼容 Drone)",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.BuildResponse": {
+            "type": "object",
+            "properties": {
+                "app_build_success": {
+                    "type": "boolean"
+                },
+                "app_id": {
+                    "type": "integer"
+                },
+                "app_name": {
+                    "description": "应用名称（关联查询）",
+                    "type": "string"
+                },
+                "build_created": {
+                    "type": "integer"
+                },
+                "build_duration": {
+                    "type": "integer"
+                },
+                "build_event": {
+                    "type": "string"
+                },
+                "build_finished": {
+                    "type": "integer"
+                },
+                "build_link": {
+                    "type": "string"
+                },
+                "build_number": {
+                    "type": "integer"
+                },
+                "build_started": {
+                    "type": "integer"
+                },
+                "build_status": {
+                    "type": "string"
+                },
+                "commit_author": {
+                    "type": "string"
+                },
+                "commit_branch": {
+                    "type": "string"
+                },
+                "commit_link": {
+                    "type": "string"
+                },
+                "commit_message": {
+                    "type": "string"
+                },
+                "commit_ref": {
+                    "type": "string"
+                },
+                "commit_sha": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "environment": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "image_tag": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "repo_id": {
+                    "type": "integer"
+                },
+                "repo_name": {
+                    "description": "仓库名称（关联查询）",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateApplicationRequest": {
+            "type": "object",
+            "required": [
+                "app_type",
+                "name",
+                "repo_id"
+            ],
+            "properties": {
+                "app_type": {
+                    "type": "string",
+                    "enum": [
+                        "static",
+                        "node",
+                        "java",
+                        "go",
+                        "py"
+                    ]
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "repo_id": {
+                    "type": "integer"
+                },
+                "team_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateRepositoryRequest": {
+            "type": "object",
+            "required": [
+                "git_type",
+                "git_url",
+                "name",
+                "project"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "git_type": {
+                    "type": "string",
+                    "enum": [
+                        "gitea",
+                        "gitlab",
+                        "github"
+                    ]
+                },
+                "git_url": {
+                    "type": "string"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "project": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "team_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.DeleteApplicationRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "description": "必填：应用ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.DeleteRepositoryRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "description": "必填：要删除的代码库ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.LoginRequest": {
+            "type": "object",
+            "required": [
+                "auth_type",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "auth_type": {
+                    "description": "ldap or local",
+                    "type": "string",
+                    "enum": [
+                        "ldap",
+                        "local"
+                    ]
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/devops-cd_internal_dto.UserInfo"
+                }
+            }
+        },
+        "devops-cd_internal_dto.PageResponse": {
+            "type": "object",
+            "properties": {
+                "items": {},
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.RepositoryResponse": {
+            "type": "object",
+            "properties": {
+                "applications": {
+                    "description": "关联的应用列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.ApplicationResponse"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "description": "project/name",
+                    "type": "string"
+                },
+                "git_type": {
+                    "type": "string"
+                },
+                "git_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "project": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "team_id": {
+                    "type": "integer"
+                },
+                "team_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateApplicationRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "app_type": {
+                    "type": "string",
+                    "enum": [
+                        "static",
+                        "node",
+                        "java",
+                        "go",
+                        "py"
+                    ]
+                },
+                "deployed_tag": {
+                    "description": "当前部署的镜像标签",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "必填：应用ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
+                },
+                "team_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateRepositoryRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "git_type": {
+                    "type": "string",
+                    "enum": [
+                        "gitea",
+                        "gitlab",
+                        "github"
+                    ]
+                },
+                "git_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "必填：要更新的代码库ID",
+                    "type": "integer"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "project": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
+                },
+                "team_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UserInfo": {
+            "type": "object",
+            "properties": {
+                "auth_type": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_service.CreateBatchApp": {
+            "type": "object",
+            "required": [
+                "app_id"
+            ],
+            "properties": {
+                "app_id": {
+                    "description": "应用ID",
+                    "type": "integer"
+                },
+                "release_notes": {
+                    "description": "应用级发布说明（可选）",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_service.CreateBatchRequest": {
+            "type": "object",
+            "required": [
+                "batch_number",
+                "initiator"
+            ],
+            "properties": {
+                "apps": {
+                    "description": "应用列表（允许为空，封板时校验）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_service.CreateBatchApp"
+                    }
+                },
+                "batch_number": {
+                    "description": "批次编号/标题，用户填写",
+                    "type": "string"
+                },
+                "initiator": {
+                    "description": "发起人",
+                    "type": "string"
+                },
+                "release_notes": {
+                    "description": "批次级发布说明（可选）",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_service.UpdateBatchRequest": {
+            "type": "object",
+            "required": [
+                "batch_id",
+                "operator"
+            ],
+            "properties": {
+                "add_apps": {
+                    "description": "新增应用",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_service.CreateBatchApp"
+                    }
+                },
+                "batch_id": {
+                    "type": "integer"
+                },
+                "batch_number": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "release_notes": {
+                    "type": "string"
+                },
+                "remove_app_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "devops-cd_pkg_utils.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "detail": {
+                    "description": "详细错误信息（可选）",
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_api_handler.ApproveRequest": {
+            "type": "object",
+            "required": [
+                "batch_id",
+                "operator"
+            ],
+            "properties": {
+                "batch_id": {
+                    "description": "批次ID",
+                    "type": "integer"
+                },
+                "operator": {
+                    "description": "审核人",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "审核意见",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_api_handler.ProcessActionRequest": {
+            "type": "object",
+            "required": [
+                "action",
+                "batch_id",
+                "operator"
+            ],
+            "properties": {
+                "action": {
+                    "description": "操作类型: seal/start_pre_deploy/finish_pre_deploy/start_prod_deploy/finish_prod_deploy/complete/cancel",
+                    "type": "string"
+                },
+                "batch_id": {
+                    "description": "批次ID",
+                    "type": "integer"
+                },
+                "operator": {
+                    "description": "操作人",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "原因（可选）",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_api_handler.RejectRequest": {
+            "type": "object",
+            "required": [
+                "batch_id",
+                "operator",
+                "reason"
+            ],
+            "properties": {
+                "batch_id": {
+                    "description": "批次ID",
+                    "type": "integer"
+                },
+                "operator": {
+                    "description": "审核人",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "拒绝原因",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

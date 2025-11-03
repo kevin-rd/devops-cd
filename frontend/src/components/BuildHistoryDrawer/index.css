@@ -1,0 +1,89 @@
+.build-history-drawer .drawer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 20px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.build-history-drawer .drawer-close-btn {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.build-history-drawer .drawer-close-btn:hover {
+  color: rgba(0, 0, 0, 0.88);
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.build-history-drawer .filter-section {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.build-history-drawer .commit-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.build-history-drawer .commit-message {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.build-history-drawer .commit-link {
+  flex-shrink: 0;
+  color: #1890ff;
+  transition: color 0.3s;
+}
+
+.build-history-drawer .commit-link:hover {
+  color: #40a9ff;
+}
+
+/* 表格行hover效果 */
+.build-history-drawer .ant-table-tbody > tr:hover > td {
+  background: #f5f5f5 !important;
+}
+
+/* 标签样式优化 */
+.build-history-drawer .ant-tag {
+  border-radius: 3px;
+  font-size: 12px;
+  margin: 0;
+  padding: 0 4px;
+  line-height: 18px;
+}
+
+/* 表格紧凑样式 */
+.build-history-drawer .ant-table-small .ant-table-thead > tr > th {
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+.build-history-drawer .ant-table-small .ant-table-tbody > tr > td {
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+/* 响应式调整 */
+@media (max-width: 1400px) {
+  .build-history-drawer {
+    width: 80% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .build-history-drawer {
+    width: 95% !important;
+  }
+}
+

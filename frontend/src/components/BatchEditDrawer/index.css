@@ -1,0 +1,55 @@
+.batch-edit-drawer .ant-drawer-body {
+  padding: 24px;
+}
+
+.batch-edit-drawer .ant-drawer-footer {
+  border-top: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.batch-edit-drawer .ant-form {
+  margin-top: 0;
+}
+
+.batch-edit-drawer .ant-table-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.batch-edit-drawer .ant-table {
+  font-size: 13px;
+}
+
+.batch-edit-drawer .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.batch-edit-drawer .ant-alert {
+  border-radius: 6px;
+}
+
+.batch-edit-drawer h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #262626;
+  margin: 0;
+}
+
+.batch-edit-drawer .ant-divider {
+  margin: 24px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .batch-edit-drawer {
+    width: 80% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .batch-edit-drawer {
+    width: 100% !important;
+  }
+}
+

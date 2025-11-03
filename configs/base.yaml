@@ -1,0 +1,71 @@
+server:
+  name: devops-cd-base
+  host: 0.0.0.0
+  port: 8080
+  mode: debug  # debug, release
+
+database:
+  driver: mysql
+  host: 154.223.178.3
+  port: 3308
+  database: devops_cd
+  username: kevin
+  password: 12345
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+  log_level: warn  # SQL日志级别: silent/error/warn/info
+
+auth:
+  jwt:
+    secret: "your-secret-key-change-in-production"
+    access_token_expire: 7200      # 2小时
+    refresh_token_expire: 604800   # 7天
+  ldap:
+    enabled: false
+    host: ldap.company.com
+    port: 389
+    use_ssl: false
+    bind_dn: "cn=admin,dc=company,dc=com"
+    bind_password: "password"
+    base_dn: "ou=users,dc=company,dc=com"
+    user_filter: "(uid=%s)"
+    attributes:
+      username: "uid"
+      email: "mail"
+      display_name: "cn"
+  local:
+    enabled: true
+
+crypto:
+  aes_key: "12345678901234567890123456789012"  # 32字节,生产环境请修改
+
+log:
+  level: debug  # debug, info, warn, error
+  format: console # json, console
+  output: stdout
+  file_path: logs/base-service.log
+  max_size: 100    # MB
+  max_backups: 10
+  max_age: 30      # days
+
+git:
+  work_dir: /tmp/devops-cd-git  # Git临时工作目录
+
+core:
+  scan_interval: 10s  # 批次扫描间隔
+  deploy:
+    concurrent_apps: 5              # 并行部署应用数
+    single_app_timeout: 10m         # 单应用部署超时
+    batch_timeout: 60m              # 批次部署超时
+    retry_count: 3                  # 部署失败重试次数
+    retry_backoff: exponential      # 重试策略: exponential/linear
+    poll_interval: 5s               # 部署状态轮询间隔
+  notification:
+    enabled: true                   # 是否启用通知
+    provider: lark                  # 通知渠道: lark/log
+    lark_webhook: ""                # Lark Webhook URL
+  k8s:
+    base_url: "http://k8s-deploy-service:8080"  # K8s部署服务地址
+    api_key: ""                                  # API密钥
+

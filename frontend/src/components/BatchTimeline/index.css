@@ -1,0 +1,205 @@
+.batch-timeline {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.batch-timeline .ant-steps {
+  margin: 0;
+  display: flex !important;
+  flex-wrap: nowrap;
+}
+
+/* 纵向布局时，移除flex布局 */
+.batch-timeline .ant-steps-vertical {
+  display: block !important;
+}
+
+.batch-timeline .ant-steps-item {
+  padding-left: 0 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin-right: 16px !important;
+  position: relative;
+}
+
+/* 纵向布局时，移除flex和margin */
+.batch-timeline .ant-steps-vertical .ant-steps-item {
+  flex: none !important;
+  margin-right: 0 !important;
+  margin-bottom: 16px !important;
+}
+
+.batch-timeline .ant-steps-item:last-child {
+  margin-right: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+/* 纵向布局时，最后一个步骤的margin-bottom */
+.batch-timeline .ant-steps-vertical .ant-steps-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+.batch-timeline .ant-steps-item-tail {
+  padding: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  position: absolute;
+  left: 14px !important; /* 从图标中心开始（图标宽度28px，中心在14px） */
+  top: 14px !important; /* 图标高度28px，中心在14px */
+  /* 延伸到下一个步骤的图标中心：需要跨越margin-right(16px) + 下一个步骤的图标中心(14px) */
+  right: calc(-16px - 14px) !important;
+  width: auto !important;
+  height: 1px;
+  overflow: visible !important;
+  z-index: 1;
+}
+
+/* 纵向布局时，使用Ant Design默认的tail样式 */
+.batch-timeline .ant-steps-vertical .ant-steps-item-tail {
+  position: absolute;
+  left: 14px !important;
+  top: 36px !important; /* 图标高度28px + 一些间距 */
+  bottom: -16px !important;
+  width: 1px !important;
+  height: auto !important;
+  right: auto !important;
+}
+
+/* 确保横线从图标中心延伸到下一个图标中心 */
+.batch-timeline .ant-steps-item-tail::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 1px !important;
+  background-color: #f0f0f0 !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 纵向布局时，tail是垂直的 */
+.batch-timeline .ant-steps-vertical .ant-steps-item-tail::after {
+  width: 1px !important;
+  height: 100% !important;
+  left: 0 !important;
+  right: auto !important;
+  top: 0 !important;
+}
+
+/* 最后一个步骤不显示横线 */
+.batch-timeline .ant-steps-item:last-child .ant-steps-item-tail {
+  display: none !important;
+}
+
+/* 内容区域 */
+.batch-timeline .ant-steps-item-content {
+  min-height: auto !important;
+  margin-top: 0 !important;
+  width: 100%;
+  overflow: hidden;
+}
+
+.batch-timeline .ant-steps-item-title {
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.5;
+  padding-right: 12px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 纵向布局时，允许文本换行 */
+.batch-timeline .ant-steps-vertical .ant-steps-item-title {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.batch-timeline .ant-steps-item-description {
+  font-size: 12px;
+  color: #8c8c8c;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.batch-timeline .ant-steps-item-subtitle {
+  font-size: 11px;
+  color: #595959;
+  margin-left: 6px;
+}
+
+/* 图标尺寸 */
+.batch-timeline .ant-steps-item-icon {
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  font-size: 13px !important;
+  margin-right: 8px !important;
+}
+
+/* 时间轴步骤描述区域 */
+.timeline-step-description {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-times {
+  font-size: 12px;
+  color: #8c8c8c;
+  line-height: 1.4;
+}
+
+/* 状态标签样式 - 在subTitle位置 */
+.batch-timeline .ant-steps-item-subtitle .status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  border: none;
+  margin: 0;
+}
+
+/* 覆盖 Ant Design Tag 的默认样式 */
+.batch-timeline .ant-steps-item-subtitle .status-tag.ant-tag {
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* 已完成状态 - 绿色 */
+.batch-timeline .status-tag.status-finished,
+.batch-timeline .status-tag.status-finished.ant-tag {
+  background-color: #f6ffed !important;
+  color: #52c41a !important;
+  border: 1px solid #b7eb8f !important;
+}
+
+/* 进行中状态 - 蓝色 */
+.batch-timeline .status-tag.status-processing,
+.batch-timeline .status-tag.status-processing.ant-tag {
+  background-color: #e6f7ff !important;
+  color: #1890ff !important;
+  border: 1px solid #91d5ff !important;
+}
+
+/* 待触发状态 - 橙色 */
+.batch-timeline .status-tag.status-pending,
+.batch-timeline .status-tag.status-pending.ant-tag {
+  background-color: #fff7e6 !important;
+  color: #fa8c16 !important;
+  border: 1px solid #ffd591 !important;
+}
+

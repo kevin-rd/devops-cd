@@ -1,0 +1,90 @@
+.repository-page {
+  padding: 24px;
+}
+
+.repository-page :global(.ant-card) {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Repository 表格样式 */
+.repository-page :global(.ant-table-row) {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.repository-page :global(.ant-table-row:hover) {
+  background: rgba(24, 144, 255, 0.06);
+}
+
+.repository-page :global(.ant-table-row-level-0:hover) {
+  background: rgba(24, 144, 255, 0.08);
+}
+
+/* Repository 名称样式 */
+.repo-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 应用数量徽章 */
+.app-count {
+  font-size: 13px;
+  color: #666;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+/* 子表格样式 */
+.repository-page :global(.app-table) {
+  margin: 0;
+}
+
+.repository-page :global(.app-table .ant-table) {
+  background: transparent;
+}
+
+.repository-page :global(.app-table .ant-table-tbody > tr) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.repository-page :global(.app-table .ant-table-tbody > tr:hover) {
+  background: rgba(24, 144, 255, 0.04);
+}
+
+/* 展开行样式 */
+.repository-page :global(.ant-table-expanded-row > td) {
+  padding: 0 !important;
+  background: transparent;
+}
+
+/* Modal 样式 */
+.repository-page :global(.ant-modal) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.repository-page :global(.ant-modal-header) {
+  border-radius: 12px 12px 0 0;
+}
+
+.repository-page :global(.ant-btn) {
+  border-radius: 6px;
+}
+
+.repository-page :global(.ant-input),
+.repository-page :global(.ant-input-password),
+.repository-page :global(.ant-select-selector),
+.repository-page :global(.ant-input-textarea) {
+  border-radius: 6px;
+}
+
+.repository-page :global(.ant-tag) {
+  border-radius: 4px;
+  border: none;
+}
+

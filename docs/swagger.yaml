@@ -1,0 +1,1503 @@
+basePath: /api/v1
+definitions:
+  devops-cd_internal_dto.AppTypeInfo:
+    properties:
+      color:
+        description: 颜色标识（可选）
+        type: string
+      description:
+        description: 描述（可选）
+        type: string
+      icon:
+        description: 图标（可选）
+        type: string
+      label:
+        description: 显示名称
+        type: string
+      value:
+        description: 类型值（用于API传参）
+        type: string
+    type: object
+  devops-cd_internal_dto.AppTypesResponse:
+    properties:
+      total:
+        description: 类型总数
+        type: integer
+      types:
+        description: 应用类型列表
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.AppTypeInfo'
+        type: array
+    type: object
+  devops-cd_internal_dto.ApplicationResponse:
+    properties:
+      app_type:
+        type: string
+      created_at:
+        type: string
+      deployed_tag:
+        description: 当前部署的镜像标签
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      project:
+        type: string
+      repo_id:
+        type: integer
+      repo_name:
+        description: Repository的project/name
+        type: string
+      status:
+        type: integer
+      team_id:
+        type: integer
+      team_name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.BuildNotifyApp:
+    properties:
+      build_success:
+        description: 可选：该应用是否构建成功
+        type: boolean
+      image:
+        description: 可选：完整镜像地址
+        type: string
+      image_tag:
+        description: v2025.1027.01-ga (原字段名)
+        type: string
+      name:
+        description: zkme-kyb-admin (应用名称，不是image_tag)
+        type: string
+    required:
+    - image_tag
+    - name
+    type: object
+  devops-cd_internal_dto.BuildNotifyRequest:
+    properties:
+      apps:
+        description: ========== 应用列表 ==========
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.BuildNotifyApp'
+        minItems: 1
+        type: array
+      build_created:
+        description: Unix timestamp (秒)
+        type: integer
+      build_event:
+        description: 触发事件
+        enum:
+        - push
+        - tag
+        - pull_request
+        - promote
+        - rollback
+        type: string
+      build_finished:
+        description: Unix timestamp (秒)
+        type: integer
+      build_link:
+        description: 构建链接
+        type: string
+      build_number:
+        description: ========== 构建信息 ==========
+        type: integer
+      build_started:
+        description: Unix timestamp (秒)
+        type: integer
+      build_status:
+        description: 构建状态
+        enum:
+        - success
+        - failure
+        - error
+        - killed
+        type: string
+      commit_after:
+        description: e8c7e9bfe6fb09a7fa1a599b591993c1ab8da47d
+        type: string
+      commit_author:
+        description: 提交者用户名（可选）
+        type: string
+      commit_author_email:
+        description: 提交者邮箱
+        type: string
+      commit_author_name:
+        description: 提交者名称
+        type: string
+      commit_before:
+        description: 可选：前一个 commit
+        type: string
+      commit_branch:
+        description: branch_dev@zkme-kyb-popup-api
+        type: string
+      commit_id:
+        description: e8c7e9bfe6fb09a7fa1a599b591993c1ab8da47d
+        type: string
+      commit_link:
+        description: 提交链接（可选）
+        type: string
+      commit_message:
+        description: 新增测试环境配置文件
+        type: string
+      commit_ref:
+        description: refs/tags/v2025.1027.01-ga
+        type: string
+      env:
+        description: ========== 环境信息 ==========
+        type: string
+      git_author_email:
+        description: 原作者邮箱（可选）
+        type: string
+      git_author_name:
+        description: |-
+          ========== Git 提交信息 ==========
+          Drone 原始字段（保留以兼容）
+        type: string
+      repo:
+        description: ========== 仓库信息 ==========
+        type: string
+      repo_name:
+        description: zkme-kyb
+        type: string
+      repo_namespace:
+        description: zkme (可选，兼容 Drone)
+        type: string
+      repo_owner:
+        description: zkme (可选，兼容 Drone)
+        type: string
+    required:
+    - apps
+    - build_created
+    - build_event
+    - build_finished
+    - build_link
+    - build_number
+    - build_started
+    - build_status
+    - commit_after
+    - commit_id
+    - commit_ref
+    - repo
+    - repo_name
+    type: object
+  devops-cd_internal_dto.BuildResponse:
+    properties:
+      app_build_success:
+        type: boolean
+      app_id:
+        type: integer
+      app_name:
+        description: 应用名称（关联查询）
+        type: string
+      build_created:
+        type: integer
+      build_duration:
+        type: integer
+      build_event:
+        type: string
+      build_finished:
+        type: integer
+      build_link:
+        type: string
+      build_number:
+        type: integer
+      build_started:
+        type: integer
+      build_status:
+        type: string
+      commit_author:
+        type: string
+      commit_branch:
+        type: string
+      commit_link:
+        type: string
+      commit_message:
+        type: string
+      commit_ref:
+        type: string
+      commit_sha:
+        type: string
+      created_at:
+        type: string
+      environment:
+        type: string
+      id:
+        type: integer
+      image_tag:
+        type: string
+      image_url:
+        type: string
+      repo_id:
+        type: integer
+      repo_name:
+        description: 仓库名称（关联查询）
+        type: string
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.CreateApplicationRequest:
+    properties:
+      app_type:
+        enum:
+        - static
+        - node
+        - java
+        - go
+        - py
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      repo_id:
+        type: integer
+      team_id:
+        type: integer
+    required:
+    - app_type
+    - name
+    - repo_id
+    type: object
+  devops-cd_internal_dto.CreateRepositoryRequest:
+    properties:
+      description:
+        type: string
+      git_type:
+        enum:
+        - gitea
+        - gitlab
+        - github
+        type: string
+      git_url:
+        type: string
+      language:
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      project:
+        maxLength: 100
+        type: string
+      team_id:
+        type: integer
+    required:
+    - git_type
+    - git_url
+    - name
+    - project
+    type: object
+  devops-cd_internal_dto.DeleteApplicationRequest:
+    properties:
+      id:
+        description: 必填：应用ID
+        type: integer
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.DeleteRepositoryRequest:
+    properties:
+      id:
+        description: 必填：要删除的代码库ID
+        type: integer
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.LoginRequest:
+    properties:
+      auth_type:
+        description: ldap or local
+        enum:
+        - ldap
+        - local
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - auth_type
+    - password
+    - username
+    type: object
+  devops-cd_internal_dto.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/devops-cd_internal_dto.UserInfo'
+    type: object
+  devops-cd_internal_dto.PageResponse:
+    properties:
+      items: {}
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  devops-cd_internal_dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  devops-cd_internal_dto.RepositoryResponse:
+    properties:
+      applications:
+        description: 关联的应用列表
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      full_name:
+        description: project/name
+        type: string
+      git_type:
+        type: string
+      git_url:
+        type: string
+      id:
+        type: integer
+      language:
+        type: string
+      name:
+        type: string
+      project:
+        type: string
+      status:
+        type: integer
+      team_id:
+        type: integer
+      team_name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.UpdateApplicationRequest:
+    properties:
+      app_type:
+        enum:
+        - static
+        - node
+        - java
+        - go
+        - py
+        type: string
+      deployed_tag:
+        description: 当前部署的镜像标签
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        description: 必填：应用ID
+        type: integer
+      name:
+        maxLength: 100
+        type: string
+      status:
+        enum:
+        - 0
+        - 1
+        type: integer
+      team_id:
+        type: integer
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.UpdateRepositoryRequest:
+    properties:
+      description:
+        type: string
+      git_type:
+        enum:
+        - gitea
+        - gitlab
+        - github
+        type: string
+      git_url:
+        type: string
+      id:
+        description: 必填：要更新的代码库ID
+        type: integer
+      language:
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      project:
+        maxLength: 100
+        type: string
+      status:
+        enum:
+        - 0
+        - 1
+        type: integer
+      team_id:
+        type: integer
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.UserInfo:
+    properties:
+      auth_type:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      username:
+        type: string
+    type: object
+  devops-cd_internal_service.CreateBatchApp:
+    properties:
+      app_id:
+        description: 应用ID
+        type: integer
+      release_notes:
+        description: 应用级发布说明（可选）
+        type: string
+    required:
+    - app_id
+    type: object
+  devops-cd_internal_service.CreateBatchRequest:
+    properties:
+      apps:
+        description: 应用列表（允许为空，封板时校验）
+        items:
+          $ref: '#/definitions/devops-cd_internal_service.CreateBatchApp'
+        type: array
+      batch_number:
+        description: 批次编号/标题，用户填写
+        type: string
+      initiator:
+        description: 发起人
+        type: string
+      release_notes:
+        description: 批次级发布说明（可选）
+        type: string
+    required:
+    - batch_number
+    - initiator
+    type: object
+  devops-cd_internal_service.UpdateBatchRequest:
+    properties:
+      add_apps:
+        description: 新增应用
+        items:
+          $ref: '#/definitions/devops-cd_internal_service.CreateBatchApp'
+        type: array
+      batch_id:
+        type: integer
+      batch_number:
+        type: string
+      operator:
+        type: string
+      release_notes:
+        type: string
+      remove_app_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - batch_id
+    - operator
+    type: object
+  devops-cd_pkg_utils.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      detail:
+        description: 详细错误信息（可选）
+        type: string
+      message:
+        type: string
+    type: object
+  internal_api_handler.ApproveRequest:
+    properties:
+      batch_id:
+        description: 批次ID
+        type: integer
+      operator:
+        description: 审核人
+        type: string
+      reason:
+        description: 审核意见
+        type: string
+    required:
+    - batch_id
+    - operator
+    type: object
+  internal_api_handler.ProcessActionRequest:
+    properties:
+      action:
+        description: '操作类型: seal/start_pre_deploy/finish_pre_deploy/start_prod_deploy/finish_prod_deploy/complete/cancel'
+        type: string
+      batch_id:
+        description: 批次ID
+        type: integer
+      operator:
+        description: 操作人
+        type: string
+      reason:
+        description: 原因（可选）
+        type: string
+    required:
+    - action
+    - batch_id
+    - operator
+    type: object
+  internal_api_handler.RejectRequest:
+    properties:
+      batch_id:
+        description: 批次ID
+        type: integer
+      operator:
+        description: 审核人
+        type: string
+      reason:
+        description: 拒绝原因
+        type: string
+    required:
+    - batch_id
+    - operator
+    - reason
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: |-
+    DevOps 持续交付平台 API 文档
+    提供代码库管理、应用管理、批次管理、部署管理等功能
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: DevOps CD API
+  version: "1.0"
+paths:
+  /api/v1/application:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 应用ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
+              type: object
+      summary: 获取应用详情
+      tags:
+      - Application
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 更新应用请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
+              type: object
+      summary: 更新应用
+      tags:
+      - Application
+  /api/v1/application/builds:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 应用ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+              type: object
+      summary: 获取应用的构建历史
+      tags:
+      - Application
+  /api/v1/application/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 删除应用请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.DeleteApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 删除应用
+      tags:
+      - Application
+  /api/v1/application/types:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有可用的应用类型及其元数据（显示名称、描述、图标、颜色等）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.AppTypesResponse'
+              type: object
+      summary: 获取应用类型列表
+      tags:
+      - Application
+  /api/v1/application_builds:
+    get:
+      consumes:
+      - application/json
+      description: 搜索应用列表，支持模糊查询 app、repo、commit、tag 等字段，返回包含最新构建信息的应用列表，按构建时间倒序排序
+      parameters:
+      - description: 模糊查询关键字（支持查询 app、repo、commit、tag 等字段）
+        in: query
+        name: keyword
+        type: string
+      - description: 页码（默认1）
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量（默认20，最大100）
+        in: query
+        name: page_size
+        type: integer
+      - description: 按代码库ID过滤
+        in: query
+        name: repo_id
+        type: integer
+      - description: 按团队ID过滤
+        in: query
+        name: team_id
+        type: integer
+      - description: 按应用类型过滤
+        in: query
+        name: app_type
+        type: string
+      - description: 按状态过滤（0/1）
+        in: query
+        name: status
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+              type: object
+      summary: 搜索应用（包含构建信息）
+      tags:
+      - Application
+  /api/v1/applications:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 代码库ID
+        in: query
+        name: repo_id
+        type: integer
+      - description: 团队ID
+        in: query
+        name: team_id
+        type: integer
+      - description: 应用类型
+        in: query
+        name: app_type
+        type: string
+      - description: 关键字
+        in: query
+        name: keyword
+        type: string
+      - description: 状态
+        in: query
+        name: status
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+              type: object
+      summary: 获取应用列表
+      tags:
+      - Application
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建应用请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
+              type: object
+      summary: 创建应用
+      tags:
+      - Application
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 支持LDAP和本地用户登录
+      parameters:
+      - description: 登录请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.LoginResponse'
+      summary: 用户登录
+      tags:
+      - 认证
+  /api/v1/auth/me:
+    get:
+      description: 从JWT Token中获取当前登录用户信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.UserInfo'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取当前用户信息
+      tags:
+      - 认证
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: 使用RefreshToken获取新的AccessToken
+      parameters:
+      - description: 刷新Token请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.LoginResponse'
+      summary: 刷新访问Token
+      tags:
+      - 认证
+  /api/v1/auth/verify:
+    get:
+      description: 验证Token是否有效(内部API)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.UserInfo'
+      security:
+      - ApiKeyAuth: []
+      summary: 验证Token有效性
+      tags:
+      - 认证
+  /api/v1/batch:
+    get:
+      consumes:
+      - application/json
+      description: 获取批次详细信息和应用列表
+      parameters:
+      - description: 批次ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器错误
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取批次详情
+      tags:
+      - 批次管理
+    post:
+      consumes:
+      - application/json
+      description: 创建新的发布批次，自动扫描指定应用的最新成功构建
+      parameters:
+      - description: 批次创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_service.CreateBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: 应用冲突
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器错误
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建批次
+      tags:
+      - 批次管理
+    put:
+      consumes:
+      - application/json
+      description: 更新批次基本信息、添加或删除应用
+      parameters:
+      - description: 批次更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_service.UpdateBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: 批次已封板
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: 应用冲突
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器错误
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新批次
+      tags:
+      - 批次管理
+  /api/v1/batch/action:
+    post:
+      consumes:
+      - application/json
+      description: '处理批次的各种状态操作，如封板、部署、验收等。支持的action: seal(封板)/start_pre_deploy(开始预发布)/finish_pre_deploy(完成预发布)/start_prod_deploy(开始生产部署)/finish_prod_deploy(完成生产部署)/complete(最终验收)/cancel(取消)'
+      parameters:
+      - description: 操作请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handler.ProcessActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 操作失败
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 批次状态操作
+      tags:
+      - 批次管理
+  /api/v1/batch/approve:
+    post:
+      consumes:
+      - application/json
+      description: 审批通过批次，更新审批状态为approved
+      parameters:
+      - description: 审批请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handler.ApproveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 审批失败
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 批次审批通过
+      tags:
+      - 批次管理
+  /api/v1/batch/reject:
+    post:
+      consumes:
+      - application/json
+      description: 审批拒绝批次，更新审批状态为rejected
+      parameters:
+      - description: 拒绝请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handler.RejectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 拒绝失败
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 批次审批拒绝
+      tags:
+      - 批次管理
+  /api/v1/batches:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询批次列表，支持状态、发起人、审批状态、时间范围、关键字过滤。status支持多值，例如：?status=1&status=2&status=3
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - collectionFormat: csv
+        description: 状态过滤（支持多个）
+        in: query
+        items:
+          format: int32
+          type: integer
+        name: status
+        type: array
+      - description: 发起人过滤
+        in: query
+        name: initiator
+        type: string
+      - description: 审批状态过滤：pending/approved/rejected
+        in: query
+        name: approval_status
+        type: string
+      - description: 创建时间起始（RFC3339格式）
+        in: query
+        name: created_at_start
+        type: string
+      - description: 创建时间结束（RFC3339格式）
+        in: query
+        name: created_at_end
+        type: string
+      - description: 关键字搜索（批次编号、发起人、发布说明）
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器错误
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 查询批次列表
+      tags:
+      - 批次管理
+  /api/v1/build:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 构建记录ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.BuildResponse'
+              type: object
+      summary: 获取构建记录详情
+      tags:
+      - Build
+  /api/v1/build/app:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 应用ID
+        in: query
+        name: app_id
+        required: true
+        type: integer
+      - description: 构建号
+        in: query
+        name: build_number
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.BuildResponse'
+              type: object
+      summary: 根据应用和构建号查询构建记录
+      tags:
+      - Build
+  /api/v1/builds:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 仓库ID
+        in: query
+        name: repo_id
+        type: integer
+      - description: 应用ID
+        in: query
+        name: app_id
+        type: integer
+      - description: 构建状态
+        in: query
+        name: build_status
+        type: string
+      - description: 触发事件
+        in: query
+        name: build_event
+        type: string
+      - description: 镜像标签
+        in: query
+        name: image_tag
+        type: string
+      - description: Commit SHA
+        in: query
+        name: commit_sha
+        type: string
+      - description: 环境
+        in: query
+        name: environment
+        type: string
+      - description: 关键字
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+              type: object
+      summary: 查询构建记录列表
+      tags:
+      - Build
+  /api/v1/repositories:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 项目名称
+        in: query
+        name: project
+        type: string
+      - description: 团队ID
+        in: query
+        name: team_id
+        type: integer
+      - description: Git类型
+        in: query
+        name: git_type
+        type: string
+      - description: 关键字
+        in: query
+        name: keyword
+        type: string
+      - description: 状态
+        in: query
+        name: status
+        type: integer
+      - description: 是否包含应用列表
+        in: query
+        name: with_applications
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+              type: object
+      summary: 获取代码库列表
+      tags:
+      - Repository
+  /api/v1/repository:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 代码库ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.RepositoryResponse'
+              type: object
+      summary: 获取代码库详情
+      tags:
+      - Repository
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建代码库请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateRepositoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.RepositoryResponse'
+              type: object
+      summary: 创建代码库
+      tags:
+      - Repository
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 更新代码库请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateRepositoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.RepositoryResponse'
+              type: object
+      summary: 更新代码库
+      tags:
+      - Repository
+  /api/v1/repository/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 删除代码库请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.DeleteRepositoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 删除代码库
+      tags:
+      - Repository
+  /build/notify:
+    post:
+      consumes:
+      - application/json
+      description: 接收 Drone CI/CD 构建完成通知，记录构建信息并更新应用状态
+      parameters:
+      - description: 构建通知请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.BuildNotifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 接收构建通知
+      tags:
+      - Build
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

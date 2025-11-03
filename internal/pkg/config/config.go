@@ -1,0 +1,179 @@
+package config
+
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
+
+var GlobalConfig *Config
+
+// Config 全局配置
+type Config struct {
+	Server   ServerConfig   `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
+	Auth     AuthConfig     `mapstructure:"auth"`
+	Crypto   CryptoConfig   `mapstructure:"crypto"`
+	Log      LogConfig      `mapstructure:"log"`
+	Git      GitConfig      `mapstructure:"git"`
+	Core     CoreConfig     `mapstructure:"core"`
+	DB       interface{}    // 数据库连接,运行时注入
+}
+
+// ServerConfig 服务配置
+type ServerConfig struct {
+	Name string `mapstructure:"name"`
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Mode string `mapstructure:"mode"` // debug, release
+}
+
+// DatabaseConfig 数据库配置
+type DatabaseConfig struct {
+	Driver          string `mapstructure:"driver"`
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	Database        string `mapstructure:"database"`
+	Username        string `mapstructure:"username"`
+	Password        string `mapstructure:"password"`
+	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
+	MaxOpenConns    int    `mapstructure:"max_open_conns"`
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"` // 秒
+	LogLevel        string `mapstructure:"log_level"`         // SQL日志级别: silent/error/warn/info
+}
+
+// AuthConfig 认证配置
+type AuthConfig struct {
+	JWT   JWTConfig   `mapstructure:"jwt"`
+	LDAP  LDAPConfig  `mapstructure:"ldap"`
+	Local LocalConfig `mapstructure:"local"`
+}
+
+// JWTConfig JWT配置
+type JWTConfig struct {
+	Secret             string `mapstructure:"secret"`
+	AccessTokenExpire  int    `mapstructure:"access_token_expire"`  // 秒
+	RefreshTokenExpire int    `mapstructure:"refresh_token_expire"` // 秒
+}
+
+// LDAPConfig LDAP配置
+type LDAPConfig struct {
+	Enabled      bool           `mapstructure:"enabled"`
+	Host         string         `mapstructure:"host"`
+	Port         int            `mapstructure:"port"`
+	UseSSL       bool           `mapstructure:"use_ssl"`
+	BindDN       string         `mapstructure:"bind_dn"`
+	BindPassword string         `mapstructure:"bind_password"`
+	BaseDN       string         `mapstructure:"base_dn"`
+	UserFilter   string         `mapstructure:"user_filter"`
+	Attributes   LDAPAttributes `mapstructure:"attributes"`
+}
+
+// LDAPAttributes LDAP属性映射
+type LDAPAttributes struct {
+	Username    string `mapstructure:"username"`
+	Email       string `mapstructure:"email"`
+	DisplayName string `mapstructure:"display_name"`
+}
+
+// LocalConfig 本地用户配置
+type LocalConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
+// CryptoConfig 加密配置
+type CryptoConfig struct {
+	AESKey string `mapstructure:"aes_key"` // 32字节
+}
+
+// LogConfig 日志配置
+type LogConfig struct {
+	Level      string `mapstructure:"level"`  // debug, info, warn, error
+	Format     string `mapstructure:"format"` // json, console
+	Output     string `mapstructure:"output"` // stdout, file
+	FilePath   string `mapstructure:"file_path"`
+	MaxSize    int    `mapstructure:"max_size"` // MB
+	MaxBackups int    `mapstructure:"max_backups"`
+	MaxAge     int    `mapstructure:"max_age"` // days
+}
+
+// GitConfig Git配置
+type GitConfig struct {
+	WorkDir string `mapstructure:"work_dir"` // Git工作目录,用于临时克隆
+}
+
+// CoreConfig Core模块配置
+type CoreConfig struct {
+	ScanInterval string             `mapstructure:"scan_interval"` // 扫描间隔
+	Deploy       DeployConfig       `mapstructure:"deploy"`
+	Notification NotificationConfig `mapstructure:"notification"`
+	K8s          K8sConfig          `mapstructure:"k8s"`
+}
+
+// DeployConfig 部署配置
+type DeployConfig struct {
+	ConcurrentApps   int    `mapstructure:"concurrent_apps"`    // 并发部署数
+	SingleAppTimeout string `mapstructure:"single_app_timeout"` // 单应用超时
+	BatchTimeout     string `mapstructure:"batch_timeout"`      // 批次超时
+	RetryCount       int    `mapstructure:"retry_count"`        // 重试次数
+	RetryBackoff     string `mapstructure:"retry_backoff"`      // 重试策略
+	PollInterval     string `mapstructure:"poll_interval"`      // 轮询间隔
+}
+
+// NotificationConfig 通知配置
+type NotificationConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`      // 是否启用
+	Provider    string `mapstructure:"provider"`     // 通知渠道
+	LarkWebhook string `mapstructure:"lark_webhook"` // Lark Webhook
+}
+
+// K8sConfig K8s配置
+type K8sConfig struct {
+	BaseURL string `mapstructure:"base_url"` // 部署服务地址
+	APIKey  string `mapstructure:"api_key"`  // API密钥
+}
+
+// Load 加载配置
+func Load(configPath string) (*Config, error) {
+	v := viper.New()
+
+	// 设置配置文件路径
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+	} else {
+		v.SetConfigName("config")
+		v.SetConfigType("yaml")
+		v.AddConfigPath("./configs")
+		v.AddConfigPath(".")
+	}
+
+	// 读取环境变量
+	v.AutomaticEnv()
+
+	// 读取配置文件
+	if err := v.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("读取配置文件失败: %w", err)
+	}
+
+	// 解析配置
+	config := &Config{}
+	if err := v.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("解析配置失败: %w", err)
+	}
+
+	// 设置全局配置
+	GlobalConfig = config
+
+	return config, nil
+}
+
+// GetDSN 获取数据库DSN
+func (c *DatabaseConfig) GetDSN() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		c.Username,
+		c.Password,
+		c.Host,
+		c.Port,
+		c.Database,
+	)
+}

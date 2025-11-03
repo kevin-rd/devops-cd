@@ -1,0 +1,148 @@
+package dto
+
+import "time"
+
+// BatchListQuery 批次列表查询参数
+type BatchListQuery struct {
+	Page      int    `json:"page" form:"page"`
+	PageSize  int    `json:"page_size" form:"page_size"`
+	Status    []int8 `json:"status" form:"status"` // 支持多状态查询
+	Initiator string `json:"initiator" form:"initiator"`
+
+	// 新增字段
+	ApprovalStatus *string `json:"approval_status" form:"approval_status"`              // pending/approved/rejected
+	CreatedAtStart *string `json:"created_at_start" form:"start_time,created_at_start"` // RFC3339格式，例如：2025-01-01T00:00:00Z
+	CreatedAtEnd   *string `json:"created_at_end" form:"end_time,created_at_start"`     // RFC3339格式，例如：2025-12-31T23:59:59Z
+	Keyword        string  `json:"keyword" form:"keyword"`                              // 模糊搜索批次编号、发起人、发布说明
+}
+
+// GetPage 获取页码（默认为1）
+func (q *BatchListQuery) GetPage() int {
+	if q.Page < 1 {
+		return 1
+	}
+	return q.Page
+}
+
+// GetPageSize 获取页大小（默认为20）
+func (q *BatchListQuery) GetPageSize() int {
+	if q.PageSize < 1 {
+		return 20
+	}
+	if q.PageSize > 100 {
+		return 100
+	}
+	return q.PageSize
+}
+
+// BatchGetRequest 获取批次详情请求
+type BatchGetRequest struct {
+	ID int64 `json:"id" form:"id" binding:"required"`
+}
+
+// BatchResponse 批次响应
+type BatchResponse struct {
+	// 基本信息
+	ID           int64   `json:"id"`
+	BatchNumber  string  `json:"batch_number"`
+	Initiator    string  `json:"initiator"`
+	ReleaseNotes *string `json:"release_notes,omitempty"`
+
+	// 状态信息
+	Status         int8   `json:"status"`
+	StatusName     string `json:"status_name"`
+	ApprovalStatus string `json:"approval_status"`
+	AppCount       int64  `json:"app_count"` // 应用数量
+
+	// 审批信息
+	ApprovedBy   *string `json:"approved_by,omitempty"`
+	ApprovedAt   *string `json:"approved_at,omitempty"`
+	RejectReason *string `json:"reject_reason,omitempty"`
+
+	// 时间追踪
+	TaggedAt             *string `json:"tagged_at,omitempty"`               // 封板时间
+	PreDeployStartedAt   *string `json:"pre_deploy_started_at,omitempty"`   // 预发布开始时间
+	PreDeployFinishedAt  *string `json:"pre_deploy_finished_at,omitempty"`  // 预发布完成时间
+	ProdDeployStartedAt  *string `json:"prod_deploy_started_at,omitempty"`  // 生产部署开始时间
+	ProdDeployFinishedAt *string `json:"prod_deploy_finished_at,omitempty"` // 生产部署完成时间
+
+	// 验收信息
+	FinalAcceptedAt *string `json:"final_accepted_at,omitempty"` // 最终验收时间
+	FinalAcceptedBy *string `json:"final_accepted_by,omitempty"`
+
+	// 取消信息
+	CancelledAt  *string `json:"cancelled_at,omitempty"`
+	CancelledBy  *string `json:"cancelled_by,omitempty"`
+	CancelReason *string `json:"cancel_reason,omitempty"`
+
+	// 系统字段
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// BatchDetailResponse 批次详情响应（包含应用列表）
+type BatchDetailResponse struct {
+	BatchResponse
+	Apps []ReleaseAppResponse `json:"apps"`
+}
+
+// ReleaseAppResponse 发布应用响应（简约版）
+type ReleaseAppResponse struct {
+	// ReleaseApp 基本信息
+	ID      int64  `json:"id"`
+	BatchID int64  `json:"batch_id"`
+	AppID   int64  `json:"app_id"`
+	BuildID *int64 `json:"build_id,omitempty"` // 关联的构建ID
+
+	// 版本信息
+	PreviousDeployedTag *string `json:"previous_deployed_tag,omitempty"` // 部署前的版本（封板时记录）
+	TargetTag           *string `json:"target_tag,omitempty"`            // 目标部署版本（封板时固定，部署期间代表期望版本，部署完成后代表已部署版本）
+
+	// 应用信息
+	AppName        string  `json:"app_name"`
+	AppDisplayName *string `json:"app_display_name,omitempty"`
+	AppType        string  `json:"app_type"`
+	AppProject     string  `json:"app_project"`
+	AppStatus      int8    `json:"app_status"`
+	DeployedTag    *string `json:"deployed_tag,omitempty"` // 应用当前部署的镜像标签（从 applications 表获取）
+
+	// 仓库信息
+	RepoID       int64  `json:"repo_id"`
+	RepoName     string `json:"repo_name"`
+	RepoFullName string `json:"repo_full_name"`
+
+	// 团队信息
+	TeamID   *int64  `json:"team_id,omitempty"`
+	TeamName *string `json:"team_name,omitempty"`
+
+	// 构建信息（通过 build 关联获取，可选）
+	BuildNumber   *int    `json:"build_number,omitempty"`   // 构建编号
+	BuildStatus   *string `json:"build_status,omitempty"`   // 构建状态
+	ImageURL      *string `json:"image_url,omitempty"`      // 完整镜像地址
+	CommitSHA     *string `json:"commit_sha,omitempty"`     // commit SHA
+	CommitMessage *string `json:"commit_message,omitempty"` // commit 信息
+	CommitBranch  *string `json:"commit_branch,omitempty"`  // 分支
+
+	// 发布信息
+	ReleaseNotes *string `json:"release_notes,omitempty"` // 应用级发布说明
+	IsLocked     bool    `json:"is_locked"`               // 是否已锁定（封板后为true）
+
+	// 时间信息
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// ToBatchResponse 转换为批次响应
+func ToBatchResponse(batch interface{}, appCount int64) *BatchResponse {
+	// 这个函数会在 service 层使用
+	return nil
+}
+
+// FormatTime 格式化时间
+func FormatTime(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	formatted := t.Format(time.RFC3339)
+	return &formatted
+}
