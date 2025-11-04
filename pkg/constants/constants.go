@@ -13,6 +13,7 @@ const (
 	BatchStatusProdDeploying int8 = 31 // 生产部署中
 	BatchStatusProdDeployed  int8 = 32 // 生产已部署完成, 验收中
 	BatchStatusCompleted     int8 = 40 // 已完成
+	BatchStatusFinalAccepted int8 = 40
 	BatchStatusCancelled     int8 = 90 // 已取消
 )
 

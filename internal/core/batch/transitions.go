@@ -8,7 +8,11 @@ import (
 )
 
 type TransitionHandler interface {
+	// Handle 处理状态转换, 事务执行
 	Handle(batch *model.Batch, from, to int8) error
+
+	// After 状态转换后执行, 异步
+	After(batch *model.Batch, from, to int8)
 }
 
 type TransitionHandleFunc func(batch *model.Batch, from, to int8) error
@@ -17,171 +21,128 @@ func (h TransitionHandleFunc) Handle(batch *model.Batch, from, to int8) error {
 	return h(batch, from, to)
 }
 
+func (h TransitionHandleFunc) After(batch *model.Batch, from, to int8) {
+
+}
+
 type StateTransition struct {
-	From        int8
-	To          int8
-	Event       string
-	Description string
-	Handler     TransitionHandler
+	From    int8
+	To      int8
+	Event   string
+	Handler TransitionHandler
 
 	AllowSource int8 // 使用位运算
 }
 
+// 状态流转来源: 内部/外部
 const (
-	StateSourceInside  int8 = 1 << 0
-	StateSourceOutside int8 = 1 << 1
+	TransitionSourceInside  int8 = 1 << 0
+	TransitionSourceOutside int8 = 1 << 1
 )
 
 // TransitionContext 转换上下文
 type TransitionContext struct {
+	to        int8
 	Operator  string
-	Reason    string
 	Timestamp time.Time
 	Data      map[string]interface{}
+	source    int8
 }
 
-func (sm *StateMachine) initTransitions() {
-	transitions := []StateTransition{
+func (sm *StateMachine) registerTransitions() {
+	var transitions = []StateTransition{
 		// 草稿 -> 已封板
 		{
 			From:        constants.BatchStatusDraft,
 			To:          constants.BatchStatusSealed,
-			Event:       "seal",
-			Description: "封板确认",
 			Handler:     TransitionHandleFunc(sm.handleSeal),
-			AllowSource: StateSourceOutside,
+			AllowSource: TransitionSourceOutside,
 		},
 		// 草稿 -> 取消
 		{
 			From:        constants.BatchStatusDraft,
 			To:          constants.BatchStatusCancelled,
-			Event:       "cancel",
-			Description: "取消批次",
 			Handler:     TransitionHandleFunc(sm.handleCancel),
-			AllowSource: StateSourceOutside,
+			AllowSource: TransitionSourceOutside,
 		},
 		// 已封板 -> 触发预发布（需要检查审批状态）
 		{
 			From:        constants.BatchStatusSealed,
 			To:          constants.BatchStatusPreWaiting,
-			Event:       "start_pre_deploy",
-			Description: "开始预发布部署",
 			Handler:     TransitionHandleFunc(sm.handleStartPreDeploy),
-			AllowSource: StateSourceOutside,
+			AllowSource: TransitionSourceOutside,
 		},
 		// 已封板 -> 取消
 		{
 			From:        constants.BatchStatusSealed,
 			To:          constants.BatchStatusCancelled,
-			Event:       "cancel",
-			Description: "取消批次",
 			Handler:     TransitionHandleFunc(sm.handleCancel),
-			AllowSource: StateSourceOutside,
+			AllowSource: TransitionSourceOutside,
 		},
 		// 预发布部署中 -> 预发布已部署 todo: internal
 		{
-			From:        constants.BatchStatusPreDeploying,
-			To:          constants.BatchStatusPreDeployed,
-			Event:       "pre_deploy_completed",
-			Description: "预发布部署完成",
-			Handler:     TransitionHandleFunc(sm.handlePreDeployCompleted),
+			From:    constants.BatchStatusPreDeploying,
+			To:      constants.BatchStatusPreDeployed,
+			Handler: TransitionHandleFunc(sm.handlePreDeployCompleted),
 		},
 		// 预发布已部署 -> 触发生产
 		{
 			From:        constants.BatchStatusPreDeployed,
 			To:          constants.BatchStatusProdWaiting,
-			Event:       "start_prod_deploy",
-			Description: "开始正式发布部署",
 			Handler:     TransitionHandleFunc(sm.handleStartProdDeploy),
-			AllowSource: StateSourceOutside,
+			AllowSource: TransitionSourceOutside,
 		},
 		// 正式发布部署中 -> 正式发布已部署 // todo: internal
 		{
-			From:        constants.BatchStatusProdDeploying,
-			To:          constants.BatchStatusProdDeployed,
-			Event:       "prod_deploy_completed",
-			Description: "正式发布部署完成",
-			Handler:     TransitionHandleFunc(sm.handleProdDeployCompleted),
+			From:    constants.BatchStatusProdDeploying,
+			To:      constants.BatchStatusProdDeployed,
+			Handler: TransitionHandleFunc(sm.handleProdDeployCompleted),
 		},
 		// 正式发布已部署 -> 已完成
 		{
 			From:        constants.BatchStatusProdDeployed,
 			To:          constants.BatchStatusCompleted,
-			Event:       "complete",
-			Description: "发布完成",
 			Handler:     TransitionHandleFunc(sm.handleComplete),
-			AllowSource: StateSourceOutside,
+			AllowSource: TransitionSourceOutside,
 		},
 		// 正式发布已部署 -> 预发布已部署 (验收失败回滚)
 		{
-			From:        constants.BatchStatusProdDeployed,
-			To:          constants.BatchStatusPreDeployed,
-			Event:       "prod_verify_failed",
-			Description: "生产验收失败",
-			Handler:     TransitionHandleFunc(sm.handleProdVerifyFailed),
+			From:    constants.BatchStatusProdDeployed,
+			To:      constants.BatchStatusPreDeployed,
+			Handler: TransitionHandleFunc(sm.handleProdVerifyFailed),
 		},
 	}
 
-	// 构建转换映射
 	for _, t := range transitions {
-		sm.transitions[t.From] = append(sm.transitions[t.From], t)
+		if sm.transitions[t.From] == nil {
+			sm.transitions[t.From] = make(map[int8]StateTransition)
+		}
+		sm.transitions[t.From][t.To] = t
 	}
 }
 
 // canTransition 检查是否可以进行状态转换
 func (sm *StateMachine) canTransition(from, to int8, source int8) (TransitionHandler, bool) {
-
 	if transitions, ok := sm.transitions[from]; ok {
-		for _, t := range transitions {
-			if t.To == to && t.AllowSource&source != 0 {
-				// 找到并允许执行
-				return t.Handler, true
-			}
+		if transition, ok := transitions[to]; ok && transition.AllowSource&source != 0 {
+			return transition.Handler, true
 		}
 	}
 
 	// 内部默认允许
-	if source == StateSourceInside {
+	if source == TransitionSourceInside {
 		return nil, true
 	}
 
 	return nil, false
 }
 
-func (sm *StateMachine) publishEvent(batch *model.Batch, old, new int8) {
-	// 可集成 webhook / kafka / prometheus
-	sm.logger.Info(fmt.Sprintf("Batch:%v(%s) 状态变更: %d → %d", batch.ID, batch.BatchNumber, old, new))
-}
-
 // ================== 状态转换处理函数 ==================
 
-// handleSeal 处理封板（原 handleConfirmTag）
+// handleSeal 处理封板
 func (sm *StateMachine) handleSeal(batch *model.Batch, from, to int8) error {
-	// 1. 查询批次中的所有应用
-	var releaseApps []model.ReleaseApp
-	if err := sm.db.Where("batch_id = ?", batch.ID).Find(&releaseApps).Error; err != nil {
-		return fmt.Errorf("查询批次应用失败: %w", err)
-	}
 
-	// 2. 检查应用数量（空批次不允许封板）
-	if len(releaseApps) == 0 {
-		return fmt.Errorf("封板失败: 批次中没有应用，不允许封板")
-	}
-
-	// 3. 检查是否所有应用都有构建
-	appsWithoutBuild := []int64{}
-	for _, app := range releaseApps {
-		if app.BuildID == nil {
-			appsWithoutBuild = append(appsWithoutBuild, app.AppID)
-		}
-	}
-
-	if len(appsWithoutBuild) > 0 {
-		return fmt.Errorf("封板失败: 以下应用没有构建记录，不允许封板: %v", appsWithoutBuild)
-	}
-
-	// 4. 记录版本历史信息
-	// 4.1 记录部署前版本（从 applications.deployed_tag 获取）
+	// 1. 记录部署前版本（从 applications.deployed_tag 获取）
 	if err := sm.db.Exec(`
 		UPDATE release_apps ra
 		JOIN applications a ON ra.app_id = a.id
@@ -191,7 +152,7 @@ func (sm *StateMachine) handleSeal(batch *model.Batch, from, to int8) error {
 		return fmt.Errorf("记录部署前版本失败: %w", err)
 	}
 
-	// 4.2 记录目标版本（从 build.image_tag 获取并固定）todo
+	// 2. 记录目标版本（从 build.image_tag 获取并固定）todo
 	if err := sm.db.Exec(`
 		UPDATE release_apps ra
 		JOIN builds b ON ra.build_id = b.id
@@ -201,16 +162,12 @@ func (sm *StateMachine) handleSeal(batch *model.Batch, from, to int8) error {
 		return fmt.Errorf("记录目标版本失败: %w", err)
 	}
 
-	// 5. 锁定所有应用记录（防止封板后修改）
+	// 3. 锁定所有应用记录（防止封板后修改）
 	if err := sm.db.Model(&model.ReleaseApp{}).
 		Where("batch_id = ?", batch.ID).
 		Update("is_locked", true).Error; err != nil {
 		return fmt.Errorf("锁定应用记录失败: %w", err)
 	}
-
-	// 6. 记录封板时间
-	now := time.Now()
-	batch.TaggedAt = &now
 
 	return nil
 }
@@ -226,21 +183,6 @@ func (sm *StateMachine) handleCancel(batch *model.Batch, from, to int8) error {
 
 // handleStartPreDeploy 处理开始预发布部署
 func (sm *StateMachine) handleStartPreDeploy(batch *model.Batch, from, to int8) error {
-	// 1. 检查前置条件：必须已审批通过
-	if batch.ApprovalStatus != constants.ApprovalStatusApproved &&
-		batch.ApprovalStatus != constants.ApprovalStatusSkipped {
-		return fmt.Errorf("预发布失败: 批次未审批通过，当前审批状态: %s", batch.ApprovalStatus)
-	}
-
-	// 2. 检查前置条件：必须已封板
-	if batch.Status < constants.BatchStatusSealed || batch.TaggedAt == nil {
-		return fmt.Errorf("预发布失败: 批次未封板")
-	}
-
-	// 3. 记录预发布开始时间
-	now := time.Now()
-	batch.PreDeployStartedAt = &now
-
 	return nil
 }
 
@@ -251,7 +193,7 @@ func (sm *StateMachine) handlePreDeployCompleted(batch *model.Batch, from, to in
 	// 2. 记录完成时间
 	// 3. 发送验收通知
 	now := time.Now()
-	batch.PreDeployFinishedAt = &now
+	batch.PreFinishedAt = &now
 	return nil
 }
 
@@ -270,8 +212,6 @@ func (sm *StateMachine) handleStartProdDeploy(batch *model.Batch, from, to int8)
 	// 1. 创建生产部署任务
 	// 2. 触发生产部署流程
 	// 3. 更新批次状态
-	now := time.Now()
-	batch.ProdDeployStartedAt = &now
 	return nil
 }
 
@@ -291,7 +231,7 @@ func (sm *StateMachine) handleProdDeployCompleted(batch *model.Batch, from, to i
 	}
 	// 3. 发送验收通知
 	now := time.Now()
-	batch.ProdDeployFinishedAt = &now
+	batch.ProdFinishedAt = &now
 	return nil
 }
 

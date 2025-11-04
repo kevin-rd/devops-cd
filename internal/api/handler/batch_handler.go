@@ -59,7 +59,7 @@ func (h *BatchHandler) ProcessAction(c *gin.Context) {
 	}
 
 	// 处理操作
-	if err := h.coreEngine.ProcessBatchEvent(req.BatchID, req.Action, req.Operator); err != nil {
+	if err := h.coreEngine.ProcessBatchEvent(req.BatchID, req.Action, req.Operator, req.Reason); err != nil {
 		logger.Error("处理批次操作失败",
 			zap.Int64("batch_id", req.BatchID),
 			zap.String("action", req.Action),
@@ -572,11 +572,11 @@ func (h *BatchHandler) toBatchResponse(batch *model.Batch, appCount int64) dto.B
 		RejectReason: batch.RejectReason,
 
 		// 时间追踪
-		TaggedAt:             dto.FormatTime(batch.TaggedAt),
-		PreDeployStartedAt:   dto.FormatTime(batch.PreDeployStartedAt),
-		PreDeployFinishedAt:  dto.FormatTime(batch.PreDeployFinishedAt),
-		ProdDeployStartedAt:  dto.FormatTime(batch.ProdDeployStartedAt),
-		ProdDeployFinishedAt: dto.FormatTime(batch.ProdDeployFinishedAt),
+		TaggedAt:             dto.FormatTime(batch.SealedAt),
+		PreDeployStartedAt:   dto.FormatTime(batch.PreStartedAt),
+		PreDeployFinishedAt:  dto.FormatTime(batch.PreFinishedAt),
+		ProdDeployStartedAt:  dto.FormatTime(batch.ProdStartedAt),
+		ProdDeployFinishedAt: dto.FormatTime(batch.ProdFinishedAt),
 
 		// 验收信息
 		FinalAcceptedAt: dto.FormatTime(batch.FinalAcceptedAt),

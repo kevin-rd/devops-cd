@@ -20,19 +20,22 @@ type Batch struct {
 	// 部署流程状态
 	Status int8 `gorm:"index;not null;default:0" json:"status"` // pkg/constants:BatchStatus (0:草稿 10:已封板 21:预发布中...)
 
-	// 时间戳追踪
-	TaggedAt             *time.Time `json:"tagged_at"`               // 封板时间
-	PreDeployStartedAt   *time.Time `json:"pre_deploy_started_at"`   // 预发布开始时间
-	PreDeployFinishedAt  *time.Time `json:"pre_deploy_finished_at"`  // 预发布完成时间
-	ProdDeployStartedAt  *time.Time `json:"prod_deploy_started_at"`  // 生产部署开始时间
-	ProdDeployFinishedAt *time.Time `json:"prod_deploy_finished_at"` // 生产部署完成时间
+	// 封板/触发
+	SealedBy        *string    `gorm:"size:50" json:"sealed_by"`                               // 封板人
+	SealedAt        *time.Time `gorm:"column:sealed_at" json:"tagged_at"`                      // 封板时间
+	PreTriggeredBy  *string    `gorm:"size:50" json:"pre_triggered_by"`                        // 预发布触发人
+	PreStartedAt    *time.Time `gorm:"column:pre_started_at" json:"pre_deploy_started_at"`     // 预发布开始时间
+	PreFinishedAt   *time.Time `gorm:"column:pre_finished_at" json:"pre_deploy_finished_at"`   // 预发布完成时间
+	ProdTriggeredBy *string    `gorm:"size:50" json:"prod_triggered_by"`                       // 生产部署触发人
+	ProdStartedAt   *time.Time `gorm:"column:prod_started_at" json:"prod_deploy_started_at"`   // 生产部署开始时间
+	ProdFinishedAt  *time.Time `gorm:"column:prod_finished_at" json:"prod_deploy_finished_at"` // 生产部署完成时间
 
 	// 验收和取消
-	FinalAcceptedAt *time.Time `json:"final_accepted_at"` // 最终验收时间
-	FinalAcceptedBy *string    `gorm:"size:50" json:"final_accepted_by"`
-	CancelledAt     *time.Time `json:"cancelled_at"`
-	CancelledBy     *string    `gorm:"size:50" json:"cancelled_by"`
-	CancelReason    *string    `gorm:"type:text" json:"cancel_reason"`
+	FinalAcceptedAt *time.Time `json:"final_accepted_at"`                // 最终验收时间
+	FinalAcceptedBy *string    `gorm:"size:50" json:"final_accepted_by"` // 最终验收人
+	CancelledAt     *time.Time `json:"cancelled_at"`                     // 取消时间
+	CancelledBy     *string    `gorm:"size:50" json:"cancelled_by"`      // 取消人
+	CancelReason    *string    `gorm:"type:text" json:"cancel_reason"`   // 取消原因
 
 	// 系统字段
 	CreatedAt time.Time `json:"created_at"`

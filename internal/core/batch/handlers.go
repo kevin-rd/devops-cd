@@ -8,25 +8,25 @@ import (
 	"time"
 )
 
-type Handler interface {
+type StateHandler interface {
 	Handle(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error)
 }
 
-type HandlerFunc func(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error)
+type StateHandlerFunc func(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error)
 
-func (h HandlerFunc) Handle(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
+func (h StateHandlerFunc) Handle(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	return h(ctx, batch)
 }
 
 func (sm *StateMachine) registerHandlers() {
-	sm.handlers[constants.BatchStatusDraft] = HandlerFunc(HandleDraft)
-	sm.handlers[constants.BatchStatusSealed] = HandlerFunc(HandleSealed)
-	sm.handlers[constants.BatchStatusPreWaiting] = HandlerFunc(sm.HandlePreWaiting)
-	sm.handlers[constants.BatchStatusPreDeploying] = HandlerFunc(sm.HandlePreDeploying)
-	sm.handlers[constants.BatchStatusPreDeployed] = HandlerFunc(sm.HandlePreDeployed)
-	sm.handlers[constants.BatchStatusProdWaiting] = HandlerFunc(sm.HandleProdWaiting)
-	sm.handlers[constants.BatchStatusProdDeploying] = HandlerFunc(sm.HandleProdDeploying)
-	sm.handlers[constants.BatchStatusProdDeployed] = HandlerFunc(sm.HandleProdDeployed)
+	sm.handlers[constants.BatchStatusDraft] = StateHandlerFunc(HandleDraft)
+	sm.handlers[constants.BatchStatusSealed] = StateHandlerFunc(HandleSealed)
+	sm.handlers[constants.BatchStatusPreWaiting] = StateHandlerFunc(sm.HandlePreWaiting)
+	sm.handlers[constants.BatchStatusPreDeploying] = StateHandlerFunc(sm.HandlePreDeploying)
+	sm.handlers[constants.BatchStatusPreDeployed] = StateHandlerFunc(sm.HandlePreDeployed)
+	sm.handlers[constants.BatchStatusProdWaiting] = StateHandlerFunc(sm.HandleProdWaiting)
+	sm.handlers[constants.BatchStatusProdDeploying] = StateHandlerFunc(sm.HandleProdDeploying)
+	sm.handlers[constants.BatchStatusProdDeployed] = StateHandlerFunc(sm.HandleProdDeployed)
 }
 
 // all handlers
@@ -84,7 +84,7 @@ func (sm *StateMachine) HandlePreDeploying(ctx context.Context, batch *model.Bat
 
 	return constants.BatchStatusPreDeployed, func(b *model.Batch) {
 		now := time.Now()
-		b.PreDeployFinishedAt = &now
+		b.PreFinishedAt = &now
 	}, nil
 }
 
@@ -137,7 +137,7 @@ func (sm *StateMachine) HandleProdDeploying(ctx context.Context, batch *model.Ba
 
 	return constants.BatchStatusProdDeployed, func(b *model.Batch) {
 		now := time.Now()
-		b.ProdDeployFinishedAt = &now
+		b.ProdFinishedAt = &now
 	}, nil
 }
 
