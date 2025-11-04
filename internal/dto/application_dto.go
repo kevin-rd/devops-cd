@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 // CreateApplicationRequest 创建应用请求
 type CreateApplicationRequest struct {
 	Name        string  `json:"name" binding:"required,max=100"`
@@ -103,24 +105,26 @@ type LatestBuildInfo struct {
 
 // ApplicationBuildResponse 应用搜索响应（包含构建信息）
 type ApplicationBuildResponse struct {
-	ID          int64   `json:"id"`
-	Name        string  `json:"name"`
-	Project     string  `json:"project"`
-	DisplayName *string `json:"display_name"`
-	Description *string `json:"description"`
-	RepoID      int64   `json:"repo_id"`
-	RepoName    *string `json:"repo_name,omitempty"` // Repository的project/name
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	Project      string  `json:"project"`
+	DisplayName  *string `json:"display_name"`
+	Description  *string `json:"description"`
+	RepoID       int64   `json:"repo_id"`
+	RepoFullName *string `json:"repo_full_name,omitempty"` // Repository的project/name
+	TeamID       *int64  `json:"team_id"`
+	TeamName     *string `json:"team_name,omitempty"`
+
 	AppType     string  `json:"app_type"`
-	TeamID      *int64  `json:"team_id"`
-	TeamName    *string `json:"team_name,omitempty"`
 	DeployedTag *string `json:"deployed_tag"` // 当前部署的镜像标签
 	Status      int8    `json:"status"`
 
-	BuildID       int64   `json:"build_id"`
-	BuildNumber   int     `json:"build_number"`
-	ImageTag      string  `json:"image_tag"`
-	CommitSHA     string  `json:"commit_sha"`
-	CommitMessage *string `json:"commit_message"`
-	CommitBranch  string  `json:"commit_branch"`
-	BuildStatus   string  `json:"build_status"`
+	BuildID       int64      `json:"build_id"`
+	BuildNumber   int64      `json:"build_number"`
+	BuildTime     *time.Time `json:"build_time"`
+	ImageTag      string     `json:"image_tag"`
+	CommitSHA     string     `json:"commit_sha"`
+	CommitMessage *string    `json:"commit_message"`
+	CommitBranch  string     `json:"commit_branch"`
+	BuildStatus   string     `json:"build_status"`
 }

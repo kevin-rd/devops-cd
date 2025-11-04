@@ -10,7 +10,6 @@ import (
 
 	"devops-cd/internal/core"
 	"devops-cd/internal/dto"
-	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/service"
 	"devops-cd/pkg/constants"
@@ -307,6 +306,45 @@ func (h *BatchHandler) Update(c *gin.Context) {
 	})
 }
 
+// UpdateBuilds 更新批次发布应用
+// @Summary 更新批次发布应用
+// @Description 批量更新批次中应用的构建版本等信息（仅草稿状态可修改）
+// @Tags 批次管理
+// @Accept json
+// @Produce json
+// @Param request body dto.UpdateBuildsRequest true "更新请求"
+// @Success 200 {object} map[string]interface{} "更新成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 403 {object} map[string]interface{} "批次状态不允许修改"
+// @Failure 500 {object} map[string]interface{} "更新失败"
+// @Router /api/v1/batch/release_app [put]
+func (h *BatchHandler) UpdateBuilds(c *gin.Context) {
+	var req dto.UpdateBuildsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		return
+	}
+
+	err := h.batchService.UpdateBuilds(&req)
+	if err != nil {
+		logger.Error("更新批次应用构建失败", zap.Int64("batch_id", req.BatchID), zap.Error(err))
+
+		// 根据错误类型返回不同的HTTP状态码
+		if err.Error() == "只能修改草稿状态的批次" {
+			utils.ErrorWithCode(c, http.StatusForbidden, err.Error())
+		} else {
+			utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	utils.Success(c, gin.H{
+		"message":      "批次应用构建更新成功",
+		"batch_id":     req.BatchID,
+		"update_count": len(req.BuildChanges),
+	})
+}
+
 // Delete 删除批次
 // POST /api/v1/batch/delete
 func (h *BatchHandler) Delete(c *gin.Context) {
@@ -333,11 +371,13 @@ func (h *BatchHandler) Delete(c *gin.Context) {
 
 // Get 获取批次详情
 // @Summary 获取批次详情
-// @Description 获取批次详细信息和应用列表
+// @Description 获取批次详细信息和应用列表（支持应用列表分页）。每个应用会包含自上次部署以来的最近15条成功构建记录。
 // @Tags 批次管理
 // @Accept json
 // @Produce json
 // @Param id query int64 true "批次ID"
+// @Param app_page query int false "应用列表页码" default(1)
+// @Param app_page_size query int false "应用列表每页数量" default(20)
 // @Success 200 {object} map[string]interface{} "成功响应"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 500 {object} map[string]interface{} "服务器错误"
@@ -351,91 +391,11 @@ func (h *BatchHandler) Get(c *gin.Context) {
 		return
 	}
 
-	batch, apps, err := h.batchService.GetBatch(req.ID)
+	response, err := h.batchService.GetBatch(req.ID, req.GetAppPage(), req.GetAppPageSize())
 	if err != nil {
-		logger.Error("获取批次详情失败",
-			zap.Int64("batch_id", req.ID),
-			zap.Error(err))
+		logger.Error("获取批次详情失败", zap.Int64("batch_id", req.ID), zap.Error(err))
 		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
-	}
-
-	// 转换为响应格式
-	appResponses := make([]dto.ReleaseAppResponse, len(apps))
-	for i, app := range apps {
-		response := dto.ReleaseAppResponse{
-			// ReleaseApp 基本信息
-			ID:      app.ID,
-			BatchID: app.BatchID,
-			AppID:   app.AppID,
-			BuildID: app.BuildID,
-
-			// 版本信息
-			PreviousDeployedTag: app.PreviousDeployedTag,
-			TargetTag:           app.TargetTag,
-
-			// 发布信息
-			ReleaseNotes: app.ReleaseNotes,
-			IsLocked:     app.IsLocked,
-
-			// 时间信息
-			CreatedAt: app.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: app.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		}
-
-		// 填充构建信息（如果通过 Preload("Build") 已加载）
-		if app.Build != nil {
-			response.BuildNumber = &app.Build.BuildNumber
-			response.BuildStatus = &app.Build.BuildStatus
-			response.ImageURL = &app.Build.ImageURL
-			response.CommitSHA = &app.Build.CommitSHA
-			response.CommitMessage = &app.Build.CommitMessage
-			response.CommitBranch = &app.Build.CommitBranch
-		}
-
-		// 填充应用信息（如果已加载）
-		if app.Application != nil {
-			response.AppName = app.Application.Name
-			response.AppDisplayName = app.Application.DisplayName
-			response.AppType = app.Application.AppType
-			response.AppProject = app.Application.Project
-			response.AppStatus = app.Application.Status
-			response.TeamID = app.Application.TeamID
-			response.DeployedTag = app.Application.DeployedTag // 当前部署的标签
-
-			// 填充仓库信息
-			if app.Application.Repository != nil {
-				response.RepoID = app.Application.RepoID
-				response.RepoName = app.Application.Repository.Name
-				response.RepoFullName = app.Application.Repository.Project + "/" + app.Application.Repository.Name
-			} else {
-				response.RepoID = app.Application.RepoID
-				response.RepoName = ""
-				response.RepoFullName = ""
-			}
-
-			// 填充团队信息
-			if app.Application.Team != nil {
-				response.TeamName = &app.Application.Team.Name
-			}
-		} else {
-			// 如果应用信息未加载，设置默认值
-			response.AppName = ""
-			response.AppType = ""
-			response.AppProject = ""
-			response.AppStatus = 0
-			response.RepoID = 0
-			response.RepoName = ""
-			response.RepoFullName = ""
-		}
-
-		appResponses[i] = response
-	}
-
-	// 构建详情响应（扁平化结构）
-	response := dto.BatchDetailResponse{
-		BatchResponse: h.toBatchResponse(batch, int64(len(apps))),
-		Apps:          appResponses,
 	}
 
 	utils.Success(c, response)
@@ -487,7 +447,7 @@ func (h *BatchHandler) List(c *gin.Context) {
 		createdAtEnd = &t
 	}
 
-	batchesWithCount, total, err := h.batchService.ListBatches(
+	responses, total, err := h.batchService.ListBatches(
 		req.GetPage(),
 		req.GetPageSize(),
 		req.Status,
@@ -503,16 +463,10 @@ func (h *BatchHandler) List(c *gin.Context) {
 		return
 	}
 
-	// 转换为响应格式
-	responses := make([]dto.BatchResponse, len(batchesWithCount))
-	for i, bwc := range batchesWithCount {
-		responses[i] = h.toBatchResponse(bwc.Batch, bwc.AppCount)
-	}
-
 	utils.PageSuccess(c, responses, total, req.GetPage(), req.GetPageSize())
 }
 
-// getStatusName 获取状态名称
+// getStatusName 获取状态名称（仅用于错误响应）
 func getStatusName(status int8) string {
 	switch status {
 	case constants.BatchStatusDraft:
@@ -534,63 +488,4 @@ func getStatusName(status int8) string {
 	default:
 		return "未知状态"
 	}
-}
-
-func getApprovalStatusName(status string) string {
-	switch status {
-	case constants.ApprovalStatusPending:
-		return "待审批"
-	case constants.ApprovalStatusApproved:
-		return "已通过"
-	case constants.ApprovalStatusRejected:
-		return "已拒绝"
-	case constants.ApprovalStatusSkipped:
-		return "已跳过"
-	default:
-		return "未知状态"
-	}
-}
-
-// toBatchResponse 转换 Batch 模型为 BatchResponse DTO
-func (h *BatchHandler) toBatchResponse(batch *model.Batch, appCount int64) dto.BatchResponse {
-	response := dto.BatchResponse{
-		// 基本信息
-		ID:           batch.ID,
-		BatchNumber:  batch.BatchNumber,
-		Initiator:    batch.Initiator,
-		ReleaseNotes: batch.ReleaseNotes,
-
-		// 状态信息
-		Status:         batch.Status,
-		StatusName:     getStatusName(batch.Status),
-		ApprovalStatus: batch.ApprovalStatus,
-		AppCount:       appCount,
-
-		// 审批信息
-		ApprovedBy:   batch.ApprovedBy,
-		ApprovedAt:   dto.FormatTime(batch.ApprovedAt),
-		RejectReason: batch.RejectReason,
-
-		// 时间追踪
-		TaggedAt:             dto.FormatTime(batch.SealedAt),
-		PreDeployStartedAt:   dto.FormatTime(batch.PreStartedAt),
-		PreDeployFinishedAt:  dto.FormatTime(batch.PreFinishedAt),
-		ProdDeployStartedAt:  dto.FormatTime(batch.ProdStartedAt),
-		ProdDeployFinishedAt: dto.FormatTime(batch.ProdFinishedAt),
-
-		// 验收信息
-		FinalAcceptedAt: dto.FormatTime(batch.FinalAcceptedAt),
-		FinalAcceptedBy: batch.FinalAcceptedBy,
-
-		// 取消信息
-		CancelledAt:  dto.FormatTime(batch.CancelledAt),
-		CancelledBy:  batch.CancelledBy,
-		CancelReason: batch.CancelReason,
-
-		// 系统字段
-		CreatedAt: batch.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: batch.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-	}
-
-	return response
 }

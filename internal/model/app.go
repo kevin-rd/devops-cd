@@ -62,11 +62,11 @@ type Build struct {
 	CommitLink    string `gorm:"size:255" json:"commit_link"`
 	CommitAuthor  string `gorm:"size:100" json:"commit_author"`
 
-	// 构建时间（Unix 时间戳，秒）
-	BuildCreated  int64 `gorm:"not null" json:"build_created"`
-	BuildStarted  int64 `gorm:"not null" json:"build_started"`
-	BuildFinished int64 `gorm:"not null" json:"build_finished"`
-	BuildDuration int   `json:"build_duration"` // 构建耗时（秒）
+	// 构建时间
+	BuildCreated  time.Time `gorm:"not null" json:"build_created"`
+	BuildStarted  time.Time `gorm:"not null" json:"build_started"`
+	BuildFinished time.Time `gorm:"not null" json:"build_finished"`
+	BuildDuration int       `json:"build_duration"` // 构建耗时（秒）
 
 	// 镜像信息
 	ImageTag        string `gorm:"size:100;not null;index" json:"image_tag"`
@@ -96,7 +96,7 @@ type ApplicationWithBuild struct {
 
 	// 最新构建信息（用于排序、过滤和显示）
 	LatestBuildID        *int64     `gorm:"column:latest_build_id" json:"latest_build_id,omitempty"`
-	LatestBuildNumber    *int       `gorm:"column:latest_build_number" json:"latest_build_number,omitempty"`
+	LatestBuildNumber    *int64     `gorm:"column:latest_build_number" json:"latest_build_number,omitempty"`
 	LatestImageTag       *string    `gorm:"column:latest_image_tag" json:"latest_image_tag,omitempty"`
 	LatestCommitSHA      *string    `gorm:"column:latest_commit_sha" json:"latest_commit_sha,omitempty"`
 	LatestCommitMessage  *string    `gorm:"column:latest_commit_message" json:"latest_commit_message,omitempty"`

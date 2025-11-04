@@ -59,17 +59,16 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
   const [form] = Form.useForm()
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
-  
+
   const [appSelections, setAppSelections] = useState<AppWithSelection[]>([])
   const [searchKeyword, setSearchKeyword] = useState('')
   const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState('')
-  const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
+  const [, setExpandedRowKeys] = useState<number[]>([])
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectionStateMap, setSelectionStateMap] = useState<Record<number, SelectedAppState>>({})
-  const [isSearching, setIsSearching] = useState(false)
 
-  // 搜索防抖：延迟500ms后更新实际的搜索关键词
+// 搜索防抖：延迟500ms后更新实际的搜索关键词
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedSearchKeyword(searchKeyword)
@@ -116,7 +115,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
           }
         }
       )
-      
+
       // 更新展开详情缓存
       queryClient.setQueriesData(
         { queryKey: ['batchDetails'], exact: false },
@@ -210,14 +209,14 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
     mutationFn: (data: UpdateBatchRequest) => batchService.update(data),
     onSuccess: (response) => {
       message.success(t('batch.updateSuccess'))
-      
+
       // 如果返回了更新后的批次数据，更新缓存
       if (response?.data) {
         const updatedBatch = response.data
-        
+
         // 更新批次详情缓存
         queryClient.setQueryData(['batchDetail', batch?.id], updatedBatch)
-        
+
         // 更新批次列表缓存中的对应项
         queryClient.setQueriesData(
           { queryKey: ['batchList'], exact: false },
@@ -231,7 +230,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
             }
           }
         )
-        
+
         // 更新展开详情缓存
         queryClient.setQueriesData(
           { queryKey: ['batchDetails'], exact: false },
@@ -249,7 +248,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         queryClient.invalidateQueries({ queryKey: ['batchDetail', batch?.id] })
         queryClient.invalidateQueries({ queryKey: ['batchDetails'] })
       }
-      
+
       handleClose()
       onSuccess()
     },
@@ -257,7 +256,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
       // 显示后端返回的详细错误信息
       const errorMsg = error.response?.data?.message || error.message || t('common.error')
       const errorDetail = error.response?.data?.detail
-      
+
       if (errorDetail) {
         message.error(`${errorMsg}: ${errorDetail}`, 5) // 显示5秒
       } else {
@@ -284,11 +283,11 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
       // 只为当前页的应用同步状态，不修改其他应用的状态
       setSelectionStateMap((prevState) => {
         const nextState = { ...prevState }
-        
+
         allAppsResponse.items.forEach((app: ApplicationWithBuild) => {
           const inBatch = batchAppIds.includes(app.id)
           const existing = nextState[app.id]
-          
+
           if (!existing) {
             // 新应用：如果在批次中则选中
             nextState[app.id] = {
@@ -306,7 +305,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
             }
           }
         })
-        
+
         return nextState
       })
 
@@ -315,14 +314,14 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         const inBatch = batchAppIds.includes(app.id)
         const batchApp = batchAppsMap.get(app.id)
         const state = selectionStateMap[app.id]
-        
+
         return {
           id: app.id,
           name: app.name,
           display_name: app.display_name,
           app_type: app.app_type,
           repo_name: app.repo_name,
-          repo_full_name: app.repo_full_name,
+          repo_full_name: app.repo_name,
           last_tag: app.last_tag,
           deployed_tag: batchApp?.deployed_tag || app.deployed_tag,
           image_tag: batchApp?.image_tag || app.image_tag,
@@ -617,7 +616,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         {/* 基本信息 */}
         <div style={{ marginBottom: 16 }}>
           <h3 style={{ marginBottom: 12, fontSize: 14, fontWeight: 500 }}>基本信息</h3>
-          
+
           <Form.Item
             name="batch_number"
             label={t('batch.batchNumber')}
@@ -644,7 +643,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         {/* 应用管理 */}
         <div>
           <h3 style={{ marginBottom: 12, fontSize: 14, fontWeight: 500 }}>应用管理</h3>
-          
+
           {/* 变更统计 */}
           <Alert
             message={
@@ -654,7 +653,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
                   {addedCount > 0 && <Tag color="green" style={{ marginLeft: 8 }}>新增 {addedCount}</Tag>}
                   {removedCount > 0 && <Tag color="red" style={{ marginLeft: 8 }}>移除 {removedCount}</Tag>}
                 </div>
-                
+
                 {/* 已选应用列表 */}
                 {selectedCount > 0 && (
                   <div style={{ marginBottom: removedCount > 0 ? 12 : 0 }}>
@@ -676,7 +675,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
                     </div>
                   </div>
                 )}
-                
+
                 {/* 已移除应用列表 */}
                 {removedCount > 0 && (
                   <div>

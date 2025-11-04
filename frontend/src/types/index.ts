@@ -210,6 +210,21 @@ export interface Batch {
   created_at: string
   updated_at: string
   apps?: ReleaseApp[] // 详情接口返回
+  total_apps?: number // 应用总数（详情接口分页）
+  app_page?: number // 当前页码（详情接口分页）
+  app_page_size?: number // 每页数量（详情接口分页）
+}
+
+// 构建摘要（用于 recent_builds）
+export interface BuildSummary {
+  id: number
+  build_number: number
+  build_status: string
+  image_tag: string
+  commit_sha: string
+  commit_message: string
+  commit_author: string
+  build_created: string
 }
 
 export interface ReleaseApp {
@@ -253,6 +268,7 @@ export interface ReleaseApp {
   deploy_task_id?: string
   created_at: string
   updated_at: string
+  recent_builds?: BuildSummary[] // 最近的构建记录（自上次部署以来）
 }
 
 export interface CreateBatchRequest {

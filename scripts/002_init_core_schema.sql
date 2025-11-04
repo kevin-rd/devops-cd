@@ -113,7 +113,9 @@ CREATE TABLE IF NOT EXISTS `release_apps` (
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
     -- 索引
-    UNIQUE KEY `uk_batch_app` (`batch_id`, `app_id`) COMMENT '同一批次不能重复添加同一应用'
+    UNIQUE KEY `uk_batch_app` (`batch_id`, `app_id`) COMMENT '同一批次不能重复添加同一应用',
+
+    CONSTRAINT `fk_release_apps_build` FOREIGN KEY (`build_id`) REFERENCES `builds`(`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COMMENT='批次应用关联表';
 
 

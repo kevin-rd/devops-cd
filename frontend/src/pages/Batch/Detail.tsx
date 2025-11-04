@@ -1,10 +1,11 @@
 import {useState} from 'react'
-import {Button, Card, Checkbox, Descriptions, Empty, Input, message, Modal, Space, Spin, Table, Tag,} from 'antd'
+import {Button, Card, Checkbox, Descriptions, Empty, Input, message, Modal, Pagination, Select, Space, Spin, Table, Tag,} from 'antd'
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   EditOutlined,
   PlayCircleOutlined,
+  SaveOutlined,
   StopOutlined,
 } from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
@@ -17,7 +18,7 @@ import {applicationService} from '@/services/application'
 import {StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import {useAuthStore} from '@/stores/authStore'
-import type {ApplicationWithBuild, Batch, BatchActionRequest, ReleaseApp} from '@/types'
+import type {ApplicationWithBuild, Batch, BatchActionRequest, BuildSummary, ReleaseApp} from '@/types'
 import './Detail.css'
 
 const {TextArea} = Input
@@ -32,13 +33,19 @@ export default function BatchDetail() {
   const [cancelReason, setCancelReason] = useState('')
   const [manageAppsModalVisible, setManageAppsModalVisible] = useState(false)
   const [selectedAppIds, setSelectedAppIds] = useState<number[]>([])
+  
+  // 【新增】应用列表分页状态
+  const [appPage, setAppPage] = useState(1)
+  const [appPageSize, setAppPageSize] = useState(20)
+  
+  // 【新增】构建修改状态（app_id -> selected_build_id）
+  const [buildChanges, setBuildChanges] = useState<Record<number, number>>({})
 
-  // 查询批次详情
+  // 查询批次详情（支持分页）
   const {data: batchData, isLoading} = useQuery({
-    queryKey: ['batchDetail', id],
+    queryKey: ['batchDetail', id, appPage, appPageSize],
     queryFn: async () => {
-      const res = await batchService.get(Number(id))
-      // 后端返回格式: { id, batch_number, ..., apps: [...] }
+      const res = await batchService.get(Number(id), appPage, appPageSize)
       console.log('Batch detail response:', res)
       return res.data as Batch
     },
@@ -287,22 +294,48 @@ export default function BatchDetail() {
   const batchStatusValue = Number(batch.status)
   const isBatchCompleted = batchStatusValue === 40
 
+  // 【新增】处理构建选择变更
+  const handleBuildChange = (appId: number, buildId: number) => {
+    setBuildChanges(prev => ({
+      ...prev,
+      [appId]: buildId
+    }))
+  }
+
+  // 【新增】保存构建变更
+  const saveBuildChanges = () => {
+    // TODO: 调用后端 API 保存构建变更
+    message.info(`TODO: 保存构建变更 ${JSON.stringify(buildChanges)}`)
+    // 成功后清空变更记录
+    // setBuildChanges({})
+    // queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
+  }
+
   const appColumns: ColumnsType<ReleaseApp> = [
     {
       title: t('batch.appName'),
       dataIndex: 'app_name',
       key: 'app_name',
       width: 180,
+      fixed: 'left',
       ellipsis: true,
     },
     {
       title: t('batch.appType'),
       dataIndex: 'app_type',
       key: 'app_type',
-      width: 80,
+      width: 100,
       render: (type: string) => (
         <Tag color="blue">{type}</Tag>
       ),
+    },
+    {
+      title: '代码库',
+      dataIndex: 'repo_full_name',
+      key: 'repo_full_name',
+      width: 200,
+      ellipsis: true,
+      render: (text: string) => text || '-'
     },
     {
       title: isBatchCompleted ? t('batch.oldVersion') : t('batch.currentVersion'),
@@ -316,28 +349,53 @@ export default function BatchDetail() {
     {
       title: isBatchCompleted ? t('batch.deployed') : t('batch.pendingDeploy'),
       key: isBatchCompleted ? 'deployed' : 'pending_deploy',
-      width: 150,
-      ellipsis: true,
-      render: (_: any, record: ReleaseApp) => (
-        <code style={{fontSize: 12}}>{record.target_tag || '-'}</code>
-      ),
+      width: 200,
+      render: (_: any, record: ReleaseApp) => {
+        // 如果批次未封板且有 recent_builds，显示下拉选择
+        if (!isBatchCompleted && batch && batch.status < 10 && record.recent_builds && record.recent_builds.length > 0) {
+          const currentValue = buildChanges[record.app_id] || record.build_id
+          return (
+            <Select
+              style={{ width: '100%' }}
+              value={currentValue}
+              onChange={(value) => handleBuildChange(record.app_id, value)}
+              size="small"
+              optionLabelProp="label"
+            >
+              {record.recent_builds.map((build: BuildSummary) => (
+                <Select.Option 
+                  key={build.id} 
+                  value={build.id}
+                  label={build.image_tag}
+                >
+                  <div style={{fontSize: 12}}>
+                    <div><code>{build.image_tag}</code></div>
+                    <div style={{color: '#8c8c8c', fontSize: 11}}>
+                      {build.commit_message?.substring(0, 40)}
+                      {(build.commit_message?.length || 0) > 40 && '...'}
+                    </div>
+                    <div style={{color: '#8c8c8c', fontSize: 10}}>
+                      {dayjs(build.build_created).format('MM-DD HH:mm')}
+                    </div>
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          )
+        }
+        // 否则显示普通文本
+        return <code style={{fontSize: 12}}>{record.target_tag || '-'}</code>
+      },
     },
     {
       title: t('batch.commitMessage'),
       dataIndex: 'commit_message',
       key: 'commit_message',
-      width: 220,
+      width: 250,
       ellipsis: true,
       render: (text: string) => (
         <span style={{fontSize: 12}}>{text || '-'}</span>
       ),
-    },
-    {
-      title: t('batch.branch'),
-      dataIndex: 'commit_branch',
-      key: 'commit_branch',
-      width: 150,
-      ellipsis: true,
     },
   ]
 
@@ -414,16 +472,49 @@ export default function BatchDetail() {
 
       {/* 应用列表 */}
       <Card
-        title={`${t('batch.apps')} (${batch.apps?.length || 0})`}
+        title={`${t('batch.apps')} (${batch.total_apps || batch.apps?.length || 0})`}
         extra={
-          batch.status < 10 && (
-            <Button
-              icon={<EditOutlined/>}
-              onClick={handleManageApps}
-            >
-              {t('batch.manageApps')}
-            </Button>
-          )
+          <Space>
+            {/* 分页器（如果应用数量大于 page_size 才显示） */}
+            {batch.total_apps && batch.total_apps > (batch.app_page_size || 20) && (
+              <Pagination
+                simple
+                current={appPage}
+                pageSize={appPageSize}
+                total={batch.total_apps}
+                onChange={(page, pageSize) => {
+                  setAppPage(page)
+                  setAppPageSize(pageSize || 20)
+                }}
+                showSizeChanger
+                pageSizeOptions={['10', '20', '50']}
+                size="small"
+              />
+            )}
+            
+            {/* 应用按钮（有构建变更时显示） */}
+            {Object.keys(buildChanges).length > 0 && (
+              <Button
+                type="primary"
+                icon={<SaveOutlined/>}
+                onClick={saveBuildChanges}
+                size="small"
+              >
+                应用 ({Object.keys(buildChanges).length})
+              </Button>
+            )}
+            
+            {/* 管理应用按钮 */}
+            {batch.status < 10 && (
+              <Button
+                icon={<EditOutlined/>}
+                onClick={handleManageApps}
+                size="small"
+              >
+                {t('batch.manageApps')}
+              </Button>
+            )}
+          </Space>
         }
       >
         <Table
@@ -432,6 +523,7 @@ export default function BatchDetail() {
           dataSource={batch.apps || []}
           rowKey="id"
           pagination={false}
+          scroll={{ x: 1200 }}
           expandable={{
             expandedRowRender: (record) => (
               <div style={{padding: '12px 24px', background: '#fafafa'}}>
@@ -444,12 +536,12 @@ export default function BatchDetail() {
                   </div>
                 )}
                 <div style={{fontSize: 12, color: '#8c8c8c'}}>
-                  <div>Commit: {record.commit_id?.substring(0, 8)}</div>
-                  <div>Image: {record.image_name}:{record.image_tag}</div>
+                  <div>Commit: {record.commit_sha?.substring(0, 8)}</div>
+                  <div>Image: {record.image_url}</div>
                 </div>
               </div>
             ),
-            rowExpandable: (record) => !!record.release_notes || !!record.commit_id,
+            rowExpandable: (record) => !!record.release_notes || !!record.commit_sha,
           }}
         />
       </Card>

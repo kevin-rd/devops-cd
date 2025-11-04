@@ -23,9 +23,15 @@ export const batchService = {
   list: (params?: BatchQueryParams) =>
     get<ApiResponse<PaginatedResponse<Batch>>>('/v1/batches', { params }),
 
-  // 获取批次详情（改为 GET 请求）
-  get: (id: number) =>
-    get<ApiResponse<Batch>>('/v1/batch', { params: { id } }),
+  // 获取批次详情（改为 GET 请求，支持应用列表分页）
+  get: (id: number, appPage?: number, appPageSize?: number) =>
+    get<ApiResponse<Batch>>('/v1/batch', { 
+      params: { 
+        id,
+        app_page: appPage,
+        app_page_size: appPageSize
+      } 
+    }),
 
   // 更新批次
   update: (data: UpdateBatchRequest) =>
@@ -42,5 +48,9 @@ export const batchService = {
   // 批次操作（封板、部署、验收等）
   action: (data: BatchActionRequest) =>
     post<ApiResponse<{ message: string }>>('/v1/batch/action', data),
+
+  // 更新批次发布应用（构建版本等）
+  updateBuilds: (data: { batch_id: number; operator: string; build_changes: Record<number, number> }) =>
+    put<ApiResponse<{ message: string; batch_id: number; update_count: number }>>('/v1/batch/release_app', data),
 }
 

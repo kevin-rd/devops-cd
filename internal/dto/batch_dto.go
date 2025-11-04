@@ -37,7 +37,28 @@ func (q *BatchListQuery) GetPageSize() int {
 
 // BatchGetRequest 获取批次详情请求
 type BatchGetRequest struct {
-	ID int64 `json:"id" form:"id" binding:"required"`
+	ID          int64 `json:"id" form:"id" binding:"required"`
+	AppPage     int   `json:"app_page" form:"app_page"`           // 应用列表页码，默认1
+	AppPageSize int   `json:"app_page_size" form:"app_page_size"` // 应用列表每页数量，默认20
+}
+
+// GetAppPage 获取应用页码（默认为1）
+func (q *BatchGetRequest) GetAppPage() int {
+	if q.AppPage < 1 {
+		return 1
+	}
+	return q.AppPage
+}
+
+// GetAppPageSize 获取应用页大小（默认为20，最大50）
+func (q *BatchGetRequest) GetAppPageSize() int {
+	if q.AppPageSize < 1 {
+		return 20
+	}
+	if q.AppPageSize > 50 {
+		return 50
+	}
+	return q.AppPageSize
 }
 
 // BatchResponse 批次响应
@@ -80,10 +101,13 @@ type BatchResponse struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-// BatchDetailResponse 批次详情响应（包含应用列表）
+// BatchDetailResponse 批次详情响应（包含应用列表，支持分页）
 type BatchDetailResponse struct {
 	BatchResponse
-	Apps []ReleaseAppResponse `json:"apps"`
+	Apps        []ReleaseAppResponse `json:"apps"`
+	TotalApps   int64                `json:"total_apps"`    // 应用总数
+	AppPage     int                  `json:"app_page"`      // 当前页码
+	AppPageSize int                  `json:"app_page_size"` // 每页数量
 }
 
 // ReleaseAppResponse 发布应用响应（简约版）
@@ -116,8 +140,9 @@ type ReleaseAppResponse struct {
 	TeamName *string `json:"team_name,omitempty"`
 
 	// 构建信息（通过 build 关联获取，可选）
-	BuildNumber   *int    `json:"build_number,omitempty"`   // 构建编号
-	BuildStatus   *string `json:"build_status,omitempty"`   // 构建状态
+	BuildNumber   *int    `json:"build_number,omitempty"` // 构建编号
+	BuildStatus   *string `json:"build_status,omitempty"` // 构建状态
+	BuildTime     *string `json:"build_time,omitempty"`
 	ImageURL      *string `json:"image_url,omitempty"`      // 完整镜像地址
 	CommitSHA     *string `json:"commit_sha,omitempty"`     // commit SHA
 	CommitMessage *string `json:"commit_message,omitempty"` // commit 信息
@@ -130,6 +155,28 @@ type ReleaseAppResponse struct {
 	// 时间信息
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
+
+	// 最近的构建记录（自上次部署以来，最多15条）
+	RecentBuilds []BuildSummary `json:"recent_builds,omitempty"`
+}
+
+// BuildSummary 构建摘要（用于展示自上次部署以来的构建列表）
+type BuildSummary struct {
+	ID            int64  `json:"id"`
+	BuildNumber   int    `json:"build_number"`
+	BuildStatus   string `json:"build_status"`
+	ImageTag      string `json:"image_tag"`
+	CommitSHA     string `json:"commit_sha"`
+	CommitMessage string `json:"commit_message"`
+	CommitAuthor  string `json:"commit_author"`
+	BuildCreated  string `json:"build_created"`
+}
+
+// UpdateBuildsRequest 更新批次应用的构建版本请求
+type UpdateBuildsRequest struct {
+	BatchID      int64           `json:"batch_id" binding:"required"`
+	Operator     string          `json:"operator" binding:"required"`
+	BuildChanges map[int64]int64 `json:"build_changes" binding:"required"` // key: app_id, value: build_id
 }
 
 // ToBatchResponse 转换为批次响应

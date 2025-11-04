@@ -279,17 +279,16 @@ func (s *applicationService) toBuildInfo(build *model.Build) *dto.ApplicationBui
 		TriggerType:   build.BuildEvent,
 		Duration:      &duration,
 		CreatedAt:     build.CreatedAt.Format(time.RFC3339),
+		StartedAt:     nil, // 待赋值
+		FinishedAt:    nil, // 待赋值
 	}
 
-	if build.BuildStarted > 0 {
-		startedAt := time.Unix(build.BuildStarted, 0).Format(time.RFC3339)
-		info.StartedAt = &startedAt
-	}
+	// BuildStarted 和 BuildFinished 现在是 time.Time，直接格式化
+	startedAt := build.BuildStarted.Format(time.RFC3339)
+	info.StartedAt = &startedAt
 
-	if build.BuildFinished > 0 {
-		finishedAt := time.Unix(build.BuildFinished, 0).Format(time.RFC3339)
-		info.FinishedAt = &finishedAt
-	}
+	finishedAt := build.BuildFinished.Format(time.RFC3339)
+	info.FinishedAt = &finishedAt
 
 	return info
 }
@@ -357,8 +356,8 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 
 		// 添加代码库名称
 		if app.Repository != nil {
-			repoName := fmt.Sprintf("%s/%s", app.Repository.Project, app.Repository.Name)
-			resp.RepoName = &repoName
+			repoFullName := fmt.Sprintf("%s/%s", app.Repository.Project, app.Repository.Name)
+			resp.RepoFullName = &repoFullName
 		}
 
 		// 添加团队名称
@@ -370,6 +369,7 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 		if app.LatestBuildID != nil {
 			resp.BuildID = *app.LatestBuildID
 			resp.BuildNumber = *app.LatestBuildNumber
+			resp.BuildTime = app.LatestBuildCreatedAt
 			resp.ImageTag = *app.LatestImageTag
 			resp.CommitSHA = *app.LatestCommitSHA
 			resp.CommitMessage = app.LatestCommitMessage

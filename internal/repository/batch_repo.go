@@ -135,17 +135,70 @@ func (r *BatchRepository) BatchCreateReleaseApps(apps []*model.ReleaseApp) error
 	return r.db.Create(&apps).Error
 }
 
-// GetReleaseAppsByBatchID 获取批次的所有应用（包含应用详情、仓库信息和构建信息）
-func (r *BatchRepository) GetReleaseAppsByBatchID(batchID int64) ([]*model.ReleaseApp, error) {
+// GetReleaseAppsByBatchID 获取批次的所有应用（包含应用详情、仓库信息和构建信息，支持分页）
+func (r *BatchRepository) GetReleaseAppsByBatchID(batchID int64, page, pageSize int) ([]*model.ReleaseApp, int64, error) {
 	var apps []*model.ReleaseApp
+	var total int64
+
+	// 统计总数
+	if err := r.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batchID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询
+	offset := (page - 1) * pageSize
 	err := r.db.Where("batch_id = ?", batchID).
 		Preload("Application").            // 加载应用信息
 		Preload("Application.Repository"). // 加载仓库信息
 		Preload("Application.Team").       // 加载团队信息
 		Preload("Build").                  // 加载构建信息（通过 build_id）
 		Order("created_at ASC").           // 按创建时间排序
+		Offset(offset).
+		Limit(pageSize).
 		Find(&apps).Error
-	return apps, err
+
+	return apps, total, err
+}
+
+// GetBuildByAppIDAndTag 根据应用ID和镜像标签查询构建记录
+func (r *BatchRepository) GetBuildByAppIDAndTag(appID int64, imageTag string) (*model.Build, error) {
+	var build model.Build
+	err := r.db.Where("app_id = ? AND image_tag = ?", appID, imageTag).
+		First(&build).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // 未找到，返回 nil 而不是错误
+		}
+		return nil, err
+	}
+	return &build, nil
+}
+
+// GetBuildsSinceTime 获取应用在指定时间之后的成功构建记录
+func (r *BatchRepository) GetBuildsSinceTime(appID int64, sinceTime time.Time, limit int) ([]*model.Build, error) {
+	var builds []*model.Build
+	query := r.db.Where("app_id = ?", appID).
+		Where("build_created > ?", sinceTime).
+		Where("build_status = ?", "success"). // 只返回成功的构建
+		Order("build_created DESC")           // 时间倒序（最新在前）
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	err := query.Find(&builds).Error
+	return builds, err
+}
+
+// GetRecentBuilds 获取应用最近的成功构建记录（用于新应用）
+func (r *BatchRepository) GetRecentBuilds(appID int64, limit int) ([]*model.Build, error) {
+	var builds []*model.Build
+	err := r.db.Where("app_id = ?", appID).
+		Where("build_status = ?", "success"). // 只返回成功的构建
+		Order("build_created DESC").          // 时间倒序（最新在前）
+		Limit(limit).
+		Find(&builds).Error
+	return builds, err
 }
 
 // DeleteReleaseApp 删除发布应用记录

@@ -33,9 +33,6 @@ type BuildNotifyRequest struct {
 	CommitMessage string  `json:"commit_message"`                      // 新增测试环境配置文件
 	CommitLink    string  `json:"commit_link" binding:"omitempty,url"` // 提交链接（可选）
 
-	// ========== 环境信息 ==========
-	Environment *string `json:"env"` // 可选：production/staging/testing
-
 	// ========== 应用列表 ==========
 	Apps []BuildNotifyApp `json:"apps" binding:"required,min=1,dive"` // 至少一个应用
 }
@@ -68,10 +65,10 @@ type BuildResponse struct {
 	CommitLink    string `json:"commit_link"`
 	CommitAuthor  string `json:"commit_author"`
 
-	BuildCreated  int64 `json:"build_created"`
-	BuildStarted  int64 `json:"build_started"`
-	BuildFinished int64 `json:"build_finished"`
-	BuildDuration int   `json:"build_duration"`
+	BuildCreated  string `json:"build_created"`  // RFC3339 格式时间字符串
+	BuildStarted  string `json:"build_started"`  // RFC3339 格式时间字符串
+	BuildFinished string `json:"build_finished"` // RFC3339 格式时间字符串
+	BuildDuration int    `json:"build_duration"` // 构建耗时（秒）
 
 	ImageTag        string `json:"image_tag"`
 	ImageURL        string `json:"image_url"`

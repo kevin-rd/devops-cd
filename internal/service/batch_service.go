@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
@@ -296,6 +297,81 @@ func (s *BatchService) UpdateBatch(req *UpdateBatchRequest) (*model.Batch, map[s
 	return batch, updatedFields, nil
 }
 
+// UpdateBuilds 更新批次应用的构建版本
+func (s *BatchService) UpdateBuilds(req *dto.UpdateBuildsRequest) error {
+	// 1. 获取批次
+	batch, err := s.batchRepo.GetByID(req.BatchID)
+	if err != nil {
+		return fmt.Errorf("批次不存在: %w", err)
+	}
+
+	// 2. 检查批次状态（只能修改草稿状态的批次）
+	if batch.Status >= constants.BatchStatusSealed {
+		return fmt.Errorf("只能修改草稿状态的批次")
+	}
+
+	// 3. 验证所有的app_id和build_id
+	if len(req.BuildChanges) == 0 {
+		return fmt.Errorf("没有需要更新的构建")
+	}
+
+	// 4. 使用事务更新
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		for appID, buildID := range req.BuildChanges {
+			// 4.1 检查release_app是否存在
+			var releaseApp model.ReleaseApp
+			if err := tx.Where("batch_id = ? AND app_id = ?", req.BatchID, appID).First(&releaseApp).Error; err != nil {
+				if err == gorm.ErrRecordNotFound {
+					return fmt.Errorf("应用 %d 不在批次中", appID)
+				}
+				return fmt.Errorf("查询应用失败: %w", err)
+			}
+
+			// 4.2 检查build是否存在且属于该应用
+			var build model.Build
+			if err := tx.Where("id = ? AND app_id = ?", buildID, appID).First(&build).Error; err != nil {
+				if err == gorm.ErrRecordNotFound {
+					return fmt.Errorf("构建 %d 不存在或不属于应用 %d", buildID, appID)
+				}
+				return fmt.Errorf("查询构建失败: %w", err)
+			}
+
+			// 4.3 检查构建状态（只能选择成功的构建）
+			if build.BuildStatus != "success" {
+				return fmt.Errorf("构建 %d 状态为 %s，只能选择成功的构建", buildID, build.BuildStatus)
+			}
+
+			// 4.4 更新release_app的build_id和target_tag
+			if err := tx.Model(&releaseApp).Updates(map[string]interface{}{
+				"build_id":   buildID,
+				"target_tag": build.ImageTag,
+			}).Error; err != nil {
+				return fmt.Errorf("更新应用构建失败: %w", err)
+			}
+
+			logger.Info("更新应用构建成功",
+				zap.Int64("batch_id", req.BatchID),
+				zap.Int64("app_id", appID),
+				zap.Int64("build_id", buildID),
+				zap.String("image_tag", build.ImageTag),
+				zap.String("operator", req.Operator))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	logger.Info("批量更新应用构建成功",
+		zap.Int64("batch_id", req.BatchID),
+		zap.Int("update_count", len(req.BuildChanges)),
+		zap.String("operator", req.Operator))
+
+	return nil
+}
+
 // DeleteBatch 删除批次
 func (s *BatchService) DeleteBatch(batchID int64, operator string) error {
 	// 1. 获取批次
@@ -335,19 +411,284 @@ func (s *BatchService) DeleteBatch(batchID int64, operator string) error {
 	return nil
 }
 
-// GetBatch 获取批次详情
-func (s *BatchService) GetBatch(batchID int64) (*model.Batch, []*model.ReleaseApp, error) {
+// GetBatch 获取批次详情（返回 DTO，支持应用列表分页）
+func (s *BatchService) GetBatch(batchID int64, appPage, appPageSize int) (*dto.BatchDetailResponse, error) {
+	// 1. 获取批次基本信息
 	batch, err := s.batchRepo.GetByID(batchID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("批次不存在: %w", err)
+		return nil, fmt.Errorf("批次不存在: %w", err)
 	}
 
-	apps, err := s.batchRepo.GetReleaseAppsByBatchID(batchID)
+	// 2. 分页获取应用列表
+	apps, totalApps, err := s.batchRepo.GetReleaseAppsByBatchID(batchID, appPage, appPageSize)
 	if err != nil {
-		return nil, nil, fmt.Errorf("获取应用列表失败: %w", err)
+		return nil, fmt.Errorf("获取应用列表失败: %w", err)
 	}
 
-	return batch, apps, nil
+	// 3. 转换为响应格式（包含构建记录）
+	appResponses := s.toReleaseAppResponses(apps)
+
+	// 4. 构建详情响应
+	response := &dto.BatchDetailResponse{
+		BatchResponse: s.toBatchResponse(batch, totalApps),
+		Apps:          appResponses,
+		TotalApps:     totalApps,
+		AppPage:       appPage,
+		AppPageSize:   appPageSize,
+	}
+
+	return response, nil
+}
+
+// toReleaseAppResponses 转换 ReleaseApp 列表为 DTO（包含自上次部署以来的构建记录）
+func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto.ReleaseAppResponse {
+	responses := make([]dto.ReleaseAppResponse, len(releases))
+
+	for i, release := range releases {
+		releaseResp := dto.ReleaseAppResponse{
+			// ReleaseApp 基本信息
+			ID:      release.ID,
+			BatchID: release.BatchID,
+			AppID:   release.AppID,
+			BuildID: release.BuildID,
+
+			// 版本信息
+			PreviousDeployedTag: release.PreviousDeployedTag,
+			TargetTag:           release.TargetTag,
+
+			// 发布信息
+			ReleaseNotes: release.ReleaseNotes,
+			IsLocked:     release.IsLocked,
+
+			// 时间信息
+			CreatedAt: release.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: release.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		// 填充构建信息（如果通过 Preload("Build") 已加载）
+		if release.Build != nil {
+			releaseResp.BuildNumber = &release.Build.BuildNumber
+			releaseResp.BuildStatus = &release.Build.BuildStatus
+			buildTime := release.Build.BuildCreated.Format("2006-01-02T15:04:05Z07:00")
+			releaseResp.BuildTime = &buildTime
+			releaseResp.ImageURL = &release.Build.ImageURL
+			releaseResp.CommitSHA = &release.Build.CommitSHA
+			releaseResp.CommitMessage = &release.Build.CommitMessage
+			releaseResp.CommitBranch = &release.Build.CommitBranch
+		}
+
+		// 填充应用信息（如果已加载）
+		if release.Application != nil {
+			releaseResp.AppName = release.Application.Name
+			releaseResp.AppDisplayName = release.Application.DisplayName
+			releaseResp.AppType = release.Application.AppType
+			releaseResp.AppProject = release.Application.Project
+			releaseResp.AppStatus = release.Application.Status
+			releaseResp.TeamID = release.Application.TeamID
+			releaseResp.DeployedTag = release.Application.DeployedTag // 当前部署的标签
+
+			// 填充仓库信息
+			if release.Application.Repository != nil {
+				releaseResp.RepoID = release.Application.RepoID
+				releaseResp.RepoName = release.Application.Repository.Name
+				releaseResp.RepoFullName = release.Application.Repository.Project + "/" + release.Application.Repository.Name
+			} else {
+				releaseResp.RepoID = release.Application.RepoID
+				releaseResp.RepoName = ""
+				releaseResp.RepoFullName = ""
+			}
+
+			// 填充团队信息
+			if release.Application.Team != nil {
+				releaseResp.TeamName = &release.Application.Team.Name
+			}
+
+			// 【新增】填充最近的构建记录
+			releaseResp.RecentBuilds = s.getRecentBuilds(release)
+		} else {
+			// 如果应用信息未加载，设置默认值
+			releaseResp.AppName = ""
+			releaseResp.AppType = ""
+			releaseResp.AppProject = ""
+			releaseResp.AppStatus = 0
+			releaseResp.RepoID = 0
+			releaseResp.RepoName = ""
+			releaseResp.RepoFullName = ""
+		}
+
+		responses[i] = releaseResp
+	}
+
+	return responses
+}
+
+// getRecentBuilds 获取应用最近的构建记录（方案A：基于 deployed_tag，自上次部署以来）
+func (s *BatchService) getRecentBuilds(app *model.ReleaseApp) []dto.BuildSummary {
+	const buildLimit = 15 // 固定返回15条
+
+	var builds []*model.Build
+	var err error
+
+	// 1. 尝试基于 Application.DeployedTag 查找基准时间
+	if app.Application != nil && app.Application.DeployedTag != nil {
+		// 查找 deployed_tag 对应的构建记录
+		deployedBuild, err := s.batchRepo.GetBuildByAppIDAndTag(app.AppID, *app.Application.DeployedTag)
+		if err != nil {
+			logger.Error("查询deployed_tag对应的构建失败",
+				zap.Int64("app_id", app.AppID),
+				zap.String("deployed_tag", *app.Application.DeployedTag),
+				zap.Error(err))
+			// 出错则返回空数组
+			return []dto.BuildSummary{}
+		}
+
+		if deployedBuild != nil {
+			// 找到了基准构建，查询该时间之后的构建
+			builds, err = s.batchRepo.GetBuildsSinceTime(app.AppID, deployedBuild.BuildCreated, buildLimit)
+			if err != nil {
+				logger.Error("查询时间后的构建失败",
+					zap.Int64("app_id", app.AppID),
+					zap.Time("since_time", deployedBuild.BuildCreated),
+					zap.Error(err))
+				return []dto.BuildSummary{}
+			}
+		} else {
+			// deployed_tag 对应的构建不存在，fallback 到最近15条
+			logger.Warn("deployed_tag对应的构建不存在，返回最近15条",
+				zap.Int64("app_id", app.AppID),
+				zap.String("deployed_tag", *app.Application.DeployedTag))
+			builds, err = s.batchRepo.GetRecentBuilds(app.AppID, buildLimit)
+			if err != nil {
+				logger.Error("查询最近构建失败",
+					zap.Int64("app_id", app.AppID),
+					zap.Error(err))
+				return []dto.BuildSummary{}
+			}
+		}
+	} else {
+		// 2. 没有 deployed_tag（新应用），返回最近15条
+		builds, err = s.batchRepo.GetRecentBuilds(app.AppID, buildLimit)
+		if err != nil {
+			logger.Error("查询最近构建失败（新应用）",
+				zap.Int64("app_id", app.AppID),
+				zap.Error(err))
+			return []dto.BuildSummary{}
+		}
+	}
+
+	// 3. 确保当前选中的构建也在列表中（如果存在build_id）
+	if app.BuildID != nil {
+		// 检查当前build_id是否已在列表中
+		currentBuildInList := false
+		for _, build := range builds {
+			if build.ID == *app.BuildID {
+				currentBuildInList = true
+				break
+			}
+		}
+
+		// 如果不在列表中，单独查询并添加到列表开头
+		if !currentBuildInList {
+			var currentBuild model.Build
+			if err := s.db.Where("id = ?", *app.BuildID).First(&currentBuild).Error; err == nil {
+				// 将当前构建添加到列表开头
+				builds = append([]*model.Build{&currentBuild}, builds...)
+			}
+		}
+	}
+
+	// 4. 转换为 DTO
+	return s.toBuildSummaries(builds)
+}
+
+// toBuildSummaries 转换构建记录为摘要格式
+func (s *BatchService) toBuildSummaries(builds []*model.Build) []dto.BuildSummary {
+	if len(builds) == 0 {
+		return []dto.BuildSummary{} // 返回空数组而不是 nil
+	}
+
+	summaries := make([]dto.BuildSummary, len(builds))
+	for i, build := range builds {
+		summaries[i] = dto.BuildSummary{
+			ID:            build.ID,
+			BuildNumber:   build.BuildNumber,
+			BuildStatus:   build.BuildStatus,
+			ImageTag:      build.ImageTag,
+			CommitSHA:     build.CommitSHA,
+			CommitMessage: build.CommitMessage,
+			CommitAuthor:  build.CommitAuthor,
+			BuildCreated:  build.BuildCreated.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+	return summaries
+}
+
+// toBatchResponse 转换 Batch 模型为 BatchResponse DTO
+func (s *BatchService) toBatchResponse(batch *model.Batch, appCount int64) dto.BatchResponse {
+	response := dto.BatchResponse{
+		// 基本信息
+		ID:           batch.ID,
+		BatchNumber:  batch.BatchNumber,
+		Initiator:    batch.Initiator,
+		ReleaseNotes: batch.ReleaseNotes,
+
+		// 状态信息
+		Status:         batch.Status,
+		StatusName:     getStatusName(batch.Status),
+		ApprovalStatus: batch.ApprovalStatus,
+		AppCount:       appCount,
+
+		// 审批信息
+		ApprovedBy:   batch.ApprovedBy,
+		ApprovedAt:   dto.FormatTime(batch.ApprovedAt),
+		RejectReason: batch.RejectReason,
+
+		// 时间追踪
+		TaggedAt:             dto.FormatTime(batch.SealedAt),
+		PreDeployStartedAt:   dto.FormatTime(batch.PreStartedAt),
+		PreDeployFinishedAt:  dto.FormatTime(batch.PreFinishedAt),
+		ProdDeployStartedAt:  dto.FormatTime(batch.ProdStartedAt),
+		ProdDeployFinishedAt: dto.FormatTime(batch.ProdFinishedAt),
+
+		// 验收信息
+		FinalAcceptedAt: dto.FormatTime(batch.FinalAcceptedAt),
+		FinalAcceptedBy: batch.FinalAcceptedBy,
+
+		// 取消信息
+		CancelledAt:  dto.FormatTime(batch.CancelledAt),
+		CancelledBy:  batch.CancelledBy,
+		CancelReason: batch.CancelReason,
+
+		// 系统字段
+		CreatedAt: batch.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: batch.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return response
+}
+
+// getStatusName 获取状态名称
+func getStatusName(status int8) string {
+	switch status {
+	case constants.BatchStatusDraft:
+		return "草稿"
+	case constants.BatchStatusSealed:
+		return "已封板"
+	case constants.BatchStatusPreDeploying:
+		return "预发布部署中"
+	case constants.BatchStatusPreDeployed:
+		return "预发布已部署"
+	case constants.BatchStatusProdDeploying:
+		return "生产部署中"
+	case constants.BatchStatusProdDeployed:
+		return "生产已部署"
+	case constants.BatchStatusCompleted:
+		return "已完成"
+	case constants.BatchStatusCancelled:
+		return "已取消"
+	default:
+		return "未知状态"
+	}
 }
 
 // BatchWithAppCount 批次及应用数量
@@ -356,8 +697,8 @@ type BatchWithAppCount struct {
 	AppCount int64
 }
 
-// ListBatches 查询批次列表（返回带应用数量的批次）
-func (s *BatchService) ListBatches(page, pageSize int, statuses []int8, initiator string, approvalStatus *string, createdAtStart, createdAtEnd *time.Time, keyword string) ([]*BatchWithAppCount, int64, error) {
+// ListBatches 查询批次列表（返回 DTO）
+func (s *BatchService) ListBatches(page, pageSize int, statuses []int8, initiator string, approvalStatus *string, createdAtStart, createdAtEnd *time.Time, keyword string) ([]dto.BatchResponse, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -371,21 +712,18 @@ func (s *BatchService) ListBatches(page, pageSize int, statuses []int8, initiato
 		return nil, 0, err
 	}
 
-	// 为每个批次查询应用数量
-	result := make([]*BatchWithAppCount, len(batches))
+	// 为每个批次查询应用数量并转换为 DTO
+	responses := make([]dto.BatchResponse, len(batches))
 	for i, batch := range batches {
 		appCount, err := s.batchRepo.GetAppCountByBatchID(batch.ID)
 		if err != nil {
 			// 如果查询失败，设置为0
 			appCount = 0
 		}
-		result[i] = &BatchWithAppCount{
-			Batch:    batch,
-			AppCount: appCount,
-		}
+		responses[i] = s.toBatchResponse(batch, appCount)
 	}
 
-	return result, total, nil
+	return responses, total, nil
 }
 
 // HandleBuildNotify 处理构建通知
@@ -462,7 +800,7 @@ func (s *BatchService) findOrCreateBuild(req *BuildNotifyRequest) (*model.Build,
 		build.CommitMessage = *req.CommitMessage
 		build.CommitAuthor = *req.CommitAuthor
 
-		now := time.Now().Unix()
+		now := time.Now()
 		if req.BuildStatus == "success" || req.BuildStatus == "failed" {
 			build.BuildFinished = now
 		}
@@ -492,7 +830,7 @@ func (s *BatchService) findOrCreateBuild(req *BuildNotifyRequest) (*model.Build,
 		commitAuthor = *req.CommitAuthor
 	}
 
-	now := time.Now().Unix()
+	now := time.Now()
 	build = model.Build{
 		BuildNumber:   buildNum,
 		AppID:         req.AppID,

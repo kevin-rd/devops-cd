@@ -89,6 +89,13 @@
   max-width: 100%;
 }
 
+/* 草稿状态 - 淡黄色边框 */
+.batch-card.status-draft {
+  border-color: #ffec3d;
+  border-width: 1.5px;
+  background: linear-gradient(to bottom, #fffbe6 0%, #ffffff 100%);
+}
+
 /* 已封板状态 - 紫色边框 */
 .batch-card.status-sealed {
   border-color: #b37feb;
@@ -325,6 +332,9 @@
 }
 
 .batch-number-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   font-weight: 600;
   font-size: 15px;
   margin-bottom: 6px;
@@ -332,6 +342,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+.batch-number-id {
+  font-size: 12px;
+  color: #a6a6a6;
+  font-weight: 500;
+}
+
+.batch-number-main {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
 }
 
 .batch-subtext {
@@ -426,7 +448,7 @@
 .batch-card-detail-section-title {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: #333;
 }
 
@@ -474,6 +496,27 @@
 
 .batch-apps-section .ant-table-tbody > tr:hover > td {
   background: #fafafa !important;
+}
+
+/* 已修改的行样式 */
+.batch-apps-section .ant-table-tbody > tr.batch-app-row-modified > td {
+  background: #fffbe6 !important;
+  position: relative;
+}
+
+.batch-apps-section .ant-table-tbody > tr.batch-app-row-modified:hover > td {
+  background: #fff7d6 !important;
+}
+
+/* 已修改行的左侧边框标记 */
+.batch-apps-section .ant-table-tbody > tr.batch-app-row-modified > td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #faad14;
 }
 
 .batch-card-empty {

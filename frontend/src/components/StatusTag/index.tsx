@@ -9,7 +9,7 @@ interface StatusTagProps {
 
 // 批次状态配置
 const BATCH_STATUS_CONFIG: Record<number, { label: string; color: string }> = {
-  0: { label: '草稿', color: 'default' },
+  0: { label: '草稿', color: '#fadb14' },
   10: { label: '已封板', color: 'purple' },
   20: { label: '预发布已触发', color: 'blue' },
   21: { label: '预发布中', color: 'processing' },

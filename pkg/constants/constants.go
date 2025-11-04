@@ -41,7 +41,8 @@ func BatchStatusToString(status int8) string {
 
 // ReleaseAppStatus 应用发布状态
 const (
-	ReleaseAppStatusPending        int8 = 0
+	ReleaseAppStatusPending        int8 = 0  // 初始化
+	ReleaseAppStatusTagged         int8 = 1  // 应用已打tag并发版成功
 	ReleaseAppStatusPreWaiting     int8 = 10 // Pre 等待被触发
 	ReleaseAppStatusPreCanTrigger  int8 = 11 // Pre 可以触发
 	ReleaseAppStatusPreTriggered   int8 = 12 // Pre 均已触发

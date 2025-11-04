@@ -70,6 +70,11 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 	// 3. 计算构建耗时
 	duration := int(req.BuildFinished - req.BuildStarted)
 
+	// 3.1 转换时间戳为 time.Time
+	buildCreatedTime := time.Unix(req.BuildCreated, 0)
+	buildStartedTime := time.Unix(req.BuildStarted, 0)
+	buildFinishedTime := time.Unix(req.BuildFinished, 0)
+
 	// 4. 提取提交者信息（优先级：CommitAuthorName > CommitAuthor > GitAuthorName）
 	commitAuthor := req.CommitAuthorName
 	if commitAuthor == "" {
@@ -79,18 +84,18 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 		commitAuthor = req.GitAuthorName
 	}
 
-	// 5. 解析环境信息
-	environment := ""
-	if req.Environment != nil {
-		environment = *req.Environment
-	}
-
 	// 6. 逐个处理应用
 	successCount := 0
-	failedApps := []string{}
+	var failedApps []string
 
 	for _, appReq := range req.Apps {
-		if err := s.processAppBuild(repo, req, appReq, duration, commitAuthor, environment); err != nil {
+		if err := s.processAppBuild(repo, req, appReq, func(build *model.Build) {
+			build.CommitAuthor = commitAuthor
+			build.BuildCreated = buildCreatedTime
+			build.BuildStarted = buildStartedTime
+			build.BuildFinished = buildFinishedTime
+			build.BuildDuration = duration
+		}); err != nil {
 			logger.Error("处理应用构建失败", zap.String("app", appReq.Name), zap.Error(err))
 			failedApps = append(failedApps, appReq.Name)
 		} else {
@@ -98,43 +103,30 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 		}
 	}
 
-	logger.Info("构建通知处理完成",
-		zap.String("repo", req.Repo),
-		zap.Int64("build_number", req.BuildNumber),
-		zap.Int("success", successCount),
-		zap.Int("failed", len(failedApps)))
+	logger.Info("构建通知处理完成", zap.String("repo", req.Repo), zap.Int64("build_number", req.BuildNumber), zap.Int("success", successCount), zap.Int("failed", len(failedApps)))
 
 	if len(failedApps) > 0 {
-		return pkgErrors.Wrap(pkgErrors.CodePartialSuccess,
-			fmt.Sprintf("部分应用处理失败: %s", strings.Join(failedApps, ", ")), nil)
+		return pkgErrors.Wrap(pkgErrors.CodePartialSuccess, fmt.Sprintf("部分应用处理失败: %s", strings.Join(failedApps, ", ")), nil)
 	}
 
 	return nil
 }
 
 // processAppBuild 处理单个应用的构建记录
-func (s *buildService) processAppBuild(
-	repo *model.Repository,
-	req *dto.BuildNotifyRequest,
-	appReq dto.BuildNotifyApp,
-	duration int,
-	commitAuthor string,
-	environment string,
+func (s *buildService) processAppBuild(repo *model.Repository, req *dto.BuildNotifyRequest, appReq dto.BuildNotifyApp, updateFunc func(build *model.Build),
 ) error {
-	// 1. 查询应用（按 project + name 查询，确保唯一性）
+	// 1. 查询应用（按 project + name 查询，确保唯一性）, todo: 可以修改为根据repo_id和name查询
 	app, err := s.appRepo.FindByProjectAndName(repo.Project, appReq.Name)
 	if err != nil {
 		if err == pkgErrors.ErrRecordNotFound {
-			return pkgErrors.Wrap(pkgErrors.CodeNotFound,
-				fmt.Sprintf("应用不存在: %s/%s", repo.Project, appReq.Name), nil)
+			return pkgErrors.Wrap(pkgErrors.CodeNotFound, fmt.Sprintf("应用不存在: %s/%s", repo.Project, appReq.Name), nil)
 		}
 		return err
 	}
 
 	// 2. 检查应用是否属于该仓库
 	if app.RepoID != repo.ID {
-		return pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-			fmt.Sprintf("应用 %s 不属于仓库 %s", appReq.Name, req.Repo), nil)
+		return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("应用 %s 不属于仓库 %s", appReq.Name, req.Repo), nil)
 	}
 
 	// 3. 构建镜像地址（如果未提供）
@@ -163,38 +155,17 @@ func (s *buildService) processAppBuild(
 		CommitBranch:    req.CommitBranch,
 		CommitMessage:   req.CommitMessage,
 		CommitLink:      req.CommitLink,
-		CommitAuthor:    commitAuthor,
-		BuildCreated:    req.BuildCreated,
-		BuildStarted:    req.BuildStarted,
-		BuildFinished:   req.BuildFinished,
-		BuildDuration:   duration,
 		ImageTag:        appReq.ImageTag,
 		ImageURL:        imageURL,
 		AppBuildSuccess: buildSuccess,
-		Environment:     environment,
 	}
+	updateFunc(build)
 
 	if err := s.buildRepo.Create(build); err != nil {
 		return err
 	}
 
-	// 6. 更新应用的 deployed_tag（只有构建成功且整体状态为 success 时才更新）
-	if buildSuccess && req.BuildStatus == "success" {
-		app.DeployedTag = &appReq.ImageTag
-		if err := s.appRepo.Update(app); err != nil {
-			logger.Error("更新应用deployed_tag失败",
-				zap.Int64("app_id", app.ID),
-				zap.String("tag", appReq.ImageTag),
-				zap.Error(err))
-			// 不影响主流程，仅记录日志
-		}
-	}
-
-	logger.Info("应用构建记录已创建",
-		zap.Int64("build_id", build.ID),
-		zap.Int64("app_id", app.ID),
-		zap.String("app_name", app.Name),
-		zap.String("tag", appReq.ImageTag))
+	logger.Info("应用构建记录已创建", zap.Int64("build_id", build.ID), zap.Int64("app_id", app.ID), zap.String("app_name", app.Name), zap.String("tag", appReq.ImageTag))
 
 	return nil
 }
@@ -289,9 +260,9 @@ func (s *buildService) toResponse(build *model.Build) *dto.BuildResponse {
 		CommitMessage:   build.CommitMessage,
 		CommitLink:      build.CommitLink,
 		CommitAuthor:    build.CommitAuthor,
-		BuildCreated:    build.BuildCreated,
-		BuildStarted:    build.BuildStarted,
-		BuildFinished:   build.BuildFinished,
+		BuildCreated:    build.BuildCreated.Format(time.RFC3339),
+		BuildStarted:    build.BuildStarted.Format(time.RFC3339),
+		BuildFinished:   build.BuildFinished.Format(time.RFC3339),
 		BuildDuration:   build.BuildDuration,
 		ImageTag:        build.ImageTag,
 		ImageURL:        build.ImageURL,
