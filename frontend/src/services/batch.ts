@@ -1,4 +1,4 @@
-import { get, post, put, del } from '@/utils/request'
+import { get, post, put } from '@/utils/request'
 import type {
   ApiResponse,
   PaginatedResponse,
@@ -9,6 +9,8 @@ import type {
   BatchActionRequest,
   BatchApproveRequest,
   BatchRejectRequest,
+	UpdateReleaseDependenciesRequest,
+	ReleaseDependenciesResponse,
 } from '@/types'
 
 export const batchService = {
@@ -52,5 +54,9 @@ export const batchService = {
   // 更新批次发布应用（构建版本等）
   updateBuilds: (data: { batch_id: number; operator: string; build_changes: Record<number, number> }) =>
     put<ApiResponse<{ message: string; batch_id: number; update_count: number }>>('/v1/batch/release_app', data),
+
+	// 更新发布应用临时依赖
+	updateDependencies: (releaseAppId: number, data: UpdateReleaseDependenciesRequest) =>
+		put<ApiResponse<ReleaseDependenciesResponse>>(`/v1/release_app/${releaseAppId}/dependencies`, data),
 }
 

@@ -110,7 +110,7 @@ func main() {
 	cfg.DB = database.GetDB()
 
 	// 初始化Core引擎（状态机）
-	coreEngine := core.NewCoreEngine(database.GetDB(), logger.Log)
+	coreEngine := core.NewCoreEngine(database.GetDB(), logger.Log, &cfg.Core)
 
 	// 解析扫描间隔
 	scanInterval, err := time.ParseDuration(cfg.Core.ScanInterval)

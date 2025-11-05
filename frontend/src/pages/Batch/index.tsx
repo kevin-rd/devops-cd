@@ -24,12 +24,14 @@ import {
   SaveOutlined,
   UndoOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
 import { batchService } from '@/services/batch'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { StatusTag } from '@/components/StatusTag'
 import { BatchTimeline } from '@/components/BatchTimeline'
@@ -464,6 +466,11 @@ export default function BatchList() {
       >
         {t('batch.cancelBatch')}
       </Button>
+      <Link to={`/batch/${record.id}/insights`} onClick={(e) => e.stopPropagation()}>
+        <Button size="small" icon={<EyeOutlined />}>
+          {t('batch.viewInsights')}
+        </Button>
+      </Link>
     </Space>
   )
 

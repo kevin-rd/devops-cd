@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/datatypes"
+)
 
 // Repository 代码库模型
 type Repository struct {
@@ -32,6 +36,8 @@ type Application struct {
 	AppType     string  `gorm:"size:50;not null;index" json:"app_type"`
 	TeamID      *int64  `gorm:"index" json:"team_id"`
 	DeployedTag *string `gorm:"column:deployed_tag;size:100" json:"deployed_tag"` // 当前部署的镜像标签
+	// DefaultDependsOn 配置级依赖（JSON 数组，记录应用 ID）
+	DefaultDependsOn datatypes.JSON `gorm:"column:default_depends_on;type:json" json:"default_depends_on"`
 
 	// Relations
 	Repository *Repository `gorm:"foreignKey:RepoID" json:"repository,omitempty"`

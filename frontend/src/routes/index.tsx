@@ -5,6 +5,8 @@ import PrivateRoute from '@/components/PrivateRoute'
 import Login from '@/pages/Login'
 import RepositoryPage from '@/pages/Repository'
 import BatchList from '@/pages/Batch'
+import BatchInsights from '@/pages/BatchInsights'
+import BatchInsightsRedirect from '@/pages/BatchInsights/Redirect'
 
 const AppRoutes: React.FC = () => {
   return (
@@ -17,6 +19,8 @@ const AppRoutes: React.FC = () => {
             <Route path="/" element={<Navigate to="/repository" replace />} />
             <Route path="/repository" element={<RepositoryPage />} />
             <Route path="/batch" element={<BatchList />} />
+            <Route path="/batch/insights" element={<BatchInsightsRedirect />} />
+            <Route path="/batch/:id/insights" element={<BatchInsights />} />
           </Route>
         </Route>
 

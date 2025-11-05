@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 // Batch 发布批次
@@ -65,6 +67,8 @@ type ReleaseApp struct {
 	IsLocked     bool    `gorm:"default:false" json:"is_locked"` // 是否已锁定（封板后为true）
 	Status       int8    `gorm:"index;not null;default:0" json:"status"`
 	Reason       string  `gorm:"type:text" json:"reason"`
+	// TempDependsOn 批次内临时依赖（JSON 数组，记录应用 ID）
+	TempDependsOn datatypes.JSON `gorm:"column:temp_depends_on;type:json" json:"temp_depends_on"`
 
 	// 系统字段
 	CreatedAt time.Time `json:"created_at"`

@@ -10,6 +10,9 @@ export default {
       create: '创建',
       search: '搜索',
       reset: '刷新',
+      refresh: '刷新',
+      retry: '重试',
+      notStarted: '未开始',
       submit: '提交',
       back: '返回',
       action: '操作',
@@ -55,6 +58,7 @@ export default {
       repository: '代码库',
       application: '应用',
       batch: '批次管理',
+      batchInsights: '发布详情',
       environment: '环境',
       build: '构建',
       deployment: '部署',
@@ -217,6 +221,7 @@ export default {
       addApps: '添加应用',
       removeApps: '移除应用',
       manageApps: '管理应用',
+      viewInsights: '发布详情',
       actionSuccess: '操作成功',
       updateSuccess: '更新成功',
       confirmSeal: '确认封板？',
@@ -261,6 +266,14 @@ export default {
       timelineAccept: '最终验收',
       preDeployTriggered: '已触发预发布',
       prodDeployTriggered: '已触发生产部署',
+
+      stage: {
+        sealed: '封板确认',
+        preDeploy: '预发布部署',
+        preDeployed: '预发布完成',
+        prodDeploy: '生产部署',
+        prodDeployed: '生产完成',
+      },
       
       // 筛选
       filterByStatus: '按状态筛选',
@@ -311,6 +324,27 @@ export default {
       previous: '上一步',
       next: '下一步',
       createBatch: '创建批次',
+    },
+
+    batchInsights: {
+      back: '返回批次列表',
+      loadTabsFailed: '批次列表加载失败',
+      loadDetailFailed: '批次详情加载失败',
+      noData: '暂无批次数据',
+      noApps: '批次中暂无应用',
+      batchInfo: '批次信息',
+      timeline: '发布流程',
+      dependencyGraph: '依赖关系',
+      appCount: '应用数量',
+      target: '目标版本',
+      updatedAt: '更新时间',
+      defaultDependencies: '默认依赖',
+      tempDependencies: '临时依赖',
+      noDependencies: '无',
+      env: {
+        pre: '预发布',
+        prod: '生产',
+      },
     },
 
     // 验证

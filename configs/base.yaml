@@ -61,6 +61,41 @@ core:
     retry_count: 3                  # 部署失败重试次数
     retry_backoff: exponential      # 重试策略: exponential/linear
     poll_interval: 5s               # 部署状态轮询间隔
+  app_types:
+    static:
+      label: "静态网站"
+      description: "纯静态网站，使用Nginx部署"
+      icon: "html5"
+      color: "#E34F26"
+      dependencies:
+        - java
+        - go
+        - py
+        - node
+    node:
+      label: "Node.js应用"
+      description: "Node.js/Express/Nest.js等应用"
+      icon: "nodejs"
+      color: "#339933"
+      dependencies: []
+    java:
+      label: "Java应用"
+      description: "Spring Boot/Spring Cloud等应用"
+      icon: "java"
+      color: "#007396"
+      dependencies: []
+    go:
+      label: "Go应用"
+      description: "Golang应用"
+      icon: "go"
+      color: "#00ADD8"
+      dependencies: []
+    py:
+      label: "Python应用"
+      description: "Python/Django/Flask等应用"
+      icon: "python"
+      color: "#3776AB"
+      dependencies: []
   notification:
     enabled: true                   # 是否启用通知
     provider: lark                  # 通知渠道: lark/log

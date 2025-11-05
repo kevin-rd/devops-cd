@@ -10,6 +10,9 @@ export default {
       create: 'Create',
       search: 'Search',
       reset: 'Refresh',
+      refresh: 'Refresh',
+      retry: 'Retry',
+      notStarted: 'Not Started',
       submit: 'Submit',
       back: 'Back',
       action: 'Action',
@@ -54,6 +57,8 @@ export default {
       dashboard: 'Dashboard',
       repository: 'Repository',
       application: 'Application',
+      batch: 'Batch',
+      batchInsights: 'Release Insights',
       environment: 'Environment',
       build: 'Build',
       deployment: 'Deployment',
@@ -203,6 +208,7 @@ export default {
       prodAcceptance: 'Prod Acceptance',
       complete: 'Finish Acceptance',
       cancelBatch: 'Cancel Batch',
+      viewInsights: 'Release Insights',
 
       confirmSeal: 'Confirm sealing this batch?',
       confirmStart_pre_deploy: 'Start pre-deploy?',
@@ -238,6 +244,35 @@ export default {
       timelineAccept: 'Final Acceptance',
       preDeployTriggered: 'Pre-deploy Triggered',
       prodDeployTriggered: 'Prod Deploy Triggered',
+
+      stage: {
+        sealed: 'Sealed',
+        preDeploy: 'Pre-deploy',
+        preDeployed: 'Pre-deploy Finished',
+        prodDeploy: 'Prod Deploy',
+        prodDeployed: 'Prod Deploy Finished',
+      },
+    },
+
+    batchInsights: {
+      back: 'Back to Batches',
+      loadTabsFailed: 'Failed to load batch list',
+      loadDetailFailed: 'Failed to load batch detail',
+      noData: 'No batch data',
+      noApps: 'No applications in this batch',
+      batchInfo: 'Batch Information',
+      timeline: 'Release Timeline',
+      dependencyGraph: 'Dependency Graph',
+      appCount: 'Applications',
+      target: 'Target Version',
+      updatedAt: 'Updated At',
+      defaultDependencies: 'Default Dependencies',
+      tempDependencies: 'Temporary Dependencies',
+      noDependencies: 'None',
+      env: {
+        pre: 'Pre',
+        prod: 'Prod',
+      },
     },
 
     // Validation

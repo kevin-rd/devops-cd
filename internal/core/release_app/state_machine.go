@@ -2,6 +2,7 @@ package release_app
 
 import (
 	"context"
+	"devops-cd/internal/core/dependency"
 	"devops-cd/internal/model"
 	"fmt"
 	"go.uber.org/zap"
@@ -12,10 +13,11 @@ type ReleaseStateMachine struct {
 	db       *gorm.DB
 	logger   *zap.Logger
 	handlers map[int8]Handler
+	resolver *dependency.Resolver
 }
 
-func NewReleaseStateMachine(db *gorm.DB, logger *zap.Logger) *ReleaseStateMachine {
-	sm := &ReleaseStateMachine{db: db, logger: logger, handlers: make(map[int8]Handler)}
+func NewReleaseStateMachine(db *gorm.DB, logger *zap.Logger, resolver *dependency.Resolver) *ReleaseStateMachine {
+	sm := &ReleaseStateMachine{db: db, logger: logger, handlers: make(map[int8]Handler), resolver: resolver}
 	sm.registerHandlers()
 	return sm
 }

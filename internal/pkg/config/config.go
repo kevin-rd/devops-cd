@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/spf13/viper"
 )
@@ -104,10 +105,11 @@ type GitConfig struct {
 
 // CoreConfig Core模块配置
 type CoreConfig struct {
-	ScanInterval string             `mapstructure:"scan_interval"` // 扫描间隔
-	Deploy       DeployConfig       `mapstructure:"deploy"`
-	Notification NotificationConfig `mapstructure:"notification"`
-	K8s          K8sConfig          `mapstructure:"k8s"`
+	ScanInterval string                   `mapstructure:"scan_interval"` // 扫描间隔
+	Deploy       DeployConfig             `mapstructure:"deploy"`
+	Notification NotificationConfig       `mapstructure:"notification"`
+	K8s          K8sConfig                `mapstructure:"k8s"`
+	AppTypes     map[string]AppTypeConfig `mapstructure:"app_types"`
 }
 
 // DeployConfig 部署配置
@@ -118,6 +120,25 @@ type DeployConfig struct {
 	RetryCount       int    `mapstructure:"retry_count"`        // 重试次数
 	RetryBackoff     string `mapstructure:"retry_backoff"`      // 重试策略
 	PollInterval     string `mapstructure:"poll_interval"`      // 轮询间隔
+}
+
+// AppTypeConfig 应用类型配置
+type AppTypeConfig struct {
+	Label        string   `mapstructure:"label"`
+	Description  string   `mapstructure:"description"`
+	Icon         string   `mapstructure:"icon"`
+	Color        string   `mapstructure:"color"`
+	Dependencies []string `mapstructure:"dependencies"`
+}
+
+// AppTypeMetadata 应用类型元数据
+type AppTypeMetadata struct {
+	Value        string
+	Label        string
+	Description  string
+	Icon         string
+	Color        string
+	Dependencies []string
 }
 
 // NotificationConfig 通知配置
@@ -176,4 +197,85 @@ func (c *DatabaseConfig) GetDSN() string {
 		c.Port,
 		c.Database,
 	)
+}
+
+// GetAppTypeConfigs 返回应用类型配置快照
+func GetAppTypeConfigs() map[string]AppTypeConfig {
+	if GlobalConfig == nil {
+		return map[string]AppTypeConfig{}
+	}
+
+	result := make(map[string]AppTypeConfig, len(GlobalConfig.Core.AppTypes))
+	for key, cfg := range GlobalConfig.Core.AppTypes {
+		cloned := cfg
+		if cloned.Dependencies == nil {
+			cloned.Dependencies = []string{}
+		} else {
+			deps := make([]string, len(cloned.Dependencies))
+			copy(deps, cloned.Dependencies)
+			cloned.Dependencies = deps
+		}
+		result[key] = cloned
+	}
+
+	return result
+}
+
+// GetAppTypeMetadata 返回应用类型元数据列表（包含配置与依赖）
+func GetAppTypeMetadata() []AppTypeMetadata {
+	configs := GetAppTypeConfigs()
+	metadata := make([]AppTypeMetadata, 0, len(configs))
+
+	for value, cfg := range configs {
+		label := cfg.Label
+		if label == "" {
+			label = value
+		}
+
+		deps := cfg.Dependencies
+		if deps == nil {
+			deps = []string{}
+		}
+
+		metadata = append(metadata, AppTypeMetadata{
+			Value:        value,
+			Label:        label,
+			Description:  cfg.Description,
+			Icon:         cfg.Icon,
+			Color:        cfg.Color,
+			Dependencies: deps,
+		})
+	}
+
+	sort.Slice(metadata, func(i, j int) bool {
+		if metadata[i].Label == metadata[j].Label {
+			return metadata[i].Value < metadata[j].Value
+		}
+		return metadata[i].Label < metadata[j].Label
+	})
+
+	return metadata
+}
+
+// GetAppTypeLabel 获取应用类型的显示名称
+func GetAppTypeLabel(appType string) string {
+	configs := GetAppTypeConfigs()
+	if cfg, ok := configs[appType]; ok {
+		if cfg.Label != "" {
+			return cfg.Label
+		}
+	}
+	return appType
+}
+
+// GetAppTypeDependencies 返回应用类型依赖关系
+func GetAppTypeDependencies() map[string][]string {
+	configs := GetAppTypeConfigs()
+	result := make(map[string][]string, len(configs))
+	for value, cfg := range configs {
+		deps := make([]string, 0, len(cfg.Dependencies))
+		deps = append(deps, cfg.Dependencies...)
+		result[value] = deps
+	}
+	return result
 }

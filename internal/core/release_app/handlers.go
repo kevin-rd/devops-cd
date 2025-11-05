@@ -6,7 +6,6 @@ import (
 	"devops-cd/pkg/constants"
 	"fmt"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Handler interface {
@@ -34,11 +33,37 @@ func (sm *ReleaseStateMachine) registerHandlers() {
 
 // HandlePreWaiting handle PreWaiting:10 -> PreCanTrigger:11
 func (sm *ReleaseStateMachine) HandlePreWaiting(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
-	// 1. 检查依赖
-	time.Sleep(2 * time.Second)
+	if sm.resolver == nil {
+		return constants.ReleaseAppStatusPreCanTrigger, nil, nil
+	}
 
-	// 2. 通过
-	return constants.ReleaseAppStatusPreCanTrigger, nil, nil
+	result, err := sm.resolver.CheckRelease(ctx, release, constants.EnvTypePre)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if result.HasFailed() {
+		reason := result.Summary()
+		if reason == "" {
+			reason = "依赖检查失败"
+		}
+		sm.logger.Warn("预发布依赖失败", zap.Int64("release_id", release.ID), zap.String("reason", reason))
+		return constants.ReleaseAppStatusPreFailed, func(r *model.ReleaseApp) {
+			r.Reason = reason
+		}, nil
+	}
+
+	if result.HasPending() {
+		reason := result.Summary()
+		sm.logger.Debug("预发布依赖等待", zap.Int64("release_id", release.ID), zap.String("reason", reason))
+		return 0, func(r *model.ReleaseApp) {
+			r.Reason = reason
+		}, nil
+	}
+
+	return constants.ReleaseAppStatusPreCanTrigger, func(r *model.ReleaseApp) {
+		r.Reason = ""
+	}, nil
 }
 
 // HandleCanTrigger handle PreCanTrigger:11 -> PreTriggered:12, gen deployments record
@@ -153,11 +178,37 @@ func (sm *ReleaseStateMachine) HandlePreDeployed(ctx context.Context, release *m
 
 // HandleProdWaiting handle ProdWaiting:20 -> ProdCanTrigger:21
 func (sm *ReleaseStateMachine) HandleProdWaiting(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
-	// 1. 检查依赖（生产环境可加人工确认、灰度策略等）
-	time.Sleep(2 * time.Second)
+	if sm.resolver == nil {
+		return constants.ReleaseAppStatusProdCanTrigger, nil, nil
+	}
 
-	// 2. 通过
-	return constants.ReleaseAppStatusProdCanTrigger, nil, nil
+	result, err := sm.resolver.CheckRelease(ctx, release, constants.EnvTypeProd)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if result.HasFailed() {
+		reason := result.Summary()
+		if reason == "" {
+			reason = "依赖检查失败"
+		}
+		sm.logger.Warn("生产发布依赖失败", zap.Int64("release_id", release.ID), zap.String("reason", reason))
+		return constants.ReleaseAppStatusProdFailed, func(r *model.ReleaseApp) {
+			r.Reason = reason
+		}, nil
+	}
+
+	if result.HasPending() {
+		reason := result.Summary()
+		sm.logger.Debug("生产发布依赖等待", zap.Int64("release_id", release.ID), zap.String("reason", reason))
+		return 0, func(r *model.ReleaseApp) {
+			r.Reason = reason
+		}, nil
+	}
+
+	return constants.ReleaseAppStatusProdCanTrigger, func(r *model.ReleaseApp) {
+		r.Reason = ""
+	}, nil
 }
 
 // HandleProdCanTrigger handle ProdCanTrigger:21 -> ProdTriggered:22, gen deployments record

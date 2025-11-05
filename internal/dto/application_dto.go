@@ -42,20 +42,21 @@ type GetApplicationBuildsRequest struct {
 
 // ApplicationResponse 应用响应
 type ApplicationResponse struct {
-	ID          int64   `json:"id"`
-	Name        string  `json:"name"`
-	Project     string  `json:"project"`
-	DisplayName *string `json:"display_name"`
-	Description *string `json:"description"`
-	RepoID      int64   `json:"repo_id"`
-	RepoName    *string `json:"repo_name,omitempty"` // Repository的project/name
-	AppType     string  `json:"app_type"`
-	TeamID      *int64  `json:"team_id"`
-	TeamName    *string `json:"team_name,omitempty"`
-	DeployedTag *string `json:"deployed_tag"` // 当前部署的镜像标签
-	Status      int8    `json:"status"`
-	CreatedAt   string  `json:"created_at"`
-	UpdatedAt   string  `json:"updated_at"`
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	Project          string  `json:"project"`
+	DisplayName      *string `json:"display_name"`
+	Description      *string `json:"description"`
+	RepoID           int64   `json:"repo_id"`
+	RepoName         *string `json:"repo_name,omitempty"` // Repository的project/name
+	AppType          string  `json:"app_type"`
+	TeamID           *int64  `json:"team_id"`
+	TeamName         *string `json:"team_name,omitempty"`
+	DeployedTag      *string `json:"deployed_tag"` // 当前部署的镜像标签
+	DefaultDependsOn []int64 `json:"default_depends_on"`
+	Status           int8    `json:"status"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
 }
 
 // ApplicationListQuery 应用列表查询参数
@@ -127,4 +128,17 @@ type ApplicationBuildResponse struct {
 	CommitMessage *string    `json:"commit_message"`
 	CommitBranch  string     `json:"commit_branch"`
 	BuildStatus   string     `json:"build_status"`
+}
+
+// UpdateAppDependenciesRequest 更新应用默认依赖请求
+type UpdateAppDependenciesRequest struct {
+	Dependencies []int64 `json:"dependencies"`
+}
+
+// ApplicationDependenciesResponse 应用默认依赖响应
+type ApplicationDependenciesResponse struct {
+	AppID        int64   `json:"app_id"`
+	AppName      string  `json:"app_name"`
+	Dependencies []int64 `json:"dependencies"`
+	UpdatedAt    string  `json:"updated_at"`
 }

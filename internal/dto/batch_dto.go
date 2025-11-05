@@ -104,10 +104,20 @@ type BatchResponse struct {
 // BatchDetailResponse 批次详情响应（包含应用列表，支持分页）
 type BatchDetailResponse struct {
 	BatchResponse
-	Apps        []ReleaseAppResponse `json:"apps"`
-	TotalApps   int64                `json:"total_apps"`    // 应用总数
-	AppPage     int                  `json:"app_page"`      // 当前页码
-	AppPageSize int                  `json:"app_page_size"` // 每页数量
+	Apps           []ReleaseAppResponse         `json:"apps"`
+	TotalApps      int64                        `json:"total_apps"`    // 应用总数
+	AppPage        int                          `json:"app_page"`      // 当前页码
+	AppPageSize    int                          `json:"app_page_size"` // 每页数量
+	AppTypeConfigs map[string]AppTypeConfigInfo `json:"app_type_configs,omitempty"`
+}
+
+// AppTypeConfigInfo 应用类型配置（附带依赖关系）
+type AppTypeConfigInfo struct {
+	Label        string   `json:"label"`
+	Description  string   `json:"description,omitempty"`
+	Icon         string   `json:"icon,omitempty"`
+	Color        string   `json:"color,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
 }
 
 // ReleaseAppResponse 发布应用响应（简约版）
@@ -151,10 +161,15 @@ type ReleaseAppResponse struct {
 	// 发布信息
 	ReleaseNotes *string `json:"release_notes,omitempty"` // 应用级发布说明
 	IsLocked     bool    `json:"is_locked"`               // 是否已锁定（封板后为true）
+	Reason       string  `json:"reason,omitempty"`
 
 	// 时间信息
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
+
+	// 依赖信息
+	DefaultDependsOn []int64 `json:"default_depends_on"`
+	TempDependsOn    []int64 `json:"temp_depends_on"`
 
 	// 最近的构建记录（自上次部署以来，最多15条）
 	RecentBuilds []BuildSummary `json:"recent_builds,omitempty"`
@@ -177,6 +192,24 @@ type UpdateBuildsRequest struct {
 	BatchID      int64           `json:"batch_id" binding:"required"`
 	Operator     string          `json:"operator" binding:"required"`
 	BuildChanges map[int64]int64 `json:"build_changes" binding:"required"` // key: app_id, value: build_id
+}
+
+// UpdateReleaseDependenciesRequest 更新批次应用临时依赖请求
+type UpdateReleaseDependenciesRequest struct {
+	BatchID       int64   `json:"batch_id" binding:"required"`
+	Operator      string  `json:"operator" binding:"required"`
+	TempDependsOn []int64 `json:"temp_depends_on"`
+	ReleaseAppID  int64   `json:"-"`
+}
+
+// ReleaseDependenciesResponse 发布应用依赖响应
+type ReleaseDependenciesResponse struct {
+	BatchID          int64   `json:"batch_id"`
+	ReleaseAppID     int64   `json:"release_app_id"`
+	AppID            int64   `json:"app_id"`
+	DefaultDependsOn []int64 `json:"default_depends_on"`
+	TempDependsOn    []int64 `json:"temp_depends_on"`
+	UpdatedAt        string  `json:"updated_at"`
 }
 
 // ToBatchResponse 转换为批次响应

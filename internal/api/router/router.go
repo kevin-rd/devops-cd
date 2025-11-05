@@ -58,6 +58,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	applicationHandler := handler.NewApplicationHandler(applicationService)
 	batchHandler := handler.NewBatchHandler(coreEngine, batchService)
 	buildHandler := handler.NewBuildHandler(buildService, batchService)
+	releaseAppHandler := handler.NewReleaseAppHandler(batchService)
 
 	// API v1
 	v1 := r.Group("/api/v1")
@@ -92,14 +93,16 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 			groupApplication := authed.Group("/application")
 			groupApplications := authed.Group("/applications")
 			{
-				groupApplication.POST("", applicationHandler.Create)                   // 创建应用
-				groupApplications.GET("", applicationHandler.List)                     // 列表查询
-				groupApplication.GET("", applicationHandler.GetByID)                   // 获取详情（query参数id）
-				groupApplication.PUT("", applicationHandler.Update)                    // 更新应用（JSON包含id）
-				groupApplication.POST("/delete", applicationHandler.Delete)            // 删除应用（软删除，JSON包含id）
-				groupApplication.GET("/builds", applicationHandler.GetBuilds)          // 获取构建历史（query参数id）
-				groupApplication.GET("/types", applicationHandler.GetAppTypes)         // 获取应用类型列表
-				authed.GET("/application_builds", applicationHandler.SearchWithBuilds) // 搜索应用（包含构建信息，支持模糊查询）
+				groupApplication.POST("", applicationHandler.Create)                             // 创建应用
+				groupApplications.GET("", applicationHandler.List)                               // 列表查询
+				groupApplication.GET("", applicationHandler.GetByID)                             // 获取详情（query参数id）
+				groupApplication.PUT("", applicationHandler.Update)                              // 更新应用（JSON包含id）
+				groupApplication.POST("/delete", applicationHandler.Delete)                      // 删除应用（软删除，JSON包含id）
+				groupApplication.GET("/builds", applicationHandler.GetBuilds)                    // 获取构建历史（query参数id）
+				groupApplication.GET("/types", applicationHandler.GetAppTypes)                   // 获取应用类型列表
+				groupApplication.GET("/:id/dependencies", applicationHandler.GetDependencies)    // 获取默认依赖
+				groupApplication.PUT("/:id/dependencies", applicationHandler.UpdateDependencies) // 更新默认依赖
+				authed.GET("/application_builds", applicationHandler.SearchWithBuilds)           // 搜索应用（包含构建信息，支持模糊查询）
 			}
 
 			// 批次管理
@@ -122,6 +125,12 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 
 				// 状态操作
 				groupBatch.POST("/action", batchHandler.ProcessAction) // 状态流转
+			}
+
+			// 发布应用配置
+			releaseAppGroup := authed.Group("/release_app")
+			{
+				releaseAppGroup.PUT(":id/dependencies", releaseAppHandler.UpdateDependencies)
 			}
 
 			// 构建记录管理

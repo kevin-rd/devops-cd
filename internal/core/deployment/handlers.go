@@ -22,25 +22,45 @@ func (h HandlerFunc) Handle(ctx context.Context, dep *model.Deployment) (string,
 func (sm *StateMachine) registerHandlers() {
 	sm.handlers[constants.DeploymentStatusPending] = HandlerFunc(sm.HandlePending)
 	sm.handlers[constants.DeploymentStatusRunning] = HandlerFunc(sm.HandleRunning)
+	sm.handlers[constants.DeploymentStatusWaitingDependencies] = HandlerFunc(sm.HandleWaiting)
 }
 
 // handlers
 
 // HandlePending handle Pending -> Running
 func (sm *StateMachine) HandlePending(ctx context.Context, dep *model.Deployment) (string, func(*model.Deployment), error) {
+	if sm.resolver != nil {
+		result, err := sm.resolver.CheckDeployment(ctx, dep)
+		if err != nil {
+			return "", nil, err
+		}
+
+		if result.HasFailed() {
+			reason := result.Summary()
+			return constants.DeploymentStatusFailed, func(d *model.Deployment) {
+				setErrorMessage(d, reason)
+			}, nil
+		}
+
+		if result.HasPending() {
+			reason := result.Summary()
+			return constants.DeploymentStatusWaitingDependencies, func(d *model.Deployment) {
+				setErrorMessage(d, reason)
+			}, nil
+		}
+	}
+
 	// 1. 触发部署（幂等）
 	if err := sm.deployer.Deploy(ctx, dep); err != nil {
 		return constants.DeploymentStatusFailed, func(deployment *model.Deployment) {
-			*deployment.ErrorMessage = err.Error()
+			setErrorMessage(deployment, err.Error())
 			deployment.RetryCount++
 		}, nil
 	}
 
 	// 2. 变更为 Running
-	taskId := *dep.TaskID
 	return constants.DeploymentStatusRunning, func(d *model.Deployment) {
-		d.TaskID = &taskId
-		d.StartedAt = &dep.CreatedAt
+		setErrorMessage(d, "")
 	}, nil
 }
 
@@ -58,14 +78,56 @@ func (sm *StateMachine) HandleRunning(ctx context.Context, dep *model.Deployment
 		return constants.DeploymentStatusSuccess, func(d *model.Deployment) {
 			now := time.Now()
 			d.FinishedAt = &now
+			setErrorMessage(d, "")
 		}, nil //nolint:staticcheck
 	case "failed":
 		return constants.DeploymentStatusFailed, func(d *model.Deployment) {
-			*d.ErrorMessage = "deploy failed"
+			setErrorMessage(d, "deploy failed")
 			d.RetryCount++
 		}, nil
 	default:
 		log.Debug(fmt.Sprintf("[Deployment SM] Batch:%v ReleaseApp:%v 部署进行中", dep.BatchID, dep.ReleaseID), zap.String("external_status", status))
 		return "", nil, nil // 继续等待
 	}
+}
+
+// HandleWaiting 等待依赖满足 -> Pending
+func (sm *StateMachine) HandleWaiting(ctx context.Context, dep *model.Deployment) (string, func(*model.Deployment), error) {
+	if sm.resolver == nil {
+		return constants.DeploymentStatusPending, nil, nil
+	}
+
+	result, err := sm.resolver.CheckDeployment(ctx, dep)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if result.HasFailed() {
+		reason := result.Summary()
+		return constants.DeploymentStatusFailed, func(d *model.Deployment) {
+			setErrorMessage(d, reason)
+		}, nil
+	}
+
+	if result.HasPending() {
+		reason := result.Summary()
+		return "", func(d *model.Deployment) {
+			setErrorMessage(d, reason)
+		}, nil
+	}
+
+	return constants.DeploymentStatusPending, func(d *model.Deployment) {
+		setErrorMessage(d, "")
+	}, nil
+}
+
+func setErrorMessage(dep *model.Deployment, msg string) {
+	if msg == "" {
+		dep.ErrorMessage = nil
+		return
+	}
+	if dep.ErrorMessage == nil {
+		dep.ErrorMessage = new(string)
+	}
+	*dep.ErrorMessage = msg
 }

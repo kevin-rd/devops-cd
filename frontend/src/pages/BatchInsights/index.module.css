@@ -1,0 +1,82 @@
+.container {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card {
+  min-height: 400px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section {
+  border-radius: 8px;
+}
+
+.graphSection {
+  border-radius: 8px;
+  overflow: visible;
+}
+
+.batchInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.label {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.timelineWrapper {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 16px;
+}
+
+.timelineLegend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.timelineItemTitle {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.timelineItemTime {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+@media (max-width: 992px) {
+  .container {
+    padding: 16px;
+  }
+}
+

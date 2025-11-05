@@ -8,6 +8,7 @@ import (
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
+	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
 	pkgErrors "devops-cd/pkg/errors"
@@ -23,6 +24,8 @@ type ApplicationService interface {
 	ListByRepoID(repoID int64) ([]*dto.ApplicationResponse, error)
 	GetAppTypes() (*dto.AppTypesResponse, error)
 	SearchWithBuilds(query *dto.ApplicationSearchQuery) ([]*dto.ApplicationBuildResponse, int64, error)
+	GetDefaultDependencies(appID int64) (*dto.ApplicationDependenciesResponse, error)
+	UpdateDefaultDependencies(appID int64, req *dto.UpdateAppDependenciesRequest) (*dto.ApplicationDependenciesResponse, error)
 }
 
 type applicationService struct {
@@ -232,6 +235,85 @@ func (s *applicationService) ListByRepoID(repoID int64) ([]*dto.ApplicationRespo
 	return responses, nil
 }
 
+func (s *applicationService) GetDefaultDependencies(appID int64) (*dto.ApplicationDependenciesResponse, error) {
+	app, err := s.appRepo.FindByID(appID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.buildDependenciesResponse(app)
+}
+
+func (s *applicationService) UpdateDefaultDependencies(appID int64, req *dto.UpdateAppDependenciesRequest) (*dto.ApplicationDependenciesResponse, error) {
+	if _, err := s.appRepo.FindByID(appID); err != nil {
+		return nil, err
+	}
+
+	normalized := normalizeDependencyIDs(req.Dependencies)
+	for _, depID := range normalized {
+		if depID == appID {
+			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "应用不能依赖自身", nil)
+		}
+	}
+
+	// 校验依赖是否存在
+	deps, err := s.appRepo.FindByIDs(normalized)
+	if err != nil {
+		return nil, err
+	}
+	if len(deps) != len(normalized) {
+		existing := make(map[int64]struct{}, len(deps))
+		for _, dep := range deps {
+			existing[dep.ID] = struct{}{}
+		}
+		missing := make([]int64, 0)
+		for _, depID := range normalized {
+			if _, ok := existing[depID]; !ok {
+				missing = append(missing, depID)
+			}
+		}
+		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
+			fmt.Sprintf("存在不存在的依赖应用: %v", missing), nil)
+	}
+
+	// 构建依赖图做循环检测
+	apps, err := s.appRepo.ListAllWithDependencies()
+	if err != nil {
+		return nil, err
+	}
+
+	graph := make(map[int64][]int64, len(apps))
+	for _, item := range apps {
+		ids, parseErr := decodeDependencyIDs(item.DefaultDependsOn)
+		if parseErr != nil {
+			return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError,
+				fmt.Sprintf("解析应用 %s 的依赖失败", item.Name), parseErr)
+		}
+		if item.ID == appID {
+			ids = normalized
+		}
+		graph[item.ID] = ids
+	}
+	if _, exists := graph[appID]; !exists {
+		graph[appID] = normalized
+	}
+
+	if hasDependencyCycle(graph) {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "依赖配置存在循环，请调整", nil)
+	}
+
+	if err := s.appRepo.UpdateDefaultDependencies(appID, normalized); err != nil {
+		return nil, err
+	}
+
+	updated, err := s.appRepo.FindByID(appID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.buildDependenciesResponse(updated)
+}
+
 // toResponse 转换为响应对象
 func (s *applicationService) toResponse(app *model.Application) *dto.ApplicationResponse {
 	resp := &dto.ApplicationResponse{
@@ -247,6 +329,10 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 		Status:      app.Status,
 		CreatedAt:   app.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   app.UpdatedAt.Format(time.RFC3339),
+	}
+
+	if deps, err := decodeDependencyIDs(app.DefaultDependsOn); err == nil {
+		resp.DefaultDependsOn = deps
 	}
 
 	// 添加代码库名称
@@ -295,7 +381,7 @@ func (s *applicationService) toBuildInfo(build *model.Build) *dto.ApplicationBui
 
 // GetAppTypes 获取应用类型列表
 func (s *applicationService) GetAppTypes() (*dto.AppTypesResponse, error) {
-	metadata := constants.GetAppTypeMetadata()
+	metadata := config.GetAppTypeMetadata()
 
 	types := make([]dto.AppTypeInfo, 0, len(metadata))
 	for _, meta := range metadata {
@@ -381,4 +467,18 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 	}
 
 	return responses, total, nil
+}
+
+func (s *applicationService) buildDependenciesResponse(app *model.Application) (*dto.ApplicationDependenciesResponse, error) {
+	deps, err := decodeDependencyIDs(app.DefaultDependsOn)
+	if err != nil {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "解析应用默认依赖失败", err)
+	}
+
+	return &dto.ApplicationDependenciesResponse{
+		AppID:        app.ID,
+		AppName:      app.Name,
+		Dependencies: deps,
+		UpdatedAt:    app.UpdatedAt.Format(time.RFC3339),
+	}, nil
 }

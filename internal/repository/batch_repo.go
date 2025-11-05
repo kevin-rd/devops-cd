@@ -135,6 +135,15 @@ func (r *BatchRepository) BatchCreateReleaseApps(apps []*model.ReleaseApp) error
 	return r.db.Create(&apps).Error
 }
 
+// GetReleaseAppByID 获取单个发布应用记录（包含应用基础信息）
+func (r *BatchRepository) GetReleaseAppByID(id int64) (*model.ReleaseApp, error) {
+	var release model.ReleaseApp
+	if err := r.db.Preload("Application").First(&release, id).Error; err != nil {
+		return nil, err
+	}
+	return &release, nil
+}
+
 // GetReleaseAppsByBatchID 获取批次的所有应用（包含应用详情、仓库信息和构建信息，支持分页）
 func (r *BatchRepository) GetReleaseAppsByBatchID(batchID int64, page, pageSize int) ([]*model.ReleaseApp, int64, error) {
 	var apps []*model.ReleaseApp

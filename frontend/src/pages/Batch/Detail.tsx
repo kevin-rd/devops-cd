@@ -1,4 +1,5 @@
-import {useState} from 'react'
+import {useMemo, useState} from 'react'
+import type {ReactNode} from 'react'
 import {Button, Card, Checkbox, Descriptions, Empty, Input, message, Modal, Pagination, Select, Space, Spin, Table, Tag,} from 'antd'
 import {
   ArrowLeftOutlined,
@@ -18,8 +19,21 @@ import {applicationService} from '@/services/application'
 import {StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import {useAuthStore} from '@/stores/authStore'
-import type {ApplicationWithBuild, Batch, BatchActionRequest, BuildSummary, ReleaseApp} from '@/types'
+import type {
+  ApplicationWithBuild,
+  Batch,
+  BatchActionRequest,
+  BuildSummary,
+  ReleaseApp,
+  UpdateReleaseDependenciesRequest,
+} from '@/types'
 import './Detail.css'
+
+type DependencyOption = {
+  label: ReactNode
+  value: number
+  disabled?: boolean
+}
 
 const {TextArea} = Input
 
@@ -41,6 +55,11 @@ export default function BatchDetail() {
   // 【新增】构建修改状态（app_id -> selected_build_id）
   const [buildChanges, setBuildChanges] = useState<Record<number, number>>({})
 
+  // 【新增】依赖配置状态
+  const [dependencyModalVisible, setDependencyModalVisible] = useState(false)
+  const [editingRelease, setEditingRelease] = useState<ReleaseApp | null>(null)
+  const [tempDependencySelection, setTempDependencySelection] = useState<number[]>([])
+
   // 查询批次详情（支持分页）
   const {data: batchData, isLoading} = useQuery({
     queryKey: ['batchDetail', id, appPage, appPageSize],
@@ -53,6 +72,14 @@ export default function BatchDetail() {
   })
 
   const batch = batchData
+
+  const appIdMap = useMemo(() => {
+    const map = new Map<number, ReleaseApp>()
+    batch?.apps?.forEach(app => {
+      map.set(app.app_id, app)
+    })
+    return map
+  }, [batch?.apps])
 
   // 查询所有应用（用于管理应用，包含构建信息）
   const {data: allAppsResponse} = useQuery({
@@ -77,6 +104,26 @@ export default function BatchDetail() {
       message.success(t('batch.updateSuccess'))
       queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
       setManageAppsModalVisible(false)
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || t('common.error'))
+    },
+  })
+
+  const updateDependenciesMutation = useMutation({
+    mutationFn: ({
+      releaseAppId,
+      payload,
+    }: {
+      releaseAppId: number
+      payload: UpdateReleaseDependenciesRequest
+    }) => batchService.updateDependencies(releaseAppId, payload),
+    onSuccess: () => {
+      message.success('依赖配置已更新')
+      queryClient.invalidateQueries({queryKey: ['batchDetail', id, appPage, appPageSize]})
+      setDependencyModalVisible(false)
+      setEditingRelease(null)
+      setTempDependencySelection([])
     },
     onError: (error: any) => {
       message.error(error.response?.data?.message || t('common.error'))
@@ -181,6 +228,79 @@ export default function BatchDetail() {
       remove_app_ids: removeAppIds,
     })
   }
+
+  const handleOpenDependencies = (release: ReleaseApp) => {
+    setEditingRelease(release)
+    setTempDependencySelection(release.temp_depends_on || [])
+    setDependencyModalVisible(true)
+  }
+
+  const handleDependencySelectionChange = (values: Array<number | string>) => {
+    if (!editingRelease) return
+    const defaultSet = new Set(editingRelease.default_depends_on || [])
+    const numericValues = values.map(value => Number(value))
+    const filtered = numericValues.filter(id => !defaultSet.has(id))
+    setTempDependencySelection(filtered)
+  }
+
+  const handleSaveDependencies = () => {
+    if (!batch || !editingRelease) return
+    updateDependenciesMutation.mutate({
+      releaseAppId: editingRelease.id,
+      payload: {
+        batch_id: batch.id,
+        operator: user?.username || 'unknown',
+        temp_depends_on: tempDependencySelection,
+      },
+    })
+  }
+
+  const handleCloseDependencyModal = () => {
+    setDependencyModalVisible(false)
+    setEditingRelease(null)
+    setTempDependencySelection([])
+  }
+
+  const dependencyOptions = useMemo<DependencyOption[]>(() => {
+    if (!batch || !editingRelease) return []
+    const defaultSet = new Set(editingRelease.default_depends_on || [])
+    return (batch.apps || [])
+      .filter(app => app.app_id !== editingRelease.app_id)
+      .map(app => ({
+        label: (
+          <Space size={4}>
+            <span>{app.app_name}</span>
+            <Tag color="blue">{app.app_type}</Tag>
+            {defaultSet.has(app.app_id) && <Tag color="purple">默认</Tag>}
+          </Space>
+        ),
+        value: app.app_id,
+        disabled: defaultSet.has(app.app_id),
+      }))
+  }, [batch, editingRelease])
+
+  const dependencyValues = useMemo<number[]>(() => {
+    if (!editingRelease) return []
+    const defaultDeps = editingRelease.default_depends_on || []
+    return Array.from(new Set([...defaultDeps, ...tempDependencySelection]))
+  }, [editingRelease, tempDependencySelection])
+
+  const dependencyOptionValueSet = useMemo<Set<number>>(() => {
+    return new Set(dependencyOptions.map(option => Number(option.value)))
+  }, [dependencyOptions])
+
+  const dependencyGroupValues = useMemo<number[]>(() => {
+    if (dependencyOptionValueSet.size === 0) {
+      return []
+    }
+    return dependencyValues.filter(id => dependencyOptionValueSet.has(id))
+  }, [dependencyValues, dependencyOptionValueSet])
+
+  const missingDefaultDependencies = useMemo<number[]>(() => {
+    if (!editingRelease) return []
+    const defaultDeps = editingRelease.default_depends_on || []
+    return defaultDeps.filter(id => !appIdMap.has(id))
+  }, [editingRelease, appIdMap])
 
   // 根据状态判断可用操作
   const getAvailableActions = () => {
@@ -388,6 +508,62 @@ export default function BatchDetail() {
       },
     },
     {
+      title: '依赖',
+      key: 'dependencies',
+      width: 220,
+      render: (_: any, record: ReleaseApp) => {
+        const defaultDeps = record.default_depends_on || []
+        const tempDeps = record.temp_depends_on || []
+        const defaultSet = new Set(defaultDeps)
+        const tempOnly = tempDeps.filter(id => !defaultSet.has(id))
+        const defaultTags = defaultDeps.map(depId => {
+          const target = appIdMap.get(depId)
+          const label = target?.app_name || `#${depId}`
+          return (
+            <Tag key={`default-${record.id}-${depId}`} color="purple">
+              {label}
+              <span style={{marginLeft: 4, fontSize: 10}}>默认</span>
+            </Tag>
+          )
+        })
+        const tempTags = tempOnly.map(depId => {
+          const target = appIdMap.get(depId)
+          const label = target?.app_name || `#${depId}`
+          return (
+            <Tag key={`temp-${record.id}-${depId}`} color="geekblue">
+              {label}
+              <span style={{marginLeft: 4, fontSize: 10}}>临时</span>
+            </Tag>
+          )
+        })
+        const hasDeps = defaultTags.length + tempTags.length > 0
+
+        const canEditDependencies = !!batch && batch.status < 10 && !record.is_locked
+
+        return (
+          <Space direction="vertical" size={4}>
+            {hasDeps ? (
+              <Space size={[4, 4]} wrap>
+                {defaultTags}
+                {tempTags}
+              </Space>
+            ) : (
+              <span style={{fontSize: 12, color: '#8c8c8c'}}>无</span>
+            )}
+            {!!batch && batch.status < 10 && (
+              <Button
+                size="small"
+                onClick={() => handleOpenDependencies(record)}
+                disabled={!canEditDependencies}
+              >
+                设置依赖
+              </Button>
+            )}
+          </Space>
+        )
+      },
+    },
+    {
       title: t('batch.commitMessage'),
       dataIndex: 'commit_message',
       key: 'commit_message',
@@ -566,6 +742,51 @@ export default function BatchDetail() {
           value={cancelReason}
           onChange={(e) => setCancelReason(e.target.value)}
         />
+      </Modal>
+
+      <Modal
+        title="设置依赖"
+        open={dependencyModalVisible}
+        onOk={handleSaveDependencies}
+        onCancel={handleCloseDependencyModal}
+        confirmLoading={updateDependenciesMutation.isPending}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        width={520}
+      >
+        {editingRelease ? (
+          <div>
+            <div style={{marginBottom: 12}}>
+              <div style={{fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8}}>
+                <span>{editingRelease.app_name}</span>
+                {editingRelease.app_type && <Tag color="blue">{editingRelease.app_type}</Tag>}
+              </div>
+              <div style={{fontSize: 12, color: '#8c8c8c'}}>
+                默认依赖已锁定不可取消，可额外勾选临时依赖。
+              </div>
+            </div>
+
+            {dependencyOptions.length > 0 ? (
+              <Checkbox.Group
+                style={{display: 'flex', flexDirection: 'column', gap: 8}}
+                value={dependencyGroupValues}
+                options={dependencyOptions}
+                onChange={handleDependencySelectionChange}
+              />
+            ) : (
+              <Empty description="无可配置的依赖应用" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
+            )}
+
+            {missingDefaultDependencies.length > 0 && (
+              <div style={{marginTop: 12, fontSize: 12, color: '#faad14'}}>
+                以下默认依赖未包含在当前批次中：
+                {missingDefaultDependencies.map(id => appIdMap.get(id)?.app_name || `#${id}`).join('、')}
+              </div>
+            )}
+          </div>
+        ) : (
+          <Spin/>
+        )}
       </Modal>
 
       {/* 管理应用 Modal */}

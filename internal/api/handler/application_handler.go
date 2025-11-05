@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
 	"devops-cd/internal/dto"
@@ -217,4 +219,66 @@ func (h *ApplicationHandler) SearchWithBuilds(c *gin.Context) {
 	}
 
 	utils.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
+}
+
+// GetDependencies 获取应用默认依赖
+// @Summary 获取应用默认依赖
+// @Tags Application
+// @Produce json
+// @Param id path int true "应用ID"
+// @Success 200 {object} utils.Response{data=dto.ApplicationDependenciesResponse}
+// @Router /api/v1/application/{id}/dependencies [get]
+func (h *ApplicationHandler) GetDependencies(c *gin.Context) {
+	id, ok := parseIDParam(c.Param("id"))
+	if !ok {
+		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "应用ID无效", c.Param("id"))
+		return
+	}
+
+	resp, err := h.service.GetDefaultDependencies(id)
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+
+	utils.Success(c, resp)
+}
+
+// UpdateDependencies 更新应用默认依赖
+// @Summary 更新应用默认依赖
+// @Tags Application
+// @Accept json
+// @Produce json
+// @Param id path int true "应用ID"
+// @Param body body dto.UpdateAppDependenciesRequest true "更新依赖请求"
+// @Success 200 {object} utils.Response{data=dto.ApplicationDependenciesResponse}
+// @Router /api/v1/application/{id}/dependencies [put]
+func (h *ApplicationHandler) UpdateDependencies(c *gin.Context) {
+	id, ok := parseIDParam(c.Param("id"))
+	if !ok {
+		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "应用ID无效", c.Param("id"))
+		return
+	}
+
+	var req dto.UpdateAppDependenciesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		return
+	}
+
+	resp, err := h.service.UpdateDefaultDependencies(id, &req)
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+
+	utils.Success(c, resp)
+}
+
+func parseIDParam(raw string) (int64, bool) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
 }

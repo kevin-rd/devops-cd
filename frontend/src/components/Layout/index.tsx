@@ -49,6 +49,11 @@ const MainLayout: React.FC = () => {
       icon: <RocketOutlined />,
       label: t('menu.batch'),
     },
+    {
+      key: '/batch/insights',
+      icon: <RocketOutlined />,
+      label: t('menu.batchInsights'),
+    },
   ]
 
   // 用户下拉菜单
@@ -105,7 +110,13 @@ const MainLayout: React.FC = () => {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[
+            location.pathname.includes('/insights') 
+              ? '/batch/insights' 
+              : location.pathname.startsWith('/batch')
+              ? '/batch'
+              : location.pathname
+          ]}
           items={menuItems}
           onClick={handleMenuClick}
         />

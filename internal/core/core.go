@@ -5,9 +5,11 @@ import (
 	"devops-cd/internal/adapter/deploy"
 	"devops-cd/internal/adapter/notification"
 	"devops-cd/internal/core/batch"
+	"devops-cd/internal/core/dependency"
 	"devops-cd/internal/core/deployment"
 	"devops-cd/internal/core/release_app"
 	"devops-cd/internal/model"
+	"devops-cd/internal/pkg/config"
 	"devops-cd/pkg/constants"
 	"fmt"
 	"github.com/samber/lo"
@@ -34,11 +36,25 @@ type CoreEngine struct {
 }
 
 // NewCoreEngine 创建核心引擎
-func NewCoreEngine(db *gorm.DB, logger *zap.Logger) *CoreEngine {
+func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) *CoreEngine {
 
 	// 创建部署服务
 	// deployService := deploy.NewK8sDeployer( deploy.NewMockK8sDeployClient(), notification.NewLogNotifier(logger), db, nil, logger)
 	deployService := deploy.NewMockDeployer()
+
+	depCfg := dependency.Config{}
+	if coreCfg != nil && len(coreCfg.AppTypes) > 0 {
+		depCfg.AppTypeDepends = make(map[string][]string, len(coreCfg.AppTypes))
+		for appType, appTypeCfg := range coreCfg.AppTypes {
+			if len(appTypeCfg.Dependencies) == 0 {
+				continue
+			}
+			deps := make([]string, len(appTypeCfg.Dependencies))
+			copy(deps, appTypeCfg.Dependencies)
+			depCfg.AppTypeDepends[appType] = deps
+		}
+	}
+	resolver := dependency.NewResolver(db, logger, depCfg)
 
 	return &CoreEngine{
 		db:       db,
@@ -47,8 +63,8 @@ func NewCoreEngine(db *gorm.DB, logger *zap.Logger) *CoreEngine {
 		stopChan: make(chan struct{}),
 
 		batchSM:      batch.NewBatchStateMachine(db, logger),
-		releaseSM:    release_app.NewReleaseStateMachine(db, logger),
-		deploymentSM: deployment.NewDeploymentStateMachine(db, logger, deployService),
+		releaseSM:    release_app.NewReleaseStateMachine(db, logger, resolver),
+		deploymentSM: deployment.NewDeploymentStateMachine(db, logger, deployService, resolver),
 
 		batchTask: make(map[int64]context.CancelFunc, 10),
 	}

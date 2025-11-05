@@ -1,7 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"fmt"
+
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
@@ -18,6 +21,9 @@ type ApplicationRepository interface {
 	SearchWithBuilds(page, pageSize int, keyword string, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error)
 	Update(app *model.Application) error
 	Delete(id int64) error
+	UpdateDefaultDependencies(appID int64, deps []int64) error
+	ListAllWithDependencies() ([]*model.Application, error)
+	FindByIDs(ids []int64) ([]*model.Application, error)
 }
 
 type applicationRepository struct {
@@ -134,6 +140,43 @@ func (r *applicationRepository) Delete(id int64) error {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除应用失败", err)
 	}
 	return nil
+}
+
+func (r *applicationRepository) UpdateDefaultDependencies(appID int64, deps []int64) error {
+	data, err := json.Marshal(deps)
+	if err != nil {
+		return pkgErrors.Wrap(pkgErrors.CodeInternalError, "序列化应用默认依赖失败", err)
+	}
+
+	if err := r.db.Model(&model.Application{}).
+		Where("id = ?", appID).
+		Update("default_depends_on", datatypes.JSON(data)).Error; err != nil {
+		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新应用默认依赖失败", err)
+	}
+
+	return nil
+}
+
+func (r *applicationRepository) ListAllWithDependencies() ([]*model.Application, error) {
+	var apps []*model.Application
+	if err := r.db.Select("id", "name", "project", "app_type", "default_depends_on").
+		Where("deleted_at IS NULL").
+		Find(&apps).Error; err != nil {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询应用依赖信息失败", err)
+	}
+	return apps, nil
+}
+
+func (r *applicationRepository) FindByIDs(ids []int64) ([]*model.Application, error) {
+	if len(ids) == 0 {
+		return []*model.Application{}, nil
+	}
+
+	var apps []*model.Application
+	if err := r.db.Where("id IN ? AND deleted_at IS NULL", ids).Find(&apps).Error; err != nil {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "批量查询应用失败", err)
+	}
+	return apps, nil
 }
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询 app、repo、commit、tag 等字段）

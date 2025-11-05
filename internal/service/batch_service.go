@@ -1,14 +1,17 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
+	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
@@ -372,6 +375,136 @@ func (s *BatchService) UpdateBuilds(req *dto.UpdateBuildsRequest) error {
 	return nil
 }
 
+// UpdateReleaseDependencies 更新批次应用的临时依赖配置
+func (s *BatchService) UpdateReleaseDependencies(req *dto.UpdateReleaseDependenciesRequest) (*dto.ReleaseDependenciesResponse, error) {
+	release, err := s.batchRepo.GetReleaseAppByID(req.ReleaseAppID)
+	if err != nil {
+		return nil, fmt.Errorf("发布应用不存在: %w", err)
+	}
+
+	if release.BatchID != req.BatchID {
+		return nil, fmt.Errorf("发布应用不属于指定批次")
+	}
+
+	batch, err := s.batchRepo.GetByID(req.BatchID)
+	if err != nil {
+		return nil, fmt.Errorf("批次不存在: %w", err)
+	}
+
+	if batch.Status >= constants.BatchStatusSealed {
+		return nil, fmt.Errorf("批次已封板或进入发布阶段，无法修改依赖")
+	}
+
+	if release.IsLocked {
+		return nil, fmt.Errorf("发布记录已锁定，无法修改依赖")
+	}
+
+	normalizedTemp := normalizeDependencyIDs(req.TempDependsOn)
+
+	var batchAppIDs []int64
+	if err := s.db.Model(&model.ReleaseApp{}).
+		Where("batch_id = ?", req.BatchID).
+		Pluck("app_id", &batchAppIDs).Error; err != nil {
+		return nil, fmt.Errorf("查询批次应用失败: %w", err)
+	}
+
+	appIDSet := make(map[int64]struct{}, len(batchAppIDs))
+	for _, id := range batchAppIDs {
+		appIDSet[id] = struct{}{}
+	}
+
+	for _, depID := range normalizedTemp {
+		if depID == release.AppID {
+			return nil, fmt.Errorf("应用不能依赖自身")
+		}
+		if _, ok := appIDSet[depID]; !ok {
+			return nil, fmt.Errorf("依赖的应用 %d 不在当前批次中", depID)
+		}
+	}
+
+	type dependencyRow struct {
+		AppID            int64
+		TempDependsOn    []byte
+		DefaultDependsOn []byte
+	}
+
+	var rows []dependencyRow
+	if err := s.db.Table("release_apps").
+		Select("release_apps.app_id as app_id, release_apps.temp_depends_on, applications.default_depends_on").
+		Joins("JOIN applications ON release_apps.app_id = applications.id").
+		Where("release_apps.batch_id = ?", req.BatchID).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("查询依赖信息失败: %w", err)
+	}
+
+	graph := make(map[int64][]int64, len(rows))
+	for _, row := range rows {
+		defaultDeps, err := decodeDependencyIDs(row.DefaultDependsOn)
+		if err != nil {
+			return nil, fmt.Errorf("解析应用 %d 默认依赖失败: %w", row.AppID, err)
+		}
+
+		tempDeps, err := decodeDependencyIDs(row.TempDependsOn)
+		if err != nil {
+			return nil, fmt.Errorf("解析应用 %d 临时依赖失败: %w", row.AppID, err)
+		}
+
+		if row.AppID == release.AppID {
+			tempDeps = normalizedTemp
+		}
+
+		graph[row.AppID] = filterDependenciesForBatch(defaultDeps, tempDeps, appIDSet)
+	}
+
+	if hasDependencyCycle(graph) {
+		return nil, fmt.Errorf("依赖配置存在循环，请调整")
+	}
+
+	data, err := json.Marshal(normalizedTemp)
+	if err != nil {
+		return nil, fmt.Errorf("序列化依赖失败: %w", err)
+	}
+
+	now := time.Now()
+	updates := map[string]any{
+		"temp_depends_on": datatypes.JSON(data),
+		"updated_at":      now,
+	}
+
+	if err := s.db.Model(&model.ReleaseApp{}).
+		Where("id = ?", release.ID).
+		Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("更新临时依赖失败: %w", err)
+	}
+
+	defaultDeps := []int64{}
+	if release.Application != nil {
+		if deps, err := decodeDependencyIDs(release.Application.DefaultDependsOn); err == nil {
+			defaultDeps = normalizeDependencyIDs(deps)
+		} else {
+			logger.Error("解析应用默认依赖失败",
+				zap.Int64("app_id", release.Application.ID),
+				zap.Error(err))
+		}
+	}
+
+	logger.Info("更新发布应用临时依赖成功",
+		zap.Int64("batch_id", req.BatchID),
+		zap.Int64("release_app_id", release.ID),
+		zap.Int64("app_id", release.AppID),
+		zap.Any("temp_depends_on", normalizedTemp),
+		zap.String("operator", req.Operator))
+
+	return &dto.ReleaseDependenciesResponse{
+		BatchID:          req.BatchID,
+		ReleaseAppID:     release.ID,
+		AppID:            release.AppID,
+		DefaultDependsOn: defaultDeps,
+		TempDependsOn:    normalizedTemp,
+		UpdatedAt:        now.Format(time.RFC3339),
+	}, nil
+}
+
 // DeleteBatch 删除批次
 func (s *BatchService) DeleteBatch(batchID int64, operator string) error {
 	// 1. 获取批次
@@ -437,6 +570,28 @@ func (s *BatchService) GetBatch(batchID int64, appPage, appPageSize int) (*dto.B
 		AppPageSize:   appPageSize,
 	}
 
+	appTypeConfigs := config.GetAppTypeConfigs()
+	if len(appTypeConfigs) > 0 {
+		response.AppTypeConfigs = make(map[string]dto.AppTypeConfigInfo, len(appTypeConfigs))
+		for key, cfg := range appTypeConfigs {
+			label := cfg.Label
+			if label == "" {
+				label = key
+			}
+
+			deps := make([]string, 0, len(cfg.Dependencies))
+			deps = append(deps, cfg.Dependencies...)
+
+			response.AppTypeConfigs[key] = dto.AppTypeConfigInfo{
+				Label:        label,
+				Description:  cfg.Description,
+				Icon:         cfg.Icon,
+				Color:        cfg.Color,
+				Dependencies: deps,
+			}
+		}
+	}
+
 	return response, nil
 }
 
@@ -459,11 +614,15 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			// 发布信息
 			ReleaseNotes: release.ReleaseNotes,
 			IsLocked:     release.IsLocked,
+			Reason:       release.Reason,
 
 			// 时间信息
 			CreatedAt: release.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			UpdatedAt: release.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		}
+
+		releaseResp.DefaultDependsOn = []int64{}
+		releaseResp.TempDependsOn = []int64{}
 
 		// 填充构建信息（如果通过 Preload("Build") 已加载）
 		if release.Build != nil {
@@ -486,6 +645,14 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			releaseResp.AppStatus = release.Application.Status
 			releaseResp.TeamID = release.Application.TeamID
 			releaseResp.DeployedTag = release.Application.DeployedTag // 当前部署的标签
+
+			if deps, err := decodeDependencyIDs(release.Application.DefaultDependsOn); err != nil {
+				logger.Error("解析应用默认依赖失败",
+					zap.Int64("app_id", release.Application.ID),
+					zap.Error(err))
+			} else {
+				releaseResp.DefaultDependsOn = normalizeDependencyIDs(deps)
+			}
 
 			// 填充仓库信息
 			if release.Application.Repository != nil {
@@ -514,6 +681,14 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			releaseResp.RepoID = 0
 			releaseResp.RepoName = ""
 			releaseResp.RepoFullName = ""
+		}
+
+		if deps, err := decodeDependencyIDs(release.TempDependsOn); err != nil {
+			logger.Error("解析临时依赖失败",
+				zap.Int64("release_id", release.ID),
+				zap.Error(err))
+		} else {
+			releaseResp.TempDependsOn = normalizeDependencyIDs(deps)
 		}
 
 		responses[i] = releaseResp
@@ -621,6 +796,30 @@ func (s *BatchService) toBuildSummaries(builds []*model.Build) []dto.BuildSummar
 		}
 	}
 	return summaries
+}
+
+func filterDependenciesForBatch(defaultDeps, tempDeps []int64, allowed map[int64]struct{}) []int64 {
+	if len(allowed) == 0 {
+		return []int64{}
+	}
+
+	combined := make([]int64, 0, len(defaultDeps)+len(tempDeps))
+	for _, id := range defaultDeps {
+		if _, ok := allowed[id]; ok {
+			combined = append(combined, id)
+		}
+	}
+	for _, id := range tempDeps {
+		if _, ok := allowed[id]; ok {
+			combined = append(combined, id)
+		}
+	}
+
+	if len(combined) == 0 {
+		return []int64{}
+	}
+
+	return normalizeDependencyIDs(combined)
 }
 
 // toBatchResponse 转换 Batch 模型为 BatchResponse DTO

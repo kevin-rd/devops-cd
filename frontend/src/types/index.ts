@@ -184,6 +184,14 @@ export interface ApplicationType {
   color: string
 }
 
+export interface AppTypeConfigInfo {
+  label: string
+  description?: string
+  icon?: string
+  color?: string
+  dependencies?: string[]
+}
+
 // Batch Types
 export interface Batch {
   id: number
@@ -213,6 +221,7 @@ export interface Batch {
   total_apps?: number // 应用总数（详情接口分页）
   app_page?: number // 当前页码（详情接口分页）
   app_page_size?: number // 每页数量（详情接口分页）
+  app_type_configs?: Record<string, AppTypeConfigInfo>
 }
 
 // 构建摘要（用于 recent_builds）
@@ -260,6 +269,7 @@ export interface ReleaseApp {
   release_notes?: string
   status: string
   is_locked: boolean
+  reason?: string
   pre_deploy_status?: string
   prod_deploy_status?: string
   deploy_retry_count?: number
@@ -269,6 +279,8 @@ export interface ReleaseApp {
   created_at: string
   updated_at: string
   recent_builds?: BuildSummary[] // 最近的构建记录（自上次部署以来）
+  default_depends_on?: number[]
+  temp_depends_on?: number[]
 }
 
 export interface CreateBatchRequest {
@@ -307,6 +319,21 @@ export interface BatchActionRequest {
   action: 'seal' | 'start_pre_deploy' | 'finish_pre_deploy' | 'start_prod_deploy' | 'finish_prod_deploy' | 'complete' | 'cancel'
   operator: string
   reason?: string
+}
+
+export interface UpdateReleaseDependenciesRequest {
+  batch_id: number
+  operator: string
+  temp_depends_on: number[]
+}
+
+export interface ReleaseDependenciesResponse {
+  batch_id: number
+  release_app_id: number
+  app_id: number
+  default_depends_on: number[]
+  temp_depends_on: number[]
+  updated_at: string
 }
 
 export interface BatchApproveRequest {

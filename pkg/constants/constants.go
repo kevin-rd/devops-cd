@@ -57,10 +57,11 @@ const (
 
 // DeploymentStatus 部署状态
 const (
-	DeploymentStatusPending = "pending"
-	DeploymentStatusRunning = "running"
-	DeploymentStatusSuccess = "success"
-	DeploymentStatusFailed  = "failed"
+	DeploymentStatusPending             = "pending"
+	DeploymentStatusRunning             = "running"
+	DeploymentStatusSuccess             = "success"
+	DeploymentStatusFailed              = "failed"
+	DeploymentStatusWaitingDependencies = "waiting_dependencies"
 )
 
 const (
@@ -94,94 +95,14 @@ const (
 	GitTypeGitHub = "github"
 )
 
-// 应用类型
+// 应用类型, 使用配置文件查看
 const (
 	AppTypeWeb    = "static"
 	AppTypeNode   = "node"
 	appTypeJava   = "java"
 	AppTypeGo     = "go"
-	APpTypePython = "py"
+	AppTypePython = "py"
 )
-
-// ValidAppTypes 有效的应用类型列表（用于验证）
-var ValidAppTypes = []string{
-	AppTypeWeb,
-	AppTypeNode,
-	appTypeJava,
-	AppTypeGo,
-	APpTypePython,
-}
-
-// IsValidAppType 验证应用类型是否有效
-func IsValidAppType(appType string) bool {
-	for _, valid := range ValidAppTypes {
-		if appType == valid {
-			return true
-		}
-	}
-	return false
-}
-
-// AppTypeMetadata 应用类型元数据
-type AppTypeMetadata struct {
-	Value       string
-	Label       string
-	Description string
-	Icon        string
-	Color       string
-}
-
-// GetAppTypeMetadata 获取应用类型元数据列表
-func GetAppTypeMetadata() []AppTypeMetadata {
-	return []AppTypeMetadata{
-		{
-			Value:       AppTypeWeb,
-			Label:       "静态网站",
-			Description: "纯静态网站，使用Nginx部署",
-			Icon:        "html5",
-			Color:       "#E34F26",
-		},
-		{
-			Value:       AppTypeNode,
-			Label:       "Node.js应用",
-			Description: "Node.js/Express/Nest.js等应用",
-			Icon:        "nodejs",
-			Color:       "#339933",
-		},
-		{
-			Value:       appTypeJava,
-			Label:       "Java应用",
-			Description: "Spring Boot/Spring Cloud等应用",
-			Icon:        "java",
-			Color:       "#007396",
-		},
-		{
-			Value:       AppTypeGo,
-			Label:       "Go应用",
-			Description: "Golang应用",
-			Icon:        "go",
-			Color:       "#00ADD8",
-		},
-		{
-			Value:       APpTypePython,
-			Label:       "Python应用",
-			Description: "Python/Django/Flask等应用",
-			Icon:        "python",
-			Color:       "#3776AB",
-		},
-	}
-}
-
-// GetAppTypeLabel 获取应用类型的显示名称
-func GetAppTypeLabel(appType string) string {
-	metadata := GetAppTypeMetadata()
-	for _, meta := range metadata {
-		if meta.Value == appType {
-			return meta.Label
-		}
-	}
-	return appType
-}
 
 // 环境类型
 const (
