@@ -13,8 +13,9 @@ import {
   Alert,
   Modal,
   Typography,
+  Select,
 } from 'antd'
-import { CheckCircleOutlined, FormOutlined, AppstoreOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, FormOutlined, AppstoreOutlined, ExclamationCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { ColumnsType } from 'antd/es/table'
@@ -66,7 +67,7 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
   const [searchKeyword, setSearchKeyword] = useState('')
   const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState('')
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedAppsMap, setSelectedAppsMap] = useState<Record<number, SelectedAppSnapshot>>({})
 
@@ -161,36 +162,47 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
     setSearchKeyword('')
     setDebouncedSearchKeyword('')
     setExpandedRowKeys([])
-    setPageSize(10)
+    setPageSize(20)
     setCurrentPage(1)
     setSelectedAppsMap({})
     onClose()
   }
 
+  // 步骤切换处理 - 验证必填字段
+  const handleStepChange = (step: number) => {
+    // 如果要切换到步骤2（应用管理），先验证基本信息
+    if (step === 1) {
+      form.validateFields(['batch_number'])
+        .then(() => {
+          // 重置分页状态
+          setCurrentPage(1)
+          setPageSize(20)
+
+          // 初始化应用选择列表
+          if (appSelections.length === 0) {
+            setAppSelections(
+              applications.map((app) => ({
+                ...app,
+                selected: false,
+                releaseNotes: '',
+              }))
+            )
+          }
+
+          setCurrentStep(step)
+        })
+        .catch((error) => {
+          console.error('Validation failed:', error)
+          message.warning('请先填写批次编号')
+        })
+    } else {
+      setCurrentStep(step)
+    }
+  }
+
   // 步骤1：提交基本信息
   const handleStep1Submit = async () => {
-    try {
-      await form.validateFields(['batch_number', 'release_notes'])
-      
-      // 重置分页状态
-      setCurrentPage(1)
-      setPageSize(10)
-      
-      // 初始化应用选择列表
-      if (appSelections.length === 0) {
-        setAppSelections(
-          applications.map((app) => ({
-            ...app,
-            selected: false,
-            releaseNotes: '',
-          }))
-        )
-      }
-      
-      setCurrentStep(1)
-    } catch (error) {
-      console.error('Validation failed:', error)
-    }
+    handleStepChange(1)
   }
 
   // 步骤2：创建批次
@@ -453,7 +465,7 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
           onChange={(e) => handleSelectAllChange(e.target.checked)}
         />
       ),
-      width: 50,
+      width: 30,
       render: (_: any, record: AppSelection) => (
         <Checkbox
           checked={record.selected}
@@ -479,6 +491,14 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
           record.image_tag?.toLowerCase().includes(keyword)
         )
       },
+      render: (text: string, record: AppSelection) => (
+        <span
+          style={{ cursor: 'pointer' }}
+          onClick={() => toggleAppSelection(record)}
+        >
+          {text}
+        </span>
+      ),
     },
     {
       title: t('batch.appType'),
@@ -489,8 +509,8 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
     },
     {
       title: t('application.repository'),
-      dataIndex: 'repo_name',
-      key: 'repo_name',
+      dataIndex: 'repo_full_name',
+      key: 'repo_full_name',
       width: 200,
       ellipsis: true,
     },
@@ -498,12 +518,12 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
       title: t('batch.currentVersion'),
       dataIndex: 'deployed_tag',
       key: 'deployed_tag',
-      width: 120,
+      width: 150,
       ellipsis: true,
       render: (tag: string) => tag || <Tag color="default">-</Tag>,
     },
     {
-      title: '最新版本',
+      title: t('build.latestBuild'),
       key: 'latest_version',
       width: 180,
       ellipsis: true,
@@ -587,14 +607,17 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
       className="batch-create-drawer"
     >
       {/* 步骤指示器 */}
-      <Steps
-        current={currentStep}
-        items={[
-          { title: t('batch.step1'), icon: <FormOutlined /> },
-          { title: t('batch.step2'), icon: <AppstoreOutlined /> },
-        ]}
-        style={{ marginBottom: 32 }}
-      />
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 0, paddingTop: 24, paddingLeft: 24, paddingRight: 24 }}>
+        <Steps
+          current={currentStep}
+          onChange={handleStepChange}
+          items={[
+            { title: t('batch.step1'), icon: <FormOutlined /> },
+            { title: t('batch.step2'), icon: <AppstoreOutlined /> },
+          ]}
+          style={{ maxWidth: 500 }}
+        />
+      </div>
 
       <Form
         form={form}
@@ -636,47 +659,103 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
 
         {/* 步骤2: 选择应用 */}
         <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
-          {/* 已选应用列表 */}
-          <Alert
-            message={
-              <div>
-                <div style={{ fontWeight: 500, marginBottom: 8 }}>
-                  已选择 {selectedCount} 个应用
-                </div>
-                {selectedCount > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {selectedAppEntries.map((app) => (
-                      <Tag
-                        key={app.id}
-                        color="blue"
-                        closable
-                        onClose={(e) => {
-                          e.preventDefault()
-                          handleDeselectSnapshot(app)
-                        }}
-                      >
-                        {app.name}
-                      </Tag>
-                    ))}
+          {/* 固定顶部区域：统计信息、搜索框和分页器 */}
+          <div
+            className="sticky-top-bar"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              background: '#fff',
+              paddingBottom: 12,
+              marginBottom: 12,
+              marginLeft: -24,
+              marginRight: -24,
+              paddingLeft: 24,
+              paddingRight: 24,
+              paddingTop: 12,
+              marginTop: 0
+            }}
+          >
+            {/* 已选应用列表 */}
+            <Alert
+              message={
+                <div>
+                  <div style={{ fontWeight: 500, marginBottom: 8 }}>
+                    已选择 {selectedCount} 个应用
                   </div>
-                )}
-              </div>
-            }
-            type={selectedCount > 0 ? 'success' : 'info'}
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-
-          {/* 搜索框 - 支持多字段搜索 */}
-          <div style={{ marginBottom: 16 }}>
-            <Input.Search
-              placeholder="搜索应用名称、代码库、Commit、Tag..."
-              allowClear
-              style={{ width: '100%' }}
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              onSearch={setSearchKeyword}
+                  {selectedCount > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {selectedAppEntries.map((app) => (
+                        <Tag
+                          key={app.id}
+                          color="blue"
+                          closable
+                          onClose={(e) => {
+                            e.preventDefault()
+                            handleDeselectSnapshot(app)
+                          }}
+                        >
+                          {app.name}
+                        </Tag>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              }
+              type={selectedCount > 0 ? 'success' : 'info'}
+              showIcon={false}
+              style={{ marginBottom: 12 }}
             />
+
+            {/* 搜索框和分页器 */}
+            <div className="search-pagination-wrapper">
+              <Input.Search
+                placeholder="搜索应用名称、代码库、Commit、Tag..."
+                allowClear
+                style={{ width: 400, minWidth: 280 }}
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+              />
+              <div style={{ flex: 1 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <span style={{ fontSize: 13, color: '#8c8c8c', whiteSpace: 'nowrap' }}>
+                  共 {totalCount || 0} 个
+                </span>
+                <Space size={4}>
+                  <Button
+                    size="small"
+                    icon={<LeftOutlined />}
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  />
+                  <span style={{ fontSize: 13, whiteSpace: 'nowrap', padding: '0 4px' }}>
+                    {currentPage} / {Math.ceil((totalCount || 0) / pageSize)}
+                  </span>
+                  <Button
+                    size="small"
+                    icon={<RightOutlined />}
+                    disabled={currentPage >= Math.ceil((totalCount || 0) / pageSize)}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  />
+                  <Select
+                    size="small"
+                    value={pageSize}
+                    onChange={(value) => {
+                      setPageSize(value)
+                      setCurrentPage(1)
+                    }}
+                    style={{ width: 90 }}
+                    options={[
+                      { label: '10/页', value: 10 },
+                      { label: '20/页', value: 20 },
+                      { label: '50/页', value: 50 },
+                      { label: '100/页', value: 100 },
+                    ]}
+                  />
+                </Space>
+              </div>
+            </div>
           </div>
 
           <Table
@@ -684,24 +763,9 @@ export default function BatchCreateDrawer({ open, onClose, onSuccess }: BatchCre
             dataSource={appSelections}
             rowKey="id"
             loading={loadingApps}
-            pagination={{
-              current: currentPage,
-              pageSize: pageSize,
-              total: totalCount,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `共 ${total} 个应用`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              onChange: (page, newPageSize) => {
-                setCurrentPage(page)
-                if (newPageSize !== pageSize) {
-                  setPageSize(newPageSize)
-                  setCurrentPage(1)
-                }
-              },
-            }}
-            scroll={{ y: 400 }}
+            pagination={false}
             size="small"
+            scroll={{ x: 900 }}
             expandable={{
               expandedRowRender: (record) => (
                 <div style={{ padding: '12px 24px' }}>

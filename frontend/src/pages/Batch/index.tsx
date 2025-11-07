@@ -1,52 +1,115 @@
-import { useState, useEffect, useMemo } from 'react'
+import {useEffect, useMemo, useState} from 'react'
 import {
-  Table,
-  Card,
   Button,
-  Input,
-  Select,
-  Space,
-  Tag,
-  message,
+  Card,
   DatePicker,
+  Input,
+  message,
   Modal,
   Pagination,
+  Radio,
+  Select,
+  Space,
   Spin,
+  Table,
+  Tag,
   Tooltip,
 } from 'antd'
 import {
-  PlusOutlined,
-  ReloadOutlined,
-  EditOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EditOutlined,
+  ExclamationCircleOutlined,
   PlayCircleOutlined,
+  PlusOutlined,
+  ReloadOutlined,
   SaveOutlined,
   UndoOutlined,
-  ExclamationCircleOutlined,
 } from '@ant-design/icons'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {useTranslation} from 'react-i18next'
 import dayjs from 'dayjs'
-import type { ColumnsType } from 'antd/es/table'
-import { batchService } from '@/services/batch'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/authStore'
-import { StatusTag } from '@/components/StatusTag'
-import { BatchTimeline } from '@/components/BatchTimeline'
+import isoWeek from 'dayjs/plugin/isoWeek'
+dayjs.extend(isoWeek)
+
+import type {ColumnsType} from 'antd/es/table'
+import {batchService} from '@/services/batch'
+import {useNavigate} from 'react-router-dom'
+import {useAuthStore} from '@/stores/authStore'
+import {StatusTag} from '@/components/StatusTag'
+import {BatchTimeline} from '@/components/BatchTimeline'
 import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
-import type { Batch, BatchQueryParams, ReleaseApp, BatchActionRequest, BuildSummary } from '@/types'
+import type {Batch, BatchActionRequest, BatchQueryParams, BuildSummary, ReleaseApp} from '@/types'
 import './index.css'
 
-const { RangePicker } = DatePicker
-const { TextArea } = Input
+const {RangePicker} = DatePicker
+const {TextArea} = Input
+
+
+// 格式化创建时间，显示周几和相对时间
+const formatCreatedTime = (createdAt: string): { time: string; dayInfo: string } => {
+  const created = dayjs(createdAt).startOf('day')
+  const now = dayjs().startOf('day')
+
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const weekDay = weekDays[created.day()]
+
+  // 可选：周一为一周起点（国内习惯）
+  const startOfThisWeek = now.startOf('isoWeek')  // 周一
+  const startOfLastWeek = startOfThisWeek.subtract(1, 'week')
+  const startOfThisMonth = now.startOf('month')
+
+  const diffDays = now.diff(created, 'day')
+
+  let dayInfo = ''
+
+  // 今天
+  if (diffDays === 0) {
+    dayInfo = `今天 ${weekDay}`
+  }
+  // 昨天
+  else if (diffDays === 1) {
+    dayInfo = `昨天 ${weekDay}`
+  }
+  // 本周（周一到昨天）
+  else if (created.isAfter(startOfThisWeek) && created.isBefore(now)) {
+    dayInfo = `本周 ${weekDay}`
+  }
+  // 上周（上周一 ~ 上周日）
+  else if (created.isAfter(startOfLastWeek) && created.isBefore(startOfThisWeek)) {
+    dayInfo = `上周 ${weekDay}`
+  }
+  // 上上周及更早：按周数计算
+  else if (diffDays < 90) { // 3个月内用“周”显示
+    const weeksAgo = Math.ceil(diffDays / 7)
+    if (weeksAgo === 2) {
+      dayInfo = `上上周 ${weekDay}`
+    } else {
+      dayInfo = `${weeksAgo}周前 ${weekDay}`
+    }
+  }
+  // 上个月
+  else if (created.isAfter(startOfThisMonth.subtract(1, 'month')) && created.isBefore(startOfThisMonth)) {
+    dayInfo = `上个月 ${weekDay}`
+  }
+  // 更早：按月
+  else {
+    const monthsAgo = Math.floor(diffDays / 30)
+    dayInfo = monthsAgo === 1 ? `上个月 ${weekDay}` : `${monthsAgo}个月前 ${weekDay}`
+  }
+
+  return {
+    time: created.format('YYYY-MM-DD HH:mm'),
+    dayInfo
+  }
+}
 
 export default function BatchList() {
-  const { t } = useTranslation()
+  const {t} = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const {user} = useAuthStore()
   const [params, setParams] = useState<BatchQueryParams>({
     page: 1,
     page_size: 20,
@@ -63,8 +126,15 @@ export default function BatchList() {
   const [refreshingList, setRefreshingList] = useState(false)
   const [refreshingDetails, setRefreshingDetails] = useState(false)
 
+  // 审批相关状态
+  const [approvalModalVisible, setApprovalModalVisible] = useState(false)
+  const [approvalBatchId, setApprovalBatchId] = useState<number | null>(null)
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve')
+  const [approvalReason, setApprovalReason] = useState('')
+  const [approvalLoading, setApprovalLoading] = useState(false)
+
   // 【新增】每个批次的应用列表分页状态 {batchId: {page, pageSize}}
-  const [batchAppPagination, setBatchAppPagination] = useState<Record<number, {page: number, pageSize: number}>>({})
+  const [batchAppPagination, setBatchAppPagination] = useState<Record<number, { page: number, pageSize: number }>>({})
 
   // 【新增】每个批次的构建修改状态 {batchId: {appId: buildId}}
   const [buildChanges, setBuildChanges] = useState<Record<number, Record<number, number>>>({})
@@ -76,7 +146,7 @@ export default function BatchList() {
   // 发起人防抖效果
   useEffect(() => {
     const timer = setTimeout(() => {
-      setParams((prev) => ({ ...prev, initiator: initiatorInput || undefined, page: 1 }))
+      setParams((prev) => ({...prev, initiator: initiatorInput || undefined, page: 1}))
     }, 500)
     return () => clearTimeout(timer)
   }, [initiatorInput])
@@ -84,13 +154,13 @@ export default function BatchList() {
   // 关键词防抖效果
   useEffect(() => {
     const timer = setTimeout(() => {
-      setParams((prev) => ({ ...prev, keyword: keywordInput || undefined, page: 1 }))
+      setParams((prev) => ({...prev, keyword: keywordInput || undefined, page: 1}))
     }, 500)
     return () => clearTimeout(timer)
   }, [keywordInput])
 
   // 查询批次列表 - 如果有待部署中的批次，每5秒自动刷新
-  const { data: batchResponse, isLoading, refetch } = useQuery({
+  const {data: batchResponse, isLoading, refetch} = useQuery({
     queryKey: ['batchList', params],
     queryFn: async () => {
       const res = await batchService.list(params)
@@ -130,13 +200,13 @@ export default function BatchList() {
   const total = batchResponse?.total || 0
 
   // 查询批次详情（用于展开行 - 完整详情，不轮询）
-  const { data: batchDetailsMap = {}, refetch: refetchDetails, isFetching: isFetchingDetails } = useQuery({
+  const {data: batchDetailsMap = {}, refetch: refetchDetails, isFetching: isFetchingDetails} = useQuery({
     queryKey: ['batchDetails', expandedRowKeys, batchAppPagination],
     queryFn: async () => {
       const detailsMap: Record<number, Batch> = {}
       await Promise.all(
         expandedRowKeys.map(async (id) => {
-          const pagination = batchAppPagination[id] || { page: 1, pageSize: 20 }
+          const pagination = batchAppPagination[id] || {page: 1, pageSize: 20}
           const res = await batchService.get(id, pagination.page, pagination.pageSize)
           detailsMap[id] = res.data as Batch
         })
@@ -167,13 +237,13 @@ export default function BatchList() {
   // 轻量级状态轮询（仅用于部署中的批次，不设置loading状态）
   // 注意：初次展开时不调用，因为 batch 详情接口已包含状态信息
   // 只在轮询周期（每5秒）时才调用，用于更新状态
-  const { data: batchStatusMap = {} } = useQuery({
+  const {data: batchStatusMap = {}} = useQuery({
     queryKey: ['batchStatus', expandedRowKeys, batchAppPagination],
     queryFn: async () => {
       const statusMap: Record<number, Batch> = {}
       await Promise.all(
         expandedRowKeys.map(async (id) => {
-          const pagination = batchAppPagination[id] || { page: 1, pageSize: 20 }
+          const pagination = batchAppPagination[id] || {page: 1, pageSize: 20}
           const res = await batchService.getStatus(id, pagination.page, pagination.pageSize)
           statusMap[id] = res.data as Batch
         })
@@ -186,7 +256,7 @@ export default function BatchList() {
     refetchOnMount: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: ( ) => {
+    refetchInterval: () => {
       if (document.hidden) {
         return 30_000;
       }
@@ -210,16 +280,40 @@ export default function BatchList() {
           // 优先使用详情数据，其次使用状态数据
           if (detail) {
             // 合并详情数据到列表项，优先使用详情数据
+            // 注意：保留 item 的 app_count 等列表字段
             return {
               ...item,
               ...detail,
               // 确保关键字段使用最新的值
               status: detail.status ?? item.status,
               approval_status: detail.approval_status ?? item.approval_status,
+              app_count: item.app_count, // 保留列表的 app_count
             }
           } else if (status) {
             // 只更新状态相关字段，保留列表项的其他数据
             // 注意：状态接口返回 sealed_at，而详情接口返回 tagged_at
+            // 合并应用数据：保留列表项的完整数据，只更新状态字段
+            let mergedApps = item.apps
+            if (status.apps && status.apps.length > 0 && item.apps && item.apps.length > 0) {
+              // 创建状态映射表
+              const statusMap = new Map(
+                status.apps.map((app: any) => [app.app_id, {status: app.status, is_locked: app.is_locked}])
+              )
+
+              // 更新列表数据中的状态字段
+              mergedApps = item.apps.map((app) => {
+                const statusUpdate = statusMap.get(app.app_id)
+                if (statusUpdate) {
+                  return {
+                    ...app,
+                    status: statusUpdate.status,
+                    is_locked: statusUpdate.is_locked,
+                  }
+                }
+                return app
+              })
+            }
+
             return {
               ...item,
               status: status.status ?? item.status,
@@ -232,6 +326,7 @@ export default function BatchList() {
               final_accepted_at: status.final_accepted_at ?? item.final_accepted_at,
               cancelled_at: status.cancelled_at ?? item.cancelled_at,
               updated_at: status.updated_at ?? item.updated_at,
+              apps: mergedApps, // 使用合并后的应用数据
             }
           }
           return item
@@ -252,8 +347,8 @@ export default function BatchList() {
     onSuccess: () => {
       message.success(t('batch.actionSuccess'))
       // 使用部分匹配来刷新所有相关查询
-      queryClient.invalidateQueries({ queryKey: ['batchList'] })
-      queryClient.invalidateQueries({ queryKey: ['batchDetails'] })
+      queryClient.invalidateQueries({queryKey: ['batchList']})
+      queryClient.invalidateQueries({queryKey: ['batchDetails']})
       // 手动触发重新获取
       refetch()
     },
@@ -312,6 +407,54 @@ export default function BatchList() {
     }
   }
 
+  // 打开审批 Modal
+  const handleOpenApproval = (batchId: number) => {
+    setApprovalBatchId(batchId)
+    setApprovalAction('approve')
+    setApprovalReason('')
+    setApprovalModalVisible(true)
+  }
+
+  // 确认审批
+  const handleConfirmApproval = async () => {
+    if (approvalAction === 'reject' && !approvalReason.trim()) {
+      message.warning('请输入拒绝原因')
+      return
+    }
+
+    if (!approvalBatchId) return
+
+    setApprovalLoading(true)
+    try {
+      if (approvalAction === 'approve') {
+        await batchService.approve({
+          batch_id: approvalBatchId,
+          operator: user?.username || 'unknown',
+        })
+        message.success(t('batch.approveSuccess'))
+      } else {
+        await batchService.reject({
+          batch_id: approvalBatchId,
+          operator: user?.username || 'unknown',
+          reason: approvalReason,
+        })
+        message.success(t('batch.rejectSuccess'))
+      }
+
+      await queryClient.invalidateQueries({queryKey: ['batchList']})
+      await queryClient.invalidateQueries({queryKey: ['batchDetails']})
+      refetch()
+
+      setApprovalModalVisible(false)
+      setApprovalBatchId(null)
+      setApprovalReason('')
+    } catch (error: any) {
+      message.error(error.response?.data?.message || t('common.error'))
+    } finally {
+      setApprovalLoading(false)
+    }
+  }
+
   // 处理刷新按钮
   const handleRefresh = async () => {
     if (expandedRowKeys.length > 0) {
@@ -364,160 +507,84 @@ export default function BatchList() {
     return (
       <Space size="small" wrap>
         {(record.status === 0 || record.approval_status === 'pending') && (
-        <Button
-          size="small"
-          icon={<EditOutlined />}
-          onClick={(e) => {
-            e.stopPropagation()
-            // 优先使用已展开的详情数据，否则使用列表数据
-            const batchToEdit = batchDetailsMap[record.id] || record
-            setEditingBatch(batchToEdit)
-            setEditDrawerOpen(true)
-          }}
-        >
-          {t('common.edit')}
-        </Button>
-      )}
-
-      {record.status === 0 && (
-        <Button
-          size="small"
-          icon={<CheckCircleOutlined />}
-          onClick={(e) => {
-            e.stopPropagation()
-            handleAction(record.id, 'seal')
-          }}
-        >
-          {t('batch.seal')}
-        </Button>
-      )}
-
-      {record.approval_status === 'pending' && (
-        <>
           <Button
             size="small"
+            icon={<EditOutlined/>}
+            onClick={(e) => {
+              e.stopPropagation()
+              // 优先使用已展开的详情数据，否则使用列表数据
+              const batchToEdit = batchDetailsMap[record.id] || record
+              setEditingBatch(batchToEdit)
+              setEditDrawerOpen(true)
+            }}
+          >
+            {t('common.edit')}
+          </Button>
+        )}
+
+        {record.status === 0 && (
+          <Button
+            size="small"
+            icon={<CheckCircleOutlined/>}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleAction(record.id, 'seal')
+            }}
+          >
+            {t('batch.seal')}
+          </Button>
+        )}
+
+        {record.status === 10 && (
+          <Button
+            size="small"
+            icon={<PlayCircleOutlined/>}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleAction(record.id, 'start_pre_deploy')
+            }}
+          >
+            {t('batch.startPreDeploy')}
+          </Button>
+        )}
+        {record.status === 22 && (
+          <Button
+            size="small"
+            icon={<PlayCircleOutlined/>}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleAction(record.id, 'start_prod_deploy')
+            }}
+          >
+            {t('batch.startProdDeploy')}
+          </Button>
+        )}
+        {record.status === 32 && (
+          <Button
             type="primary"
-            icon={<CheckCircleOutlined />}
-            onClick={(e) => {
-              e.stopPropagation()
-              Modal.confirm({
-                title: t('batch.approve'),
-                content: t('batch.approveConfirm'),
-                onOk: async () => {
-                  try {
-                    await batchService.approve({
-                      batch_id: record.id,
-                      operator: user?.username || 'unknown',
-                    })
-                    message.success(t('batch.approveSuccess'))
-                    await queryClient.invalidateQueries({ queryKey: ['batchList'] })
-                    await queryClient.invalidateQueries({ queryKey: ['batchDetails'] })
-                    refetch()
-                  } catch (error: any) {
-                    message.error(error.response?.data?.message || t('common.error'))
-                  }
-                },
-              })
-            }}
-          >
-            {t('batch.approve')}
-          </Button>
-          <Button
             size="small"
-            danger
-            icon={<CloseCircleOutlined />}
+            icon={<CheckCircleOutlined/>}
             onClick={(e) => {
               e.stopPropagation()
-              Modal.confirm({
-                title: t('batch.reject'),
-                content: (
-                  <div>
-                    <div style={{ marginBottom: 8 }}>{t('batch.rejectConfirm')}</div>
-                    <Input.TextArea
-                      id="reject-reason"
-                      rows={3}
-                      placeholder={t('batch.rejectReasonPlaceholder')}
-                    />
-                  </div>
-                ),
-                onOk: async () => {
-                  const reason = (document.getElementById('reject-reason') as HTMLTextAreaElement)?.value
-                  if (!reason?.trim()) {
-                    message.warning(t('batch.rejectReasonRequired'))
-                    return Promise.reject()
-                  }
-                  try {
-                    await batchService.reject({
-                      batch_id: record.id,
-                      operator: user?.username || 'unknown',
-                      reason,
-                    })
-                    message.success(t('batch.rejectSuccess'))
-                    await queryClient.invalidateQueries({ queryKey: ['batchList'] })
-                    await queryClient.invalidateQueries({ queryKey: ['batchDetails'] })
-                    refetch()
-                  } catch (error: any) {
-                    message.error(error.response?.data?.message || t('common.error'))
-                  }
-                },
-              })
+              handleAction(record.id, 'prod_acceptance')
             }}
           >
-            {t('batch.reject')}
+            {t('batch.prodAcceptance')}
           </Button>
-        </>
-      )}
-
-      {record.status === 10 && (
+        )}
         <Button
+          type="link"
           size="small"
-          icon={<PlayCircleOutlined />}
+          danger
           onClick={(e) => {
             e.stopPropagation()
-            handleAction(record.id, 'start_pre_deploy')
+            handleAction(record.id, 'cancel')
           }}
+          disabled={record.status >= 40 || record.status === 90}
         >
-          {t('batch.startPreDeploy')}
+          {t('batch.cancelBatch')}
         </Button>
-      )}
-      {record.status === 22 && (
-        <Button
-          size="small"
-          icon={<PlayCircleOutlined />}
-          onClick={(e) => {
-            e.stopPropagation()
-            handleAction(record.id, 'start_prod_deploy')
-          }}
-        >
-          {t('batch.startProdDeploy')}
-        </Button>
-      )}
-      {record.status === 32 && (
-        <Button
-          type="primary"
-          size="small"
-          icon={<CheckCircleOutlined />}
-          onClick={(e) => {
-            e.stopPropagation()
-            handleAction(record.id, 'prod_acceptance')
-          }}
-        >
-          {t('batch.prodAcceptance')}
-        </Button>
-      )}
-      <Button
-        type="link"
-        size="small"
-        danger
-        onClick={(e) => {
-          e.stopPropagation()
-          handleAction(record.id, 'cancel')
-        }}
-        disabled={record.status >= 40 || record.status === 90}
-      >
-        {t('batch.cancelBatch')}
-      </Button>
-    </Space>
+      </Space>
     )
   }
 
@@ -539,7 +606,7 @@ export default function BatchList() {
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <Spin />
+            <Spin/>
           </div>
         </div>
       )
@@ -551,7 +618,7 @@ export default function BatchList() {
     const canEditBuilds = batchStatusValue < 10 // 只有草稿状态可以修改
 
     // 获取当前批次的分页状态
-    const pagination = batchAppPagination[batchId] || { page: 1, pageSize: 20 }
+    const pagination = batchAppPagination[batchId] || {page: 1, pageSize: 20}
 
     // 获取当前批次的构建修改状态
     const currentBuildChanges = buildChanges[batchId] || {}
@@ -579,13 +646,13 @@ export default function BatchList() {
 
         // 清空该批次的修改记录
         setBuildChanges(prev => {
-          const newChanges = { ...prev }
+          const newChanges = {...prev}
           delete newChanges[batchId]
           return newChanges
         })
 
         // 刷新批次详情
-        await queryClient.invalidateQueries({ queryKey: ['batchDetails'] })
+        await queryClient.invalidateQueries({queryKey: ['batchDetails']})
         await refetchDetails()
       } catch (error: any) {
         message.error(error.response?.data?.message || '更新失败，请重试')
@@ -595,7 +662,7 @@ export default function BatchList() {
     // 还原/取消所有修改
     const handleCancelBuildChanges = () => {
       setBuildChanges(prev => {
-        const newChanges = { ...prev }
+        const newChanges = {...prev}
         delete newChanges[batchId]
         return newChanges
       })
@@ -606,7 +673,7 @@ export default function BatchList() {
     const handlePaginationChange = (page: number, pageSize: number) => {
       setBatchAppPagination(prev => ({
         ...prev,
-        [batchId]: { page, pageSize }
+        [batchId]: {page, pageSize}
       }))
     }
 
@@ -619,9 +686,9 @@ export default function BatchList() {
         ellipsis: true,
         render: (name: string, record: ReleaseApp) => (
           <div>
-            <div style={{ fontWeight: 500, fontSize: 13 }}>{name}</div>
+            <div style={{fontWeight: 500, fontSize: 13}}>{name}</div>
             {record.release_notes && (
-              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2 }}>
+              <div style={{fontSize: 12, color: '#8c8c8c', marginTop: 2}}>
                 {record.release_notes}
               </div>
             )}
@@ -634,17 +701,17 @@ export default function BatchList() {
         key: 'app_type',
         width: 80,
         render: (type: string) => (
-          <Tag color="blue" style={{ fontSize: 11 }}>{type}</Tag>
+          <Tag color="blue" style={{fontSize: 12}}>{type}</Tag>
         ),
       },
       {
-        title: '代码库',
+        title: t('application.repository'),
         dataIndex: 'repo_full_name',
         key: 'repo_full_name',
         width: 180,
         ellipsis: true,
         render: (text: string) => (
-          <span style={{ fontSize: 11 }}>{text || '-'}</span>
+          <span style={{fontSize: 13}}>{text || '-'}</span>
         ),
       },
       {
@@ -653,7 +720,7 @@ export default function BatchList() {
         width: 150,
         ellipsis: true,
         render: (_: any, record: ReleaseApp) => (
-          <span style={{ fontSize: 11 }}>
+          <span style={{fontSize: 13}}>
             {isBatchCompleted ? (record.previous_deployed_tag || '-') : (record.deployed_tag || '-')}
           </span>
         ),
@@ -681,17 +748,17 @@ export default function BatchList() {
             }
 
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Tooltip title={displayLabel} placement="topLeft">
+              <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                <Tooltip title={displayLabel} placement="topRight">
                   <Select
-                    style={{ width: 'calc(100% - 22px)' }}
+                    style={{width: 'calc(100% - 22px)', fontSize: 13}}
                     value={currentValue}
                     onChange={(value) => handleBuildChange(record.app_id, value)}
                     size="small"
                     optionLabelProp="label"
                     status={isModified ? 'warning' : undefined}
                     dropdownMatchSelectWidth={false}
-                    dropdownStyle={{ width: 320 }}
+                    dropdownStyle={{width: 280}}
                   >
                     {record.recent_builds.map((build: BuildSummary) => {
                       const isInitial = build.id === initialBuildId
@@ -701,10 +768,10 @@ export default function BatchList() {
                           value={build.id}
                           label={formatLabel(build.image_tag)}
                         >
-                          <div style={{ fontSize: 11 }}>
+                          <div style={{fontSize: 11}}>
                             <div>
                               <code style={{
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: isInitial ? 600 : 400,
                               }}>
                                 {build.image_tag}
@@ -713,7 +780,7 @@ export default function BatchList() {
                             <div
                               style={{
                                 color: '#8c8c8c',
-                                fontSize: 10,
+                                fontSize: 11,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
@@ -726,14 +793,14 @@ export default function BatchList() {
                             <div
                               style={{
                                 color: '#8c8c8c',
-                                fontSize: 9,
+                                fontSize: 10,
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                               }}
                             >
                               <span>{dayjs(build.build_created).format('YYYY-MM-DD HH:mm')}</span>
-                              <span style={{ marginLeft: 8, flexShrink: 0 }}>#{build.id}</span>
+                              <span style={{marginLeft: 8, flexShrink: 0}}>#{build.id}</span>
                             </div>
                           </div>
                         </Select.Option>
@@ -742,20 +809,20 @@ export default function BatchList() {
                   </Select>
                 </Tooltip>
                 {isModified ? (
-                  <Tooltip title="已修改">
-                    <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 14 }} />
+                  <Tooltip title={record.target_tag + ' -> ' + displayLabel} style={{fontSize: 10}}>
+                    <ExclamationCircleOutlined style={{color: '#faad14', fontSize: 14}}/>
                   </Tooltip>
                 ) : (
-                  <span style={{ width: 14, height: 14 }} />
+                  <span style={{width: 14, height: 14}}/>
                 )}
               </div>
             )
           }
           // 否则显示普通文本
           return (
-            <div style={{ fontSize: 11 }}>
+            <div style={{fontSize: 13}}>
               {record.target_tag ? (
-                <code style={{ fontSize: 11 }}>{record.target_tag}</code>
+                <code style={{fontSize: 13}}>{record.target_tag}</code>
               ) : (
                 '-'
               )}
@@ -769,7 +836,7 @@ export default function BatchList() {
         key: 'commit_message',
         ellipsis: true,
         render: (text: string) => (
-          <span style={{ fontSize: 11 }}>{text || '-'}</span>
+          <span style={{fontSize: 13}}>{text || '-'}</span>
         ),
       },
     ]
@@ -781,9 +848,10 @@ export default function BatchList() {
       <div className="batch-card-detail">
         <div className="batch-card-detail-sections">
           <div>
-            <div className="batch-card-detail-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="batch-card-detail-section-title"
+                 style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <span>{t('batch.appList')} ({totalApps})</span>
-              <Space size="small" style={{ height: 28, alignItems: 'center' }}>
+              <Space size="small" style={{height: 28, alignItems: 'center'}}>
                 {/* 分页器 */}
                 {showPagination && (
                   <Pagination
@@ -802,7 +870,7 @@ export default function BatchList() {
                 {Object.keys(currentBuildChanges).length > 0 && (
                   <>
                     <Button
-                      icon={<UndoOutlined />}
+                      icon={<UndoOutlined/>}
                       onClick={handleCancelBuildChanges}
                       size="small"
                     >
@@ -810,7 +878,7 @@ export default function BatchList() {
                     </Button>
                     <Button
                       type="primary"
-                      icon={<SaveOutlined />}
+                      icon={<SaveOutlined/>}
                       onClick={handleSaveBuildChanges}
                       size="small"
                     >
@@ -846,7 +914,7 @@ export default function BatchList() {
                     transform: 'translate(-50%, -50%)',
                     zIndex: 10
                   }}>
-                    <Spin />
+                    <Spin/>
                   </div>
                 )}
               </div>
@@ -864,19 +932,19 @@ export default function BatchList() {
     const isDetailLoading = isExpanded && (isFetchingDetails || refreshingDetails)
 
     // 合并数据：优先使用 detail（完整详情），其次使用 status（轻量状态），最后使用 record（列表数据）
-    const mergedBatch = detail ? detail : (status ? { ...record, ...status } : record)
+    const mergedBatch = detail ? detail : (status ? {...record, ...status} : record)
 
     // 根据状态添加 CSS 类（使用最新的状态）
     const currentStatus = mergedBatch.status
     const statusClass =
       currentStatus === 0 ? 'status-draft' :            // 草稿 - 淡黄色
-      currentStatus === 10 ? 'status-sealed' :          // 已封板 - 紫色
-      currentStatus === 20 || currentStatus === 21 ? 'status-pre-deploying' : // 预发布中 - 蓝色流光
-      currentStatus === 22 ? 'status-pre-deployed' :     // 预发布完成 - 固定蓝色
-      currentStatus === 30 || currentStatus === 31 ? 'status-prod-deploying' : // 生产部署中 - 橙色流光
-      currentStatus === 32 ? 'status-prod-deployed' :    // 生产部署完成 - 固定橙色
-      currentStatus === 40 ? 'status-completed' :        // 已完成 - 绿色
-      currentStatus === 90 ? 'status-cancelled' : ''     // 已取消 - 灰色
+        currentStatus === 10 ? 'status-sealed' :          // 已封板 - 紫色
+          currentStatus === 20 || currentStatus === 21 ? 'status-pre-deploying' : // 预发布中 - 蓝色流光
+            currentStatus === 22 ? 'status-pre-deployed' :     // 预发布完成 - 固定蓝色
+              currentStatus === 30 || currentStatus === 31 ? 'status-prod-deploying' : // 生产部署中 - 橙色流光
+                currentStatus === 32 ? 'status-prod-deployed' :    // 生产部署完成 - 固定橙色
+                  currentStatus === 40 ? 'status-completed' :        // 已完成 - 绿色
+                    currentStatus === 90 ? 'status-cancelled' : ''     // 已取消 - 灰色
 
     // 时间轴使用合并后的数据
     const timelineBatch: Batch = mergedBatch
@@ -897,25 +965,43 @@ export default function BatchList() {
           {record.release_notes ? (
             <Tooltip
               title={record.release_notes}
-              color="#1890ff"
-              overlayInnerStyle={{ fontSize: '12px', padding: '6px 10px' }}
+              overlayInnerStyle={{fontSize: '12px', padding: '6px 10px'}}
             >
               {batchNumberContent}
             </Tooltip>
           ) : (
             batchNumberContent
           )}
+          <div className="batch-cell batch-cell-created">
+            {(() => {
+              const {time, dayInfo} = formatCreatedTime(record.created_at)
+              return (
+                <div>
+                  <div style={{fontSize: '12px', fontWeight: 500}}>{dayInfo}</div>
+                  <div style={{fontSize: '11px', color: '#8c8c8c'}}>{time}</div>
+                </div>
+              )
+            })()}
+          </div>
           <div className="batch-cell batch-cell-apps">
             <span className="batch-app-count">{record.app_count || 0} {t('batch.apps')}</span>
           </div>
-          <div className="batch-cell batch-cell-status">
-            <StatusTag status={currentStatus} />
-          </div>
           <div className="batch-cell batch-cell-approval">
-            <StatusTag status={currentStatus} approvalStatus={detail?.approval_status ?? record.approval_status} showApproval />
-          </div>
-          <div className="batch-cell batch-cell-created">
-            {dayjs(record.created_at).format('YYYY-MM-DD HH:mm')}
+            <StatusTag
+              status={currentStatus}
+              approvalStatus={detail?.approval_status ?? record.approval_status}
+              showApproval
+              onApprovalClick={() => handleOpenApproval(record.id)}
+              approvalTime={
+                detail?.approved_at
+                  ? dayjs(detail.approved_at).format('MM-DD HH:mm')
+                  : record.approved_at
+                  ? dayjs(record.approved_at).format('MM-DD HH:mm')
+                  : undefined
+              }
+              rejectReason={detail?.reject_reason ?? record.reject_reason}
+              approvedBy={detail?.approved_by ?? record.approved_by}
+            />
           </div>
           <div
             className="batch-cell batch-cell-actions"
@@ -935,7 +1021,7 @@ export default function BatchList() {
             // 跳转到洞察页面
             navigate(`/batch/${record.id}/insights`)
           }}
-          style={{ cursor: 'pointer' }}
+          style={{cursor: 'pointer'}}
         >
           <BatchTimeline
             batch={timelineBatch}
@@ -952,7 +1038,7 @@ export default function BatchList() {
     if (isLoading && !batchResponse) {
       return (
         <div className="batch-card-empty">
-          <Spin />
+          <Spin/>
         </div>
       )
     }
@@ -967,10 +1053,9 @@ export default function BatchList() {
         <div className="batch-card-list">
           <div className="batch-card-header">
             <div className="batch-header-cell batch-cell-number">{t('batch.batchNumber')}</div>
-            <div className="batch-header-cell batch-cell-apps">{t('batch.appCount')}</div>
-            <div className="batch-header-cell batch-cell-status">{t('batch.status')}</div>
-            <div className="batch-header-cell batch-cell-approval">{t('batch.approvalStatus')}</div>
             <div className="batch-header-cell batch-cell-created">{t('batch.createdAt')}</div>
+            <div className="batch-header-cell batch-cell-apps">{t('batch.appCount')}</div>
+            <div className="batch-header-cell batch-cell-approval">{t('batch.approvalStatus')}</div>
             <div className="batch-header-cell batch-cell-actions">{t('common.action')}</div>
           </div>
           {batches.length ? (
@@ -981,7 +1066,7 @@ export default function BatchList() {
         </div>
         {shouldShowRefreshing && (
           <div className="batch-list-refresh-mask">
-            <Spin />
+            <Spin/>
           </div>
         )}
       </div>
@@ -996,7 +1081,7 @@ export default function BatchList() {
         extra={
           <Space>
             <Button
-              icon={<ReloadOutlined />}
+              icon={<ReloadOutlined/>}
               onClick={handleRefresh}
               loading={refreshingDetails || (refreshingList && expandedRowKeys.length === 0)}
             >
@@ -1004,7 +1089,7 @@ export default function BatchList() {
             </Button>
             <Button
               type="primary"
-              icon={<PlusOutlined />}
+              icon={<PlusOutlined/>}
               onClick={() => setCreateDrawerOpen(true)}
             >
               {t('batch.create')}
@@ -1019,9 +1104,9 @@ export default function BatchList() {
               mode="multiple"
               placeholder={t('batch.filterByStatus')}
               allowClear
-              style={{ width: 200 }}
+              style={{width: 200}}
               value={params.status}
-              onChange={(value) => setParams({ ...params, status: value, page: 1 })}
+              onChange={(value) => setParams({...params, status: value, page: 1})}
               maxTagCount="responsive"
             >
               <Select.Option value={0}>{t('batch.statusDraft')}</Select.Option>
@@ -1037,9 +1122,9 @@ export default function BatchList() {
             <Select
               placeholder={t('batch.filterByApproval')}
               allowClear
-              style={{ width: 130 }}
+              style={{width: 130}}
               value={params.approval_status}
-              onChange={(value) => setParams({ ...params, approval_status: value, page: 1 })}
+              onChange={(value) => setParams({...params, approval_status: value, page: 1})}
             >
               <Select.Option value="pending">{t('batch.approvalPending')}</Select.Option>
               <Select.Option value="approved">{t('batch.approvalApproved')}</Select.Option>
@@ -1050,7 +1135,7 @@ export default function BatchList() {
             <Input
               placeholder={t('batch.filterByInitiator')}
               allowClear
-              style={{ width: 150 }}
+              style={{width: 150}}
               value={initiatorInput}
               onChange={(e) => setInitiatorInput(e.target.value)}
               onClear={() => setInitiatorInput('')}
@@ -1059,22 +1144,22 @@ export default function BatchList() {
             <Input
               placeholder={t('batch.filterByKeyword')}
               allowClear
-              style={{ width: 200 }}
+              style={{width: 200}}
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               onClear={() => setKeywordInput('')}
             />
 
             <RangePicker
-              style={{ width: 280 }}
+              style={{width: 280}}
               format="YYYY-MM-DD"
               defaultValue={[dayjs().subtract(30, 'day'), dayjs()]}
               presets={[
-                { label: '最近3天', value: [dayjs().subtract(3, 'day'), dayjs()] },
-                { label: '最近7天', value: [dayjs().subtract(7, 'day'), dayjs()] },
-                { label: '最近14天', value: [dayjs().subtract(14, 'day'), dayjs()] },
-                { label: '最近30天', value: [dayjs().subtract(30, 'day'), dayjs()] },
-                { label: '最近90天', value: [dayjs().subtract(90, 'day'), dayjs()] },
+                {label: '最近3天', value: [dayjs().subtract(3, 'day'), dayjs()]},
+                {label: '最近7天', value: [dayjs().subtract(7, 'day'), dayjs()]},
+                {label: '最近14天', value: [dayjs().subtract(14, 'day'), dayjs()]},
+                {label: '最近30天', value: [dayjs().subtract(30, 'day'), dayjs()]},
+                {label: '最近90天', value: [dayjs().subtract(90, 'day'), dayjs()]},
               ]}
               onChange={(dates) => {
                 if (dates) {
@@ -1109,7 +1194,7 @@ export default function BatchList() {
             showQuickJumper
             showTotal={(total) => `${t('common.total')} ${total} ${t('batch.list')}`}
             onChange={(page, pageSize) => {
-              setParams({ ...params, page, page_size: pageSize })
+              setParams({...params, page, page_size: pageSize})
             }}
           />
         </div>
@@ -1129,13 +1214,71 @@ export default function BatchList() {
         okText={t('common.confirm')}
         cancelText={t('common.cancel')}
       >
-        <div style={{ marginBottom: 16 }}>{t('batch.cancelConfirm')}</div>
+        <div style={{marginBottom: 16}}>{t('batch.cancelConfirm')}</div>
         <TextArea
           rows={4}
           placeholder="请输入取消原因..."
           value={cancelReason}
           onChange={(e) => setCancelReason(e.target.value)}
         />
+      </Modal>
+
+      {/* 审批批次 Modal */}
+      <Modal
+        title="批次审批"
+        open={approvalModalVisible}
+        onOk={handleConfirmApproval}
+        onCancel={() => {
+          setApprovalModalVisible(false)
+          setApprovalBatchId(null)
+          setApprovalReason('')
+        }}
+        confirmLoading={approvalLoading}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        width={500}
+      >
+        <Space direction="vertical" style={{width: '100%'}} size="large">
+          <div>
+            <div style={{marginBottom: 12, fontWeight: 500}}>请选择审批结果：</div>
+            <Radio.Group
+              value={approvalAction}
+              onChange={(e) => setApprovalAction(e.target.value)}
+              style={{width: '100%'}}
+            >
+              <Space direction="vertical" style={{width: '100%'}}>
+                <Radio value="approve">
+                  <Space>
+                    <CheckCircleOutlined style={{color: '#52c41a'}}/>
+                    <span>审批通过</span>
+                  </Space>
+                </Radio>
+                <Radio value="reject">
+                  <Space>
+                    <CloseCircleOutlined style={{color: '#ff4d4f'}}/>
+                    <span>审批拒绝</span>
+                  </Space>
+                </Radio>
+              </Space>
+            </Radio.Group>
+          </div>
+
+          {approvalAction === 'reject' && (
+            <div>
+              <div style={{marginBottom: 8, fontWeight: 500}}>
+                拒绝原因 <span style={{color: '#ff4d4f'}}>*</span>：
+              </div>
+              <TextArea
+                rows={4}
+                placeholder="请输入拒绝原因..."
+                value={approvalReason}
+                onChange={(e) => setApprovalReason(e.target.value)}
+                maxLength={500}
+                showCount
+              />
+            </div>
+          )}
+        </Space>
       </Modal>
 
       {/* 创建批次 Drawer */}

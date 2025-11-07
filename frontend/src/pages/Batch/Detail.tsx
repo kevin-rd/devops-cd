@@ -603,12 +603,18 @@ export default function BatchDetail() {
             <StatusTag status={batch.status}/>
           </Descriptions.Item>
           <Descriptions.Item label={t('batch.approvalStatus')}>
-            <StatusTag status={0} approvalStatus={batch.approval_status} showApproval/>
-            {batch.approved_by && (
-              <span style={{marginLeft: 8, color: '#8c8c8c', fontSize: 12}}>
-                by {batch.approved_by}
-              </span>
-            )}
+            <StatusTag
+              status={batch.status}
+              approvalStatus={batch.approval_status}
+              showApproval
+              approvalTime={
+                batch.approved_at
+                  ? dayjs(batch.approved_at).format('MM-DD HH:mm')
+                  : undefined
+              }
+              rejectReason={batch.reject_reason}
+              approvedBy={batch.approved_by}
+            />
           </Descriptions.Item>
           {batch.release_notes && (
             <Descriptions.Item label={t('batch.releaseNotes')} span={2}>

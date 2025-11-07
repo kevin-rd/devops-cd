@@ -732,7 +732,7 @@ const buildGraphData = (releaseApps: ReleaseApp[]): { nodes: Node[]; edges: Edge
           id: `default-${depId}-${app.app_id}`,
           source: String(depId),
           target: String(app.app_id),
-          type: 'smoothstep', // 使用 smoothstep 让箭头自动跟随方向
+          type: 'default', // 使用 smoothstep 让箭头自动跟随方向
           animated: false,
           style: {
             stroke: '#333333',
@@ -1000,7 +1000,7 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs }: Depende
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           translateExtent={translateExtent}
           defaultEdgeOptions={{
-            type: 'default',
+            type: 'smoothstep',
           }}
         >
           <MiniMap

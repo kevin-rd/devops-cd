@@ -124,6 +124,7 @@ export default {
       endTime: 'End Time',
       link: 'Build Link',
       imageUrl: 'Image URL',
+      latestBuild: 'Latest Build',
       
       // Status
       statusSuccess: 'Success',

@@ -8,6 +8,7 @@ import {
   Input,
   message,
   Modal,
+  Radio,
   Segmented,
   Skeleton,
   Space,
@@ -19,6 +20,7 @@ import {
   ReloadOutlined,
   EditOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
   PlayCircleOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -74,6 +76,12 @@ export default function BatchInsights() {
   // 取消批次相关状态
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+
+  // 审批相关状态
+  const [approvalModalVisible, setApprovalModalVisible] = useState(false)
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve')
+  const [approvalReason, setApprovalReason] = useState('')
+  const [approvalLoading, setApprovalLoading] = useState(false)
 
   // 编辑批次相关状态
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
@@ -136,7 +144,88 @@ export default function BatchInsights() {
     staleTime: 30 * 1000,
   })
 
-  const releaseApps = batchDetail?.apps || []
+  // 检查当前批次是否处于部署中状态（用于决定是否启用状态轮询）
+  const isDeploying = useMemo(() => {
+    if (!batchDetail) return false
+    return (
+      batchDetail.status === 20 || // 预发布待触发
+      batchDetail.status === 21 || // 预发布中
+      batchDetail.status === 30 || // 生产部署待触发
+      batchDetail.status === 31    // 生产部署中
+    )
+  }, [batchDetail])
+
+  // 轻量级状态轮询（仅用于部署中的批次，不设置loading状态）
+  // 注意：初次加载时不调用，因为 batch 详情接口已包含状态信息
+  // 只在轮询周期（每5秒）时才调用，用于更新状态
+  const { data: batchStatus } = useQuery({
+    queryKey: ['batch-insights-status', currentBatchId],
+    queryFn: async () => {
+      if (!currentBatchId) return undefined
+      const res = await batchService.getStatus(currentBatchId, 1, 200)
+      return res.data as Batch
+    },
+    // 只有在有部署中的批次时才启用查询
+    enabled: isDeploying && Boolean(currentBatchId),
+    // 避免初次挂载时立即执行，只依赖轮询间隔
+    refetchOnMount: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: () => {
+      if (document.hidden) {
+        return 30_000 // 页面隐藏时30秒轮询一次
+      }
+      return 5_000 // 页面可见时5秒轮询一次
+    },
+    refetchIntervalInBackground: false,
+    staleTime: 5000,
+  })
+
+  // 合并详情数据和状态数据（优先使用状态数据）
+  const mergedBatchDetail = useMemo(() => {
+    if (!batchDetail) return undefined
+    if (!batchStatus) return batchDetail
+
+    // 合并应用数据：保留详情接口的完整数据，只更新状态字段
+    let mergedApps = batchDetail.apps
+    if (batchStatus.apps && batchStatus.apps.length > 0 && batchDetail.apps && batchDetail.apps.length > 0) {
+      // 创建状态映射表
+      const statusMap = new Map(
+        batchStatus.apps.map((app: any) => [app.app_id, { status: app.status, is_locked: app.is_locked }])
+      )
+
+      // 更新详情数据中的状态字段
+      mergedApps = batchDetail.apps.map((app) => {
+        const statusUpdate = statusMap.get(app.app_id)
+        if (statusUpdate) {
+          return {
+            ...app,
+            status: statusUpdate.status,
+            is_locked: statusUpdate.is_locked,
+          }
+        }
+        return app
+      })
+    }
+
+    // 状态数据优先级更高（更新更及时）
+    return {
+      ...batchDetail,
+      status: batchStatus.status ?? batchDetail.status,
+      approval_status: batchStatus.approval_status ?? batchDetail.approval_status,
+      tagged_at: (batchStatus as any).sealed_at ?? batchDetail.tagged_at,
+      pre_deploy_started_at: batchStatus.pre_deploy_started_at ?? batchDetail.pre_deploy_started_at,
+      pre_deploy_finished_at: batchStatus.pre_deploy_finished_at ?? batchDetail.pre_deploy_finished_at,
+      prod_deploy_started_at: batchStatus.prod_deploy_started_at ?? batchDetail.prod_deploy_started_at,
+      prod_deploy_finished_at: batchStatus.prod_deploy_finished_at ?? batchDetail.prod_deploy_finished_at,
+      final_accepted_at: batchStatus.final_accepted_at ?? batchDetail.final_accepted_at,
+      cancelled_at: batchStatus.cancelled_at ?? batchDetail.cancelled_at,
+      updated_at: batchStatus.updated_at ?? batchDetail.updated_at,
+      apps: mergedApps, // 使用合并后的应用数据
+    }
+  }, [batchDetail, batchStatus])
+
+  const releaseApps = mergedBatchDetail?.apps || []
 
   // 批次操作 Mutation
   const actionMutation = useMutation({
@@ -192,8 +281,8 @@ export default function BatchInsights() {
 
   // 打开编辑抽屉
   const handleEdit = () => {
-    if (batchDetail) {
-      setEditingBatch(batchDetail)
+    if (mergedBatchDetail) {
+      setEditingBatch(mergedBatchDetail)
       setEditDrawerOpen(true)
     }
   }
@@ -202,6 +291,53 @@ export default function BatchInsights() {
   const handleTimelineAction = (action: string) => {
     if (!currentBatchId) return
     handleAction(currentBatchId, action)
+  }
+
+  // 打开审批 Modal
+  const handleOpenApproval = () => {
+    setApprovalAction('approve')
+    setApprovalReason('')
+    setApprovalModalVisible(true)
+  }
+
+  // 确认审批
+  const handleConfirmApproval = async () => {
+    if (approvalAction === 'reject' && !approvalReason.trim()) {
+      message.warning('请输入拒绝原因')
+      return
+    }
+
+    if (!currentBatchId) return
+
+    setApprovalLoading(true)
+    try {
+      if (approvalAction === 'approve') {
+        await batchService.approve({
+          batch_id: currentBatchId,
+          operator: user?.username || 'unknown',
+        })
+        message.success(t('batch.approveSuccess'))
+      } else {
+        await batchService.reject({
+          batch_id: currentBatchId,
+          operator: user?.username || 'unknown',
+          reason: approvalReason,
+        })
+        message.success(t('batch.rejectSuccess'))
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['batch-insights-tabs'] })
+      queryClient.invalidateQueries({ queryKey: ['batch-insights-detail'] })
+      refetchTabs()
+      refetchDetail()
+      
+      setApprovalModalVisible(false)
+      setApprovalReason('')
+    } catch (error: any) {
+      message.error(error.response?.data?.message || t('common.error'))
+    } finally {
+      setApprovalLoading(false)
+    }
   }
 
   // 渲染操作按钮
@@ -438,7 +574,7 @@ export default function BatchInsights() {
               showIcon
               action={<Button size="small" onClick={() => refetchDetail()}>{t('common.retry')}</Button>}
             />
-          ) : !batchDetail ? (
+          ) : !mergedBatchDetail ? (
             <Empty description={t('batchInsights.noData')} />
           ) : (
             <>
@@ -446,41 +582,53 @@ export default function BatchInsights() {
                 <div className={styles.batchInfoGrid}>
                   <div>
                     <div className={styles.label}>{t('batch.batchNumber')}</div>
-                    <div className={styles.value}>{batchDetail.batch_number}</div>
+                    <div className={styles.value}>{mergedBatchDetail.batch_number}</div>
                   </div>
                   <div>
                     <div className={styles.label}>{t('batch.initiator')}</div>
-                    <div className={styles.value}>{batchDetail.initiator || '-'}</div>
+                    <div className={styles.value}>{mergedBatchDetail.initiator || '-'}</div>
                   </div>
                   <div>
                     <div className={styles.label}>{t('batch.status')}</div>
-                    <StatusTag status={batchDetail.status} />
+                    <StatusTag status={mergedBatchDetail.status} />
                   </div>
                   <div>
                     <div className={styles.label}>{t('batch.approvalStatus')}</div>
-                    <StatusTag status={batchDetail.status} approvalStatus={batchDetail.approval_status} showApproval />
+                    <StatusTag
+                      status={mergedBatchDetail.status}
+                      approvalStatus={mergedBatchDetail.approval_status}
+                      showApproval
+                      onApprovalClick={handleOpenApproval}
+                      approvalTime={
+                        mergedBatchDetail.approved_at
+                          ? dayjs(mergedBatchDetail.approved_at).format('MM-DD HH:mm')
+                          : undefined
+                      }
+                      rejectReason={mergedBatchDetail.reject_reason}
+                      approvedBy={mergedBatchDetail.approved_by}
+                    />
                   </div>
                   <div>
                     <div className={styles.label}>{t('batch.createdAt')}</div>
-                    <div className={styles.value}>{formatTime(batchDetail.created_at) || '-'}</div>
+                    <div className={styles.value}>{formatTime(mergedBatchDetail.created_at) || '-'}</div>
                   </div>
                   <div>
                     <div className={styles.label}>{t('batchInsights.appCount')}</div>
-                    <div className={styles.value}>{batchDetail.total_apps || batchDetail.apps?.length || 0}</div>
+                    <div className={styles.value}>{mergedBatchDetail.total_apps || mergedBatchDetail.apps?.length || 0}</div>
                   </div>
                 </div>
               </Card>
 
               <Card 
-                className={`${styles.section} ${getTimelineCardClass(batchDetail)}`}
+                className={`${styles.section} ${getTimelineCardClass(mergedBatchDetail)}`}
                 title={t('batchInsights.timeline')}
-                extra={renderActionButtons(batchDetail)}
+                extra={renderActionButtons(mergedBatchDetail)}
               >
-                <BatchTimeline batch={batchDetail} onAction={handleTimelineAction} />
+                <BatchTimeline batch={mergedBatchDetail} onAction={handleTimelineAction} />
               </Card>
 
               <Card className={styles.graphSection} title={t('batchInsights.dependencyGraph')}>
-                <DependencyGraph releaseApps={releaseApps} appTypeConfigs={batchDetail?.app_type_configs} />
+                <DependencyGraph releaseApps={releaseApps} appTypeConfigs={mergedBatchDetail?.app_type_configs} />
               </Card>
             </>
           )}
@@ -507,6 +655,63 @@ export default function BatchInsights() {
           value={cancelReason}
           onChange={(e) => setCancelReason(e.target.value)}
         />
+      </Modal>
+
+      {/* 审批批次 Modal */}
+      <Modal
+        title="批次审批"
+        open={approvalModalVisible}
+        onOk={handleConfirmApproval}
+        onCancel={() => {
+          setApprovalModalVisible(false)
+          setApprovalReason('')
+        }}
+        confirmLoading={approvalLoading}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        width={500}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <div>
+            <div style={{ marginBottom: 12, fontWeight: 500 }}>请选择审批结果：</div>
+            <Radio.Group
+              value={approvalAction}
+              onChange={(e) => setApprovalAction(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Radio value="approve">
+                  <Space>
+                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                    <span>审批通过</span>
+                  </Space>
+                </Radio>
+                <Radio value="reject">
+                  <Space>
+                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                    <span>审批拒绝</span>
+                  </Space>
+                </Radio>
+              </Space>
+            </Radio.Group>
+          </div>
+
+          {approvalAction === 'reject' && (
+            <div>
+              <div style={{ marginBottom: 8, fontWeight: 500 }}>
+                拒绝原因 <span style={{ color: '#ff4d4f' }}>*</span>：
+              </div>
+              <TextArea
+                rows={4}
+                placeholder="请输入拒绝原因..."
+                value={approvalReason}
+                onChange={(e) => setApprovalReason(e.target.value)}
+                maxLength={500}
+                showCount
+              />
+            </div>
+          )}
+        </Space>
       </Modal>
 
       {/* 修改批次 Drawer */}

@@ -4,6 +4,7 @@
     min-height: calc(100vh - 64px);
     width: 100%;
     max-width: 100%;
+    min-width: 780px;
     box-sizing: border-box;
 }
 
@@ -49,8 +50,6 @@
 
 .batch-card-header {
     display: grid;
-    grid-template-columns: minmax(200px, 260px) minmax(100px, 140px) minmax(100px, 140px) minmax(120px, 160px) minmax(150px, 180px) minmax(200px, 1fr);
-    gap: 16px;
     align-items: center;
     padding: 12px 24px;
     font-size: 13px;
@@ -59,6 +58,20 @@
     overflow: hidden;
     width: 100%;
     box-sizing: border-box;
+}
+
+.batch-card-header,
+.batch-card-main {
+    display: grid;
+    grid-template-columns: minmax(200px, 320px) minmax(120px, 180px) minmax(100px, 180px) minmax(130px, 180px) minmax(180px, 1fr);
+    gap: 10px;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* 标题栏默认左对齐 */
@@ -270,18 +283,6 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.batch-card-main {
-    display: grid;
-    grid-template-columns: minmax(200px, 260px) minmax(100px, 140px) minmax(100px, 140px) minmax(120px, 160px) minmax(150px, 180px) minmax(200px, 1fr);
-    gap: 16px;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-    z-index: 3;
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-}
 
 .batch-cell {
     font-size: 14px;
@@ -352,9 +353,9 @@
 .batch-cell-created {
     color: #595959;
     font-size: 13px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.4;
 }
 
 .batch-cell-actions {
@@ -466,6 +467,11 @@
     background: #ffffff;
 }
 
+.batch-apps-section .ant-table-thead > tr,
+.batch-apps-section .ant-table-tbody {
+    grid-template-columns: minmax(120px, 1fr) minmax(100px, 1fr) minmax(100px, 1fr) minmax(100px, 1fr) minmax(100px, 1fr);
+}
+
 .batch-apps-section .ant-table-thead > tr > th {
     background: #fafafa;
     font-weight: 500;
@@ -538,14 +544,19 @@
     z-index: 10;
 }
 
-@media (max-width: 1200px) {
+
+@media (max-width: 1000px) {
     .batch-card-header,
     .batch-card-main {
-        grid-template-columns: minmax(180px, 220px) minmax(100px, 120px) minmax(100px, 120px) minmax(120px, 140px) minmax(150px, 1fr);
-        gap: 12px;
+        grid-template-columns: minmax(160px, 1fr) minmax(120px, 140px) minmax(120px, 140px) minmax(140px, 160px);
+        gap: 10px;
     }
 
-    .batch-cell-actions {
+    .batch-card-header .batch-cell-actions {
+        display: none;
+    }
+
+    .batch-card-main .batch-cell-actions {
         grid-column: 1 / -1;
         justify-content: flex-start;
         margin-top: 12px;
@@ -555,77 +566,4 @@
     }
 }
 
-@media (max-width: 900px) {
-    .batch-card-header,
-    .batch-card-main {
-        grid-template-columns: 1fr minmax(100px, 120px) minmax(100px, 120px) minmax(120px, 140px) 1fr;
-        gap: 12px;
-    }
 
-    /* 统一字段对齐方式 */
-    .batch-cell.batch-cell-apps,
-    .batch-cell.batch-cell-created {
-        justify-content: flex-start;
-    }
-
-    /* 确保状态标签字段也左对齐 */
-    .batch-cell.batch-cell-status,
-    .batch-cell.batch-cell-approval {
-        justify-content: flex-start;
-    }
-
-    .batch-cell-actions {
-        grid-column: 1 / -1;
-        width: 100%;
-        max-width: 100%;
-    }
-}
-
-@media (max-width: 768px) {
-    .batch-card-header,
-    .batch-card-main {
-        grid-template-columns: 1fr;
-        row-gap: 12px;
-        gap: 12px;
-    }
-
-    .batch-card-header > div,
-    .batch-card-main > div {
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .batch-cell-actions {
-        grid-column: 1;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .batch-card-header {
-        display: none;
-    }
-
-    /* 统一所有字段为左对齐 */
-    .batch-cell {
-        justify-content: flex-start !important;
-        text-align: left !important;
-    }
-
-    /* 确保状态标签字段在小屏幕下也左对齐 */
-    .batch-cell.batch-cell-status,
-    .batch-cell.batch-cell-approval,
-    .batch-cell.batch-cell-apps {
-        justify-content: flex-start !important;
-        align-items: flex-start;
-    }
-
-    .batch-cell-actions {
-        justify-content: flex-start;
-        gap: 12px;
-    }
-
-    /* 确保时间轴也左对齐 */
-    .batch-card-timeline {
-        justify-content: flex-start;
-    }
-}

@@ -10,8 +10,10 @@ import {
   Tag,
   message,
   Alert,
+  Steps,
+  Select,
 } from 'antd'
-import { SaveOutlined } from '@ant-design/icons'
+import { SaveOutlined, FormOutlined, AppstoreOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import axios from 'axios'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -38,6 +40,7 @@ interface AppWithSelection {
   commit_sha?: string
   selected: boolean
   inBatch: boolean // 是否原本在批次中
+  releaseNotes?: string // 应用级发布说明
 }
 
 interface SelectedAppState {
@@ -45,6 +48,7 @@ interface SelectedAppState {
   name: string
   selected: boolean
   inBatch: boolean
+  releaseNotes?: string // 应用级发布说明
 }
 
 interface BatchEditDrawerProps {
@@ -60,11 +64,12 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
 
+  const [currentStep, setCurrentStep] = useState(1) // 默认显示应用管理页面
   const [appSelections, setAppSelections] = useState<AppWithSelection[]>([])
   const [searchKeyword, setSearchKeyword] = useState('')
   const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState('')
-  const [, setExpandedRowKeys] = useState<number[]>([])
-  const [pageSize, setPageSize] = useState(10)
+  const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
+  const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectionStateMap, setSelectionStateMap] = useState<Record<number, SelectedAppState>>({})
 
@@ -321,7 +326,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
           display_name: app.display_name,
           app_type: app.app_type,
           repo_name: app.repo_name,
-          repo_full_name: app.repo_name,
+          repo_full_name: app.repo_full_name,
           last_tag: app.last_tag,
           deployed_tag: batchApp?.deployed_tag || app.deployed_tag,
           image_tag: batchApp?.image_tag || app.image_tag,
@@ -337,14 +342,32 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
   // 关闭并重置
   const handleClose = () => {
     form.resetFields()
+    setCurrentStep(1) // 重置为默认步骤
     setAppSelections([])
     setSearchKeyword('')
     setDebouncedSearchKeyword('')
     setExpandedRowKeys([])
-    setPageSize(10)
+    setPageSize(20)
     setCurrentPage(1)
     setSelectionStateMap({})
     onClose()
+  }
+
+  // 步骤切换处理
+  const handleStepChange = (step: number) => {
+    // 如果要切换到步骤2（应用管理），先验证基本信息
+    if (step === 1) {
+      form.validateFields(['batch_number'])
+        .then(() => {
+          setCurrentStep(step)
+        })
+        .catch((error) => {
+          console.error('Validation failed:', error)
+          message.warning('请先填写批次编号')
+        })
+    } else {
+      setCurrentStep(step)
+    }
   }
 
   const handleSelectionChange = useCallback((record: AppWithSelection, selected: boolean) => {
@@ -361,6 +384,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         name: record.name,
         selected,
         inBatch: existing?.inBatch ?? record.inBatch,
+        releaseNotes: existing?.releaseNotes ?? record.releaseNotes ?? '',
       }
       return next
     })
@@ -400,6 +424,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         name: snapshot.name,
         inBatch: existing?.inBatch ?? snapshot.inBatch,
         selected: true,
+        releaseNotes: existing?.releaseNotes ?? snapshot.releaseNotes ?? '',
       }
       return next
     })
@@ -416,11 +441,32 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
           name: app.name,
           selected: checked,
           inBatch: next[app.id]?.inBatch ?? app.inBatch,
+          releaseNotes: next[app.id]?.releaseNotes ?? '',
         }
       })
       return next
     })
   }, [appSelections])
+
+  const updateAppReleaseNotes = useCallback((appId: number, notes: string) => {
+    setAppSelections((prev) =>
+      prev.map((app) =>
+        app.id === appId ? { ...app, releaseNotes: notes } : app
+      )
+    )
+    setSelectionStateMap((prev) => {
+      if (!prev[appId]) {
+        return prev
+      }
+      return {
+        ...prev,
+        [appId]: {
+          ...prev[appId],
+          releaseNotes: notes,
+        },
+      }
+    })
+  }, [])
 
   // 保存批次修改
   const handleUpdate = async () => {
@@ -486,7 +532,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
           onChange={(e) => handleSelectAllChange(e.target.checked)}
         />
       ),
-      width: 50,
+      width: 30,
       render: (_: any, record: AppWithSelection) => (
         <Checkbox
           checked={record.selected}
@@ -495,7 +541,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
       ),
     },
     {
-      title: '应用名称',
+      title: t('batch.appName'),
       dataIndex: 'name',
       key: 'name',
       width: 200,
@@ -513,28 +559,31 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
         )
       },
       render: (text: string, record: AppWithSelection) => (
-        <Space>
+        <Space
+          style={{ cursor: 'pointer' }}
+          onClick={() => toggleAppSelection(record)}
+        >
           <span>{text}</span>
           {record.inBatch && <Tag color="green">原有</Tag>}
         </Space>
       ),
     },
     {
-      title: '应用类型',
+      title: t('batch.appType'),
       dataIndex: 'app_type',
       key: 'app_type',
       width: 80,
       render: (type: string) => <Tag color="blue">{type}</Tag>,
     },
     {
-      title: '代码库',
+      title: t('application.repository'),
       dataIndex: 'repo_full_name',
       key: 'repo_full_name',
       width: 200,
       ellipsis: true,
     },
     {
-      title: '当前版本',
+      title: t('batch.currentVersion'),
       dataIndex: 'deployed_tag',
       key: 'deployed_tag',
       width: 150,
@@ -542,7 +591,7 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
       render: (tag: string) => tag || <Tag color="default">-</Tag>,
     },
     {
-      title: '最新版本',
+      title: t('build.latestBuild'),
       key: 'latest_version',
       width: 180,
       ellipsis: true,
@@ -580,6 +629,25 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
   )
   const removedCount = removedAppEntries.length
 
+  // 底部按钮
+  const renderFooter = () => {
+    return (
+      <Space>
+        <Button onClick={handleClose}>
+          {t('common.cancel')}
+        </Button>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          loading={updateMutation.isPending}
+          onClick={handleUpdate}
+        >
+          {t('common.save')}
+        </Button>
+      </Space>
+    )
+  }
+
   if (!batch) return null
 
   return (
@@ -591,128 +659,185 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
       onClose={handleClose}
       destroyOnClose={false}
       maskClosable={false}
-      footer={
-        <Space>
-          <Button onClick={handleClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={updateMutation.isPending}
-            onClick={handleUpdate}
-          >
-            {t('common.save')}
-          </Button>
-        </Space>
-      }
+      footer={renderFooter()}
       footerStyle={{ textAlign: 'right' }}
       className="batch-edit-drawer"
     >
+      {/* 步骤指示器 */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 0, paddingTop: 24, paddingLeft: 24, paddingRight: 24 }}>
+        <Steps
+          current={currentStep}
+          onChange={handleStepChange}
+          items={[
+            {
+              title: t('batch.step1'),
+              icon: <FormOutlined />,
+            },
+            {
+              title: t('batch.step2'),
+              icon: <AppstoreOutlined />,
+            },
+          ]}
+          style={{ maxWidth: 500 }}
+        />
+      </div>
+
       <Form
         form={form}
         layout="vertical"
       >
-        {/* 基本信息 */}
-        <div style={{ marginBottom: 16 }}>
-          <h3 style={{ marginBottom: 12, fontSize: 14, fontWeight: 500 }}>基本信息</h3>
-
+        {/* 步骤1: 基本信息 */}
+        <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
           <Form.Item
             name="batch_number"
             label={t('batch.batchNumber')}
             rules={[{ required: true, message: '请输入批次编号' }]}
-            style={{ marginBottom: 12 }}
           >
             <Input
               placeholder={t('batch.batchNumberPlaceholder')}
+              size="large"
             />
           </Form.Item>
 
           <Form.Item
             name="release_notes"
             label={t('batch.releaseNotes')}
-            style={{ marginBottom: 0 }}
           >
             <TextArea
-              rows={3}
+              rows={8}
               placeholder={t('batch.releaseNotesPlaceholder')}
             />
           </Form.Item>
         </div>
 
-        {/* 应用管理 */}
-        <div>
-          <h3 style={{ marginBottom: 12, fontSize: 14, fontWeight: 500 }}>应用管理</h3>
+        {/* 步骤2: 应用管理 */}
+        <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+          {/* 固定顶部区域：统计信息、搜索框和分页器 */}
+          <div
+            className="sticky-top-bar"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              background: '#fff',
+              paddingBottom: 12,
+              marginBottom: 12,
+              marginLeft: -24,
+              marginRight: -24,
+              paddingLeft: 24,
+              paddingRight: 24,
+              paddingTop: 12,
+              marginTop: 0
+            }}
+          >
+            {/* 变更统计 */}
+            <Alert
+              message={
+                <div>
+                  <div style={{ fontWeight: 500, marginBottom: 8 }}>
+                    已选择 {selectedCount} 个应用
+                    {addedCount > 0 && <Tag color="green" style={{ marginLeft: 8 }}>新增 {addedCount}</Tag>}
+                    {removedCount > 0 && <Tag color="red" style={{ marginLeft: 8 }}>移除 {removedCount}</Tag>}
+                  </div>
 
-          {/* 变更统计 */}
-          <Alert
-            message={
-              <div>
-                <div style={{ fontWeight: 500, marginBottom: 8 }}>
-                  已选择 {selectedCount} 个应用
-                  {addedCount > 0 && <Tag color="green" style={{ marginLeft: 8 }}>新增 {addedCount}</Tag>}
-                  {removedCount > 0 && <Tag color="red" style={{ marginLeft: 8 }}>移除 {removedCount}</Tag>}
+                  {/* 已选应用列表 */}
+                  {selectedCount > 0 && (
+                    <div style={{ marginBottom: removedCount > 0 ? 12 : 0 }}>
+                      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>已选应用：</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {selectedAppEntries.map(app => (
+                          <Tag
+                            key={app.id}
+                            color={app.inBatch ? 'blue' : 'green'}
+                            closable
+                            onClose={(e) => {
+                              e.preventDefault()
+                              handleDeselectSnapshot(app)
+                            }}
+                          >
+                            {app.name} {!app.inBatch && '(新)'}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 已移除应用列表 */}
+                  {removedCount > 0 && (
+                    <div>
+                      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>已移除应用：</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {removedAppEntries.map(app => (
+                          <Tag
+                            key={app.id}
+                            color="red"
+                            closable
+                            onClose={(e) => {
+                              e.preventDefault()
+                              handleReselectSnapshot(app)
+                            }}
+                          >
+                            {app.name}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* 已选应用列表 */}
-                {selectedCount > 0 && (
-                  <div style={{ marginBottom: removedCount > 0 ? 12 : 0 }}>
-                    <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>已选应用：</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {selectedAppEntries.map(app => (
-                        <Tag
-                          key={app.id}
-                          color={app.inBatch ? 'blue' : 'green'}
-                          closable
-                          onClose={(e) => {
-                            e.preventDefault()
-                            handleDeselectSnapshot(app)
-                          }}
-                        >
-                          {app.name} {!app.inBatch && '(新)'}
-                        </Tag>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 已移除应用列表 */}
-                {removedCount > 0 && (
-                  <div>
-                    <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>已移除应用：</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {removedAppEntries.map(app => (
-                        <Tag
-                          key={app.id}
-                          color="red"
-                          closable
-                          onClose={(e) => {
-                            e.preventDefault()
-                            handleReselectSnapshot(app)
-                          }}
-                        >
-                          {app.name}
-                        </Tag>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            }
-            type={selectedCount > 0 ? 'success' : 'info'}
-            showIcon
-            style={{ marginBottom: 12 }}
-          />
-
-          {/* 搜索框 */}
-          <div style={{ marginBottom: 12 }}>
-            <Input.Search
-              placeholder="搜索应用名称、代码库、Commit、Tag..."
-              allowClear
-              style={{ width: '100%' }}
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
+              }
+              type={selectedCount > 0 ? 'success' : 'info'}
+              showIcon={false}
+              style={{ marginBottom: 12 }}
             />
+
+            {/* 搜索框和分页器 */}
+            <div className="search-pagination-wrapper">
+              <Input.Search
+                placeholder="搜索应用名称、代码库、Commit、Tag..."
+                allowClear
+                style={{ width: 400, minWidth: 280 }}
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+              />
+              <div style={{ flex: 1 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <span style={{ fontSize: 13, color: '#8c8c8c', whiteSpace: 'nowrap' }}>
+                  共 {allAppsResponse?.total || 0} 个
+                </span>
+                <Space size={4}>
+                  <Button
+                    size="small"
+                    icon={<LeftOutlined />}
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  />
+                  <span style={{ fontSize: 13, whiteSpace: 'nowrap', padding: '0 4px' }}>
+                    {currentPage} / {Math.ceil((allAppsResponse?.total || 0) / pageSize)}
+                  </span>
+                  <Button
+                    size="small"
+                    icon={<RightOutlined />}
+                    disabled={currentPage >= Math.ceil((allAppsResponse?.total || 0) / pageSize)}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  />
+                  <Select
+                    size="small"
+                    value={pageSize}
+                    onChange={(value) => {
+                      setPageSize(value)
+                      setCurrentPage(1)
+                    }}
+                    style={{ width: 90 }}
+                    options={[
+                      { label: '10/页', value: 10 },
+                      { label: '20/页', value: 20 },
+                      { label: '50/页', value: 50 },
+                      { label: '100/页', value: 100 },
+                    ]}
+                  />
+                </Space>
+              </div>
+            </div>
           </div>
 
           {/* 应用表格 */}
@@ -721,24 +846,35 @@ export default function BatchEditDrawer({ open, batch, onClose, onSuccess }: Bat
             dataSource={appSelections}
             rowKey="id"
             loading={loadingBatchDetail || loadingAllApps}
-            pagination={{
-              current: currentPage,
-              pageSize: pageSize,
-              total: allAppsResponse?.total || 0,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `共 ${total} 个应用`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              onChange: (page, newPageSize) => {
-                setCurrentPage(page)
-                if (newPageSize !== pageSize) {
-                  setPageSize(newPageSize)
-                  setCurrentPage(1)
+            pagination={false}
+            size="small"
+            scroll={{ x: 900 }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <div style={{ padding: '12px 24px' }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>{t('batch.appReleaseNotes')}:</strong>
+                  </div>
+                  <TextArea
+                    rows={3}
+                    placeholder={t('batch.appReleaseNotesPlaceholder')}
+                    value={record.releaseNotes}
+                    onChange={(e) =>
+                      updateAppReleaseNotes(record.id, e.target.value)
+                    }
+                  />
+                </div>
+              ),
+              rowExpandable: (record) => record.selected,
+              expandedRowKeys: expandedRowKeys,
+              onExpand: (expanded, record) => {
+                if (expanded) {
+                  setExpandedRowKeys([...expandedRowKeys, record.id])
+                } else {
+                  setExpandedRowKeys(expandedRowKeys.filter((key) => key !== record.id))
                 }
               },
             }}
-            scroll={{ y: 'calc(100vh - 480px)' }}
-            size="small"
           />
         </div>
       </Form>

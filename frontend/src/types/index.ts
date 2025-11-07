@@ -124,6 +124,7 @@ export interface ApplicationQueryParams extends PaginationParams {
 // Application with latest build info (flattened structure)
 export interface ApplicationWithBuild extends Application {
   deployed_tag?: string | null
+  repo_full_name?: string  // Repository的project/name
   build_id?: number
   build_number?: number
   image_tag?: string

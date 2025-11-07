@@ -124,6 +124,7 @@ export default {
       endTime: '结束时间',
       link: '构建链接',
       imageUrl: '镜像地址',
+      latestBuild: '最新构建',
       
       // 状态
       statusSuccess: '成功',
@@ -242,6 +243,7 @@ export default {
       appName: '应用名称',
       appType: '应用类型',
       currentVersion: '当前生产版本',
+
       pendingDeploy: '待部署',
       oldVersion: '旧版本',
       deployed: '已部署',

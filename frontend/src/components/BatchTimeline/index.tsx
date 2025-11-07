@@ -18,7 +18,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
   // 检测屏幕宽度，在小屏幕时切换为纵向布局
   useEffect(() => {
     const handleResize = () => {
-      setIsVertical(window.innerWidth <= 768)
+      setIsVertical(window.innerWidth <= 576)
     }
     
     handleResize() // 初始化
@@ -30,20 +30,18 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
   const getCurrentStep = () => {
     if (batch.status === 90) {
       // 已取消 - 返回取消前的最后步骤
-      if (batch.prod_deploy_started_at) return 4
-      if (batch.pre_deploy_started_at) return 3
-      if (batch.tagged_at) return 2
-      if (batch.approval_status === 'approved') return 1
+      if (batch.prod_deploy_started_at) return 3
+      if (batch.pre_deploy_started_at) return 2
+      if (batch.tagged_at) return 1
       return 0
     }
-    if (batch.status >= 40) return 5 // 已完成
-    if (batch.status >= 32) return 4 // 生产部署完成
-    if (batch.status >= 30) return 4 // 生产待触发/部署中
-    if (batch.status >= 22) return 3 // 预发布完成
-    if (batch.status >= 20) return 3 // 预发布待触发/部署中
-    if (batch.status >= 10) return 2 // 已封板
-    if (batch.approval_status === 'approved') return 1 // 审批通过
-    return 0 // 待审批或草稿
+    if (batch.status >= 40) return 4 // 已完成
+    if (batch.status >= 32) return 3 // 生产部署完成
+    if (batch.status >= 30) return 3 // 生产待触发/部署中
+    if (batch.status >= 22) return 2 // 预发布完成
+    if (batch.status >= 20) return 2 // 预发布待触发/部署中
+    if (batch.status >= 10) return 1 // 已封板
+    return 0 // 待封板或草稿
   }
 
   // 根据批次状态确定步骤状态
@@ -52,10 +50,10 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
     if (stepIndex < currentStep) return 'finish'
     if (stepIndex === currentStep) {
       // 如果是部署中或待触发的步骤，显示 process
-      if ((batch.status === 20 || batch.status === 21) && stepIndex === 3) {
+      if ((batch.status === 20 || batch.status === 21) && stepIndex === 2) {
         return 'process'
       }
-      if ((batch.status === 30 || batch.status === 31) && stepIndex === 4) {
+      if ((batch.status === 30 || batch.status === 31) && stepIndex === 3) {
         return 'process'
       }
       return 'finish'
@@ -126,13 +124,13 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
 
   // 获取自定义图标（用于可点击和进行中状态）
   const getCustomIcon = (stepIndex: number) => {
-    // 封板步骤 (index 2)
-    if (stepIndex === 2) {
-      // 如果还没封板且审批已通过，显示可点击的封板图标
-      if (!batch.tagged_at && batch.approval_status === 'approved' && onAction) {
+    // 封板步骤 (index 1)
+    if (stepIndex === 1) {
+      // 如果还没封板，显示可点击的封板图标
+      if (!batch.tagged_at && onAction) {
         return (
           <Tooltip title={t('batch.seal')}>
-            <CheckCircleOutlined 
+            <CheckCircleOutlined
               className="timeline-icon-clickable"
               onClick={(e) => {
                 e.stopPropagation()
@@ -144,8 +142,8 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       }
     }
 
-    // 预发布步骤 (index 3)
-    if (stepIndex === 3) {
+    // 预发布步骤 (index 2)
+    if (stepIndex === 2) {
       // 如果正在预发布中，显示转圈图标
       if (batch.status === 20 || batch.status === 21) {
         return <LoadingOutlined className="timeline-icon-loading" />
@@ -154,7 +152,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       if (batch.status === 10 && onAction) {
         return (
           <Tooltip title={t('batch.startPreDeploy')}>
-            <PlayCircleOutlined 
+            <PlayCircleOutlined
               className="timeline-icon-clickable"
               onClick={(e) => {
                 e.stopPropagation()
@@ -166,8 +164,8 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       }
     }
 
-    // 生产部署步骤 (index 4)
-    if (stepIndex === 4) {
+    // 生产部署步骤 (index 3)
+    if (stepIndex === 3) {
       // 如果正在生产部署中，显示转圈图标
       if (batch.status === 30 || batch.status === 31) {
         return <LoadingOutlined className="timeline-icon-loading" />
@@ -176,7 +174,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       if (batch.status === 22 && onAction) {
         return (
           <Tooltip title={t('batch.startProdDeploy')}>
-            <PlayCircleOutlined 
+            <PlayCircleOutlined
               className="timeline-icon-clickable"
               onClick={(e) => {
                 e.stopPropagation()
@@ -196,15 +194,6 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       title: t('batch.timelineCreate'),
       description: formatTime(batch.created_at),
       subTitle: batch.initiator,
-    },
-    {
-      title: t('batch.timelineApproval'),
-      description: batch.approval_status === 'approved' 
-        ? formatTime(batch.approved_at)
-        : batch.approval_status === 'rejected'
-        ? t('batch.approvalRejected')
-        : t('batch.approvalPending'),
-      subTitle: batch.approved_by || '-',
     },
     {
       title: t('batch.timelineSeal'),
