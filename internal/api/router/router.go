@@ -116,8 +116,9 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 				groupBatch.PUT("/release_app", batchHandler.UpdateBuilds) // 更新发布应用（构建版本等）
 
 				// 读操作（GET）
-				groupBatch.GET("", batchHandler.Get)    // 获取详情（query: id）
-				groupBatches.GET("", batchHandler.List) // 列表查询（query: page, page_size, status, initiator）
+				groupBatch.GET("", batchHandler.Get)       // 获取详情（query: id）
+				groupBatch.GET("/status", batchHandler.GetStatus) // 获取批次状态（轻量级，用于轮询）
+				groupBatches.GET("", batchHandler.List)    // 列表查询（query: page, page_size, status, initiator）
 
 				// 审批操作
 				groupBatch.POST("/approve", batchHandler.Approve) // 审批通过

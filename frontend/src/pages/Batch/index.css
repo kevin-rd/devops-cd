@@ -1,647 +1,631 @@
 .batch-list-container {
-  padding: 24px;
-  background: #f5f5f5;
-  min-height: calc(100vh - 64px);
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+    padding: 24px;
+    background: #f5f5f5;
+    min-height: calc(100vh - 64px);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .batch-list-container .ant-card {
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  overflow: visible;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    overflow: visible;
 }
 
 .batch-list-container .ant-table,
 .batch-list-container .ant-card-body {
-  background: transparent;
+    background: transparent;
 }
 
 .batch-list-container .ant-table-container {
-  background: transparent;
+    background: transparent;
 }
 
 .batch-filters {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 8px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 8px;
 }
 
 .batch-list-container .ant-card-head {
-  position: sticky;
-  top: 0;
-  z-index: 9;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 9;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .batch-card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .batch-card-header {
-  display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(100px, 140px) minmax(100px, 140px) minmax(120px, 160px) minmax(150px, 180px) minmax(200px, 1fr);
-  gap: 16px;
-  align-items: center;
-  padding: 12px 24px;
-  font-size: 13px;
-  color: #595959;
-  font-weight: 500;
-  overflow: hidden;
-  width: 100%;
-  box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) minmax(100px, 140px) minmax(100px, 140px) minmax(120px, 160px) minmax(150px, 180px) minmax(200px, 1fr);
+    gap: 16px;
+    align-items: center;
+    padding: 12px 24px;
+    font-size: 13px;
+    color: #595959;
+    font-weight: 500;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* 标题栏默认左对齐 */
 .batch-header-cell {
-  text-align: left;
-  justify-self: start;
+    text-align: left;
+    justify-self: start;
 }
 
 /* 操作列标题右对齐 */
 .batch-header-cell.batch-cell-actions {
-  justify-self: flex-end;
-  text-align: right;
+    justify-self: flex-end;
+    text-align: right;
 }
+
 
 .batch-card {
-  background: #ffffff;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
-  padding: 16px 24px 20px;
-  margin-bottom: 32px;
-  transition: box-shadow 0.2s ease;
-  position: relative;
-  overflow: visible; /* 保持 visible 以支持流光效果 */
-  z-index: 0;
-  width: 100%;
-  box-sizing: border-box;
-  max-width: 100%;
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+    padding: 16px 24px 20px;
+    margin-bottom: 32px;
+    transition: box-shadow 0.2s ease;
+    position: relative;
+    overflow: visible; /* 保持 visible 以支持流光效果 */
+    z-index: 0;
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
-/* 草稿状态 - 淡黄色边框 */
+/* 草稿 - 默认边框 */
 .batch-card.status-draft {
-  border-color: #ffec3d;
-  border-width: 1.5px;
-  background: linear-gradient(to bottom, #fffbe6 0%, #ffffff 100%);
+    background: linear-gradient(to bottom, var(--status-draft-bg-start) 0%, var(--status-draft-bg-end) 100%);
 }
 
-/* 已封板状态 - 紫色边框 */
+/* 已封板 - 紫色背景 */
 .batch-card.status-sealed {
-  border-color: #b37feb;
-  border-width: 1.5px;
-  background: linear-gradient(to bottom, #f9f0ff 0%, #ffffff 100%);
+    background: linear-gradient(to bottom, var(--status-sealed-bg-start) 0%, var(--status-sealed-bg-end) 100%);
+    position: relative;
 }
 
-/* 清除已封板状态的伪元素 */
-.batch-card.status-sealed::before,
-.batch-card.status-sealed::after {
-  display: none !important;
-  content: none !important;
-  animation: none !important;
-}
-
-/* 预发布中状态 - 蓝色边框 + 流光环绕效果 */
+/* 预发布中 - 日暮1(浅橙黄)背景 + 拂晓蓝4边框  */
 .batch-card.status-pre-deploying {
-  border: 2px solid #40a9ff;
-  background: linear-gradient(to bottom, #e6f7ff 0%, #ffffff 100%);
-  position: relative;
-  overflow: hidden;
+    border: 2px solid var(--status-pre-bg-start);
+    background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%);
+    position: relative;
+    overflow: visible;
 }
 
-/* 流光效果层 - 预发布（外层旋转流光） */
+/* 预发布中 - 虚线滚动边框 */
 .batch-card.status-pre-deploying::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 10px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 160deg,
-    #0050b3 240deg,      /* 深蓝 */
-    #1890ff 270deg,      /* 标准蓝 */
-    #40a9ff 300deg,      /* 亮蓝 */
-    #69c0ff 330deg,      /* 天蓝 */
-    #bae7ff 345deg,      /* 浅蓝 */
-    #ffffff 360deg       /* 白色 */
-  );
-  animation: rotate-light 2s linear infinite;
-  z-index: 1;
-  pointer-events: none;
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    padding: 2px;
+    background: repeating-linear-gradient(90deg, #69c0ff 0, #69c0ff 12px, transparent 12px, transparent 24px),
+        repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) 12px, transparent 12px, transparent 24px),
+        repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) 12px, transparent 12px, transparent 24px),
+        repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) 12px, transparent 12px, transparent 24px);
+    background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
+    background-position: 0 0, 100% 0, 0 100%, 0 0;
+    background-repeat: no-repeat;
+    mask: linear-gradient(#fff, 0, 0) content-box, linear-gradient(#fff, 0, 0);
+    mask-composite: exclude;
+    animation: batch-border-dash-move 1.5s linear infinite;
+    pointer-events: none;
+    z-index: 1;
 }
 
-/* 遮罩层 - 只显示边框区域的流光（留出2px边框区域） */
+/* 预发布中 - 内容背景层 */
 .batch-card.status-pre-deploying::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  bottom: 2px;
-  border-radius: 6px;
-  background: linear-gradient(to bottom, #e6f7ff 0%, #ffffff 100%);
-  z-index: 2;
-  pointer-events: none;
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 4px;
+    background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%);
+    z-index: -1;
+    pointer-events: none;
 }
 
-/* 预发布完成状态 - 固定蓝色边框 */
+/* 预发布完成 - 日暮背景 + 拂晓蓝3边框 */
 .batch-card.status-pre-deployed {
-  border: 2px solid #40a9ff;
-  background: linear-gradient(to bottom, #e6f7ff 0%, #ffffff 100%);
+    border: 2px solid var(--status-pre-border-deployed);
+    background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 150%);
+    position: relative;
 }
 
-/* 清除预发布完成状态的伪元素 */
-.batch-card.status-pre-deployed::before,
-.batch-card.status-pre-deployed::after {
-  display: none !important;
-  content: none !important;
-  animation: none !important;
-}
-
-@keyframes rotate-light {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* 生产部署中状态 - 橙色边框 + 流光环绕效果 */
+/* 生产部署中 - 火山1(深橙)背景 + 橙红虚线滚动边框 */
 .batch-card.status-prod-deploying {
-  border: 2px solid #ffa940;
-  background: linear-gradient(to bottom, #fff7e6 0%, #ffffff 100%);
-  position: relative;
-  overflow: hidden;
+    border: none;
+    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%);
+    position: relative;
+    overflow: visible;
 }
 
-/* 流光效果层 - 生产部署（外层旋转流光） */
+/* 生产部署中 - 虚线滚动边框*/
 .batch-card.status-prod-deploying::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 10px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 160deg,
-    #ad2102 240deg,      /* 深红 */
-    #ff4d4f 270deg,      /* 标准红 */
-    #ff7a45 300deg,      /* 橙红 */
-    #ffa940 330deg,      /* 橙色 */
-    #ffc53d 345deg,      /* 金黄 */
-    #ffffff 360deg       /* 白色 */
-  );
-  animation: rotate-light 2s linear infinite;
-  z-index: 1;
-  pointer-events: none;
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    padding: 2px;
+    background: repeating-linear-gradient(90deg, #ff9c6e 0, #ff9c6e 12px, transparent 12px, transparent 24px),
+    repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) 12px, transparent 12px, transparent 24px),
+    repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) 12px, transparent 12px, transparent 24px),
+    repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) 12px, transparent 12px, transparent 24px);
+    background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
+    background-position: 0 0, 100% 0, 0 100%, 0 0;
+    background-repeat: no-repeat;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: batch-border-dash-move 1.5s linear infinite;
+    pointer-events: none;
+    z-index: 1;
 }
 
-/* 遮罩层 - 只显示边框区域的流光（留出2px边框区域） */
+/* 生产部署中 - 内容背景层 */
 .batch-card.status-prod-deploying::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  bottom: 2px;
-  border-radius: 6px;
-  background: linear-gradient(to bottom, #fff7e6 0%, #ffffff 100%);
-  z-index: 2;
-  pointer-events: none;
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 4px;
+    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%);
+    z-index: -1;
+    pointer-events: none;
 }
 
-/* 生产部署完成状态 - 固定橙色边框 */
+/* 生产部署完成 - 极光绿4边框 */
 .batch-card.status-prod-deployed {
-  border: 2px solid #ffa940;
-  background: linear-gradient(to bottom, #fff7e6 0%, #ffffff 100%);
+    border: 2px solid var(--status-prod-border-deployed);
+    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-start) 150%);
 }
 
-/* 清除生产部署完成状态的伪元素 */
+/* 生产部署完成 - 清除状态的伪元素 */
 .batch-card.status-prod-deployed::before,
 .batch-card.status-prod-deployed::after {
-  display: none !important;
-  content: none !important;
-  animation: none !important;
+    display: none !important;
+    content: none !important;
+    animation: none !important;
 }
 
 /* 已完成状态 - 绿色边框 */
 .batch-card.status-completed {
-  border-color: #95de64;
-  border-width: 1px;
-  background: linear-gradient(to bottom, #f6ffed 0%, #ffffff 100%);
+    border-color: var(--status-completed-border);
+    border-width: 1px;
+    background: linear-gradient(to bottom, var(--status-completed-bg-start) 0%, var(--status-completed-bg-start) 100%);
 }
 
 /* 清除已完成状态的伪元素 */
 .batch-card.status-completed::before,
 .batch-card.status-completed::after {
-  display: none !important;
-  content: none !important;
-  animation: none !important;
+    display: none !important;
+    content: none !important;
+    animation: none !important;
 }
 
 /* 已取消状态 - 灰色边框和背景 */
 .batch-card.status-cancelled {
-  border-color: #d9d9d9;
-  border-width: 1px;
-  background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
-  opacity: 0.85;
+    border-color: #d9d9d9;
+    border-width: 1px;
+    background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
+    opacity: 0.85;
 }
 
 /* 清除已取消状态的伪元素 */
 .batch-card.status-cancelled::before,
 .batch-card.status-cancelled::after {
-  display: none !important;
-  content: none !important;
-  animation: none !important;
+    display: none !important;
+    content: none !important;
+    animation: none !important;
 }
 
 /* 清除默认状态的伪元素（没有状态类时） */
 .batch-card:not(.status-pre-deploying):not(.status-prod-deploying)::before,
 .batch-card:not(.status-pre-deploying):not(.status-prod-deploying)::after {
-  display: none !important;
-  content: none !important;
-  animation: none !important;
+    display: none !important;
+    content: none !important;
+    animation: none !important;
 }
 
+@keyframes rotate-light {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* 虚线边框滚动动画 */
+@keyframes batch-border-dash-move {
+    0% {
+        background-position: 0 0, 100% 0, 0 100%, 0 0;
+    }
+    100% {
+        background-position: 24px 0, 100% 24px, -24px 100%, 0 -24px;
+    }
+}
+
+
 .batch-card.expanded {
-  margin-bottom: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    margin-bottom: 32px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .batch-card-main {
-  display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(100px, 140px) minmax(100px, 140px) minmax(120px, 160px) minmax(150px, 180px) minmax(200px, 1fr);
-  gap: 16px;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-  z-index: 3;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) minmax(100px, 140px) minmax(100px, 140px) minmax(120px, 160px) minmax(150px, 180px) minmax(200px, 1fr);
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .batch-cell {
-  font-size: 14px;
-  color: #333;
-  position: relative;
-  z-index: 3;
-  min-width: 0; /* 允许 grid 单元格缩小 */
-  overflow: hidden; /* 防止内容溢出 */
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+    font-size: 14px;
+    color: #333;
+    position: relative;
+    z-index: 3;
+    min-width: 0; /* 允许 grid 单元格缩小 */
+    overflow: hidden; /* 防止内容溢出 */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .batch-cell.batch-cell-status,
 .batch-cell.batch-cell-approval,
 .batch-cell.batch-cell-apps {
-  display: flex;
-  justify-content: flex-start; /* 改为左对齐，与标题栏保持一致 */
-  align-items: center;
-  min-height: 32px; /* 设置最小高度，避免状态切换时的布局抖动 */
-  transition: opacity 0.2s ease;
+    display: flex;
+    justify-content: flex-start; /* 改为左对齐，与标题栏保持一致 */
+    align-items: center;
+    min-height: 32px; /* 设置最小高度，避免状态切换时的布局抖动 */
+    transition: opacity 0.2s ease;
 }
 
 /* 应用数量样式 */
 .batch-app-count {
-  display: inline-block;
-  padding: 2px 8px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #333;
-  background-color: #fafafa;
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    background-color: #fafafa;
 }
 
 .batch-number-text {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 .batch-number-id {
-  font-size: 12px;
-  color: #a6a6a6;
-  font-weight: 500;
+    font-size: 12px;
+    color: #a6a6a6;
+    font-weight: 500;
 }
 
 .batch-number-main {
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
 }
 
 .batch-subtext {
-  font-size: 12px;
-  color: #8c8c8c;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
+    font-size: 12px;
+    color: #8c8c8c;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 .batch-cell-created {
-  color: #595959;
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    color: #595959;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .batch-cell-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0; /* 允许 flex 容器缩小 */
-  overflow: visible; /* 允许按钮换行 */
-  width: 100%;
-  max-width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0; /* 允许 flex 容器缩小 */
+    overflow: visible; /* 允许按钮换行 */
+    width: 100%;
+    max-width: 100%;
 }
 
 .batch-cell-actions .ant-btn {
-  flex-shrink: 1; /* 允许按钮缩小 */
-  min-width: fit-content;
-  white-space: nowrap;
+    flex-shrink: 1; /* 允许按钮缩小 */
+    min-width: fit-content;
+    white-space: nowrap;
 }
 
 .batch-cell-actions .ant-space {
-  flex-wrap: wrap;
-  width: 100%;
-  justify-content: flex-end;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-end;
 }
 
 .batch-row-timeline,
 .batch-card-timeline {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  z-index: 3;
-  min-height: 80px; /* 设置最小高度，避免加载时的高度变化导致抖动 */
-  transition: min-height 0.2s ease;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 3;
+    min-height: 80px; /* 设置最小高度，避免加载时的高度变化导致抖动 */
+    transition: min-height 0.2s ease;
 }
 
 .batch-row-timeline .batch-timeline,
 .batch-card-timeline .batch-timeline {
-  width: 100%;
-  padding: 0 !important;
-  margin: 0 !important;
+    width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .batch-card-detail {
-  margin-top: 24px;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 24px;
-  position: relative;
-  z-index: 3;
-  /* 添加平滑的展开动画 */
-  animation: slideDown 0.25s ease-out;
-  will-change: opacity, transform;
+    margin-top: 24px;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 24px;
+    position: relative;
+    z-index: 3;
+    /* 添加平滑的展开动画 */
+    animation: slideDown 0.25s ease-out;
+    will-change: opacity, transform;
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .batch-card-detail-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .batch-card-detail-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
 }
 
 .batch-card-detail-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  font-size: 13px;
-  color: #595959;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    font-size: 13px;
+    color: #595959;
 }
 
 .batch-card-detail-meta-item {
-  display: flex;
-  align-items: baseline;
+    display: flex;
+    align-items: baseline;
 }
 
 .batch-card-detail-meta-item span {
-  color: #8c8c8c;
-  margin-right: 8px;
-  white-space: nowrap;
+    color: #8c8c8c;
+    margin-right: 8px;
+    white-space: nowrap;
 }
 
 .batch-card-detail-timeline .batch-timeline {
-  width: 100%;
+    width: 100%;
 }
 
 .batch-apps-section .ant-table {
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #ffffff;
 }
 
 .batch-apps-section .ant-table-thead > tr > th {
-  background: #fafafa;
-  font-weight: 500;
-  font-size: 13px;
-  padding: 8px 12px;
+    background: #fafafa;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 8px 12px;
 }
 
 .batch-apps-section .ant-table-tbody > tr > td {
-  padding: 10px 12px;
-  font-size: 13px;
+    padding: 10px 12px;
+    font-size: 13px;
 }
 
 .batch-apps-section .ant-table-tbody > tr:hover > td {
-  background: #fafafa !important;
+    background: #fafafa !important;
 }
 
 /* 已修改的行样式 */
 .batch-apps-section .ant-table-tbody > tr.batch-app-row-modified > td {
-  background: #fffbe6 !important;
-  position: relative;
+    background: #feffe6 !important;
+    position: relative;
 }
 
 .batch-apps-section .ant-table-tbody > tr.batch-app-row-modified:hover > td {
-  background: #fff7d6 !important;
+    background: #fff7d6 !important;
 }
 
 /* 已修改行的左侧边框标记 */
 .batch-apps-section .ant-table-tbody > tr.batch-app-row-modified > td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: #faad14;
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #faad14;
 }
 
 .batch-card-empty {
-  padding: 48px 0;
-  text-align: center;
-  color: #8c8c8c;
+    padding: 48px 0;
+    text-align: center;
+    color: #8c8c8c;
 }
 
 .batch-pagination {
-  margin-top: 24px;
-  display: flex;
-  justify-content: flex-end;
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .batch-card-list-wrapper {
-  position: relative;
-  min-height: 200px;
+    position: relative;
+    min-height: 200px;
 }
 
 .batch-card-list-wrapper.refreshing {
-  pointer-events: none;
+    pointer-events: none;
 }
 
 .batch-list-refresh-mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(1px);
-  z-index: 10;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(1px);
+    z-index: 10;
 }
 
 @media (max-width: 1200px) {
-  .batch-card-header,
-  .batch-card-main {
-    grid-template-columns: minmax(180px, 220px) minmax(100px, 120px) minmax(100px, 120px) minmax(120px, 140px) minmax(150px, 1fr);
-    gap: 12px;
-  }
+    .batch-card-header,
+    .batch-card-main {
+        grid-template-columns: minmax(180px, 220px) minmax(100px, 120px) minmax(100px, 120px) minmax(120px, 140px) minmax(150px, 1fr);
+        gap: 12px;
+    }
 
-  .batch-cell-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-    margin-top: 12px;
-    flex-wrap: wrap;
-    width: 100%;
-    max-width: 100%;
-  }
+    .batch-cell-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        margin-top: 12px;
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+    }
 }
 
 @media (max-width: 900px) {
-  .batch-card-header,
-  .batch-card-main {
-    grid-template-columns: 1fr minmax(100px, 120px) minmax(100px, 120px) minmax(120px, 140px) 1fr;
-    gap: 12px;
-  }
+    .batch-card-header,
+    .batch-card-main {
+        grid-template-columns: 1fr minmax(100px, 120px) minmax(100px, 120px) minmax(120px, 140px) 1fr;
+        gap: 12px;
+    }
 
-  /* 统一字段对齐方式 */
-  .batch-cell.batch-cell-apps,
-  .batch-cell.batch-cell-created {
-    justify-content: flex-start;
-  }
+    /* 统一字段对齐方式 */
+    .batch-cell.batch-cell-apps,
+    .batch-cell.batch-cell-created {
+        justify-content: flex-start;
+    }
 
-  /* 确保状态标签字段也左对齐 */
-  .batch-cell.batch-cell-status,
-  .batch-cell.batch-cell-approval {
-    justify-content: flex-start;
-  }
+    /* 确保状态标签字段也左对齐 */
+    .batch-cell.batch-cell-status,
+    .batch-cell.batch-cell-approval {
+        justify-content: flex-start;
+    }
 
-  .batch-cell-actions {
-    grid-column: 1 / -1;
-    width: 100%;
-    max-width: 100%;
-  }
+    .batch-cell-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
+    }
 }
 
 @media (max-width: 768px) {
-  .batch-card-header,
-  .batch-card-main {
-    grid-template-columns: 1fr;
-    row-gap: 12px;
-    gap: 12px;
-  }
+    .batch-card-header,
+    .batch-card-main {
+        grid-template-columns: 1fr;
+        row-gap: 12px;
+        gap: 12px;
+    }
 
-  .batch-card-header > div,
-  .batch-card-main > div {
-    width: 100%;
-    max-width: 100%;
-  }
+    .batch-card-header > div,
+    .batch-card-main > div {
+        width: 100%;
+        max-width: 100%;
+    }
 
-  .batch-cell-actions {
-    grid-column: 1;
-    width: 100%;
-    max-width: 100%;
-  }
+    .batch-cell-actions {
+        grid-column: 1;
+        width: 100%;
+        max-width: 100%;
+    }
 
-  .batch-card-header {
-    display: none;
-  }
+    .batch-card-header {
+        display: none;
+    }
 
-  /* 统一所有字段为左对齐 */
-  .batch-cell {
-    justify-content: flex-start !important;
-    text-align: left !important;
-  }
+    /* 统一所有字段为左对齐 */
+    .batch-cell {
+        justify-content: flex-start !important;
+        text-align: left !important;
+    }
 
-  /* 确保状态标签字段在小屏幕下也左对齐 */
-  .batch-cell.batch-cell-status,
-  .batch-cell.batch-cell-approval,
-  .batch-cell.batch-cell-apps {
-    justify-content: flex-start !important;
-    align-items: flex-start;
-  }
+    /* 确保状态标签字段在小屏幕下也左对齐 */
+    .batch-cell.batch-cell-status,
+    .batch-cell.batch-cell-approval,
+    .batch-cell.batch-cell-apps {
+        justify-content: flex-start !important;
+        align-items: flex-start;
+    }
 
-  .batch-cell-actions {
-    justify-content: flex-start;
-    gap: 12px;
-  }
+    .batch-cell-actions {
+        justify-content: flex-start;
+        gap: 12px;
+    }
 
-  /* 确保时间轴也左对齐 */
-  .batch-card-timeline {
-    justify-content: flex-start;
-  }
+    /* 确保时间轴也左对齐 */
+    .batch-card-timeline {
+        justify-content: flex-start;
+    }
 }

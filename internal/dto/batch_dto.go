@@ -162,6 +162,7 @@ type ReleaseAppResponse struct {
 	ReleaseNotes *string `json:"release_notes,omitempty"` // 应用级发布说明
 	IsLocked     bool    `json:"is_locked"`               // 是否已锁定（封板后为true）
 	Reason       string  `json:"reason,omitempty"`
+	Status       int8    `json:"status"`
 
 	// 时间信息
 	CreatedAt string `json:"created_at"`
@@ -216,6 +217,66 @@ type ReleaseDependenciesResponse struct {
 func ToBatchResponse(batch interface{}, appCount int64) *BatchResponse {
 	// 这个函数会在 service 层使用
 	return nil
+}
+
+// BatchStatusRequest 获取批次状态请求
+type BatchStatusRequest struct {
+	ID          int64 `json:"id" form:"id" binding:"required"`
+	AppPage     int   `json:"app_page" form:"app_page"`           // 应用列表页码，默认1
+	AppPageSize int   `json:"app_page_size" form:"app_page_size"` // 应用列表每页数量，默认20
+}
+
+// GetAppPage 获取应用页码（默认为1）
+func (q *BatchStatusRequest) GetAppPage() int {
+	if q.AppPage < 1 {
+		return 1
+	}
+	return q.AppPage
+}
+
+// GetAppPageSize 获取应用页大小（默认为20，最大50）
+func (q *BatchStatusRequest) GetAppPageSize() int {
+	if q.AppPageSize < 1 {
+		return 20
+	}
+	if q.AppPageSize > 50 {
+		return 50
+	}
+	return q.AppPageSize
+}
+
+// BatchStatusResponse 批次状态响应（轻量级，用于状态轮询）
+type BatchStatusResponse struct {
+	// Batch 基本信息
+	ID             int64  `json:"id"`
+	BatchNumber    string `json:"batch_number"`
+	Status         int8   `json:"status"`
+	StatusName     string `json:"status_name"`
+	ApprovalStatus string `json:"approval_status"`
+
+	// Batch 时间节点
+	SealedAt             *string `json:"sealed_at,omitempty"`
+	PreDeployStartedAt   *string `json:"pre_deploy_started_at,omitempty"`
+	PreDeployFinishedAt  *string `json:"pre_deploy_finished_at,omitempty"`
+	ProdDeployStartedAt  *string `json:"prod_deploy_started_at,omitempty"`
+	ProdDeployFinishedAt *string `json:"prod_deploy_finished_at,omitempty"`
+	FinalAcceptedAt      *string `json:"final_accepted_at,omitempty"`
+	CancelledAt          *string `json:"cancelled_at,omitempty"`
+	UpdatedAt            string  `json:"updated_at"`
+
+	// Release Apps 状态列表（不关联其他表）
+	Apps        []ReleaseAppStatusResponse `json:"apps"`
+	TotalApps   int64                      `json:"total_apps"`
+	AppPage     int                        `json:"app_page"`
+	AppPageSize int                        `json:"app_page_size"`
+}
+
+// ReleaseAppStatusResponse 发布应用状态响应（轻量级，不关联其他表）
+type ReleaseAppStatusResponse struct {
+	ID       int64 `json:"id"`        // release_app ID
+	AppID    int64 `json:"app_id"`    // 应用 ID
+	Status   int8  `json:"status"`    // 应用发布状态
+	IsLocked bool  `json:"is_locked"` // 是否已锁定
 }
 
 // FormatTime 格式化时间

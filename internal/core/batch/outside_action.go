@@ -74,7 +74,7 @@ func (sm *StateMachine) initActions() {
 			},
 		},
 		"start_pre_deploy": {
-			To: constants.BatchStatusPreDeploying,
+			To: constants.BatchStatusPreWaiting,
 			Handle: func(batchID int64) error {
 				var batch model.Batch
 				if err := sm.db.First(&batch, batchID).Error; err != nil {
@@ -102,7 +102,7 @@ func (sm *StateMachine) initActions() {
 			},
 		},
 		"start_prod_deploy": {
-			To: constants.BatchStatusProdDeploying,
+			To: constants.BatchStatusProdWaiting,
 			Handle: func(batchID int64) error {
 				// todo
 				return nil

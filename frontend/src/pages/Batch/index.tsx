@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Table,
   Card,
@@ -24,14 +24,13 @@ import {
   SaveOutlined,
   UndoOutlined,
   ExclamationCircleOutlined,
-  EyeOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
 import { batchService } from '@/services/batch'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { StatusTag } from '@/components/StatusTag'
 import { BatchTimeline } from '@/components/BatchTimeline'
@@ -46,6 +45,7 @@ const { TextArea } = Input
 export default function BatchList() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const [params, setParams] = useState<BatchQueryParams>({
     page: 1,
@@ -62,10 +62,10 @@ export default function BatchList() {
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null)
   const [refreshingList, setRefreshingList] = useState(false)
   const [refreshingDetails, setRefreshingDetails] = useState(false)
-  
+
   // 【新增】每个批次的应用列表分页状态 {batchId: {page, pageSize}}
   const [batchAppPagination, setBatchAppPagination] = useState<Record<number, {page: number, pageSize: number}>>({})
-  
+
   // 【新增】每个批次的构建修改状态 {batchId: {appId: buildId}}
   const [buildChanges, setBuildChanges] = useState<Record<number, Record<number, number>>>({})
 
@@ -90,7 +90,7 @@ export default function BatchList() {
   }, [keywordInput])
 
   // 查询批次列表 - 如果有待部署中的批次，每5秒自动刷新
-  const { data: batchResponse, isLoading, isFetching, refetch } = useQuery({
+  const { data: batchResponse, isLoading, refetch } = useQuery({
     queryKey: ['batchList', params],
     queryFn: async () => {
       const res = await batchService.list(params)
@@ -121,15 +121,15 @@ export default function BatchList() {
           batch.status === 31    // 生产部署中
       )
 
-      return hasDeployingBatches ? 5000 : false // 如果有部署中的批次，每5秒刷新一次
+      return hasDeployingBatches ? 5_000 : 30_000 // 如果有部署中的批次，每5秒刷新一次
     },
-    refetchIntervalInBackground: true, // 即使页面不在焦点也继续轮询
+    refetchIntervalInBackground: false, // 即使页面不在焦点也继续轮询
   })
 
   const batches = batchResponse?.items || []
   const total = batchResponse?.total || 0
 
-  // 查询批次详情（用于展开行）
+  // 查询批次详情（用于展开行 - 完整详情，不轮询）
   const { data: batchDetailsMap = {}, refetch: refetchDetails, isFetching: isFetchingDetails } = useQuery({
     queryKey: ['batchDetails', expandedRowKeys, batchAppPagination],
     queryFn: async () => {
@@ -144,41 +144,70 @@ export default function BatchList() {
       return detailsMap
     },
     enabled: expandedRowKeys.length > 0,
-    staleTime: 0, // 立即标记为过期，确保每次展开都重新获取
-    // 如果展开的批次是部署中的，也定时刷新详情
-    refetchInterval: (query) => {
-      const batchIds = query.queryKey[1] as number[]
-      if (batchIds.length === 0) return false
-
-      // 从查询结果中获取批次详情，检查是否处于部署中状态
-      const detailsMap = query.state.data as Record<number, Batch> | undefined
-      if (!detailsMap) return false
-
-      // 检查展开的批次是否处于部署中状态
-      const hasDeployingBatch = batchIds.some((id) => {
-        const batch = detailsMap[id]
-        return batch && (
-          batch.status === 20 ||
-          batch.status === 21 ||
-          batch.status === 30 ||
-          batch.status === 31
-        )
-      })
-
-      return hasDeployingBatch ? 5000 : false // 每5秒刷新一次
-    },
-    refetchIntervalInBackground: true,
+    staleTime: 1_000,
+    // 不再在这里轮询，改用下面的轻量级状态轮询
   })
 
-  // 当获取到详情数据后，同步更新列表缓存中的数据
+  // 检查是否有展开的批次处于部署中状态（用于决定是否启用状态轮询）
+  const hasDeployingExpandedBatch = useMemo(() => {
+    if (expandedRowKeys.length === 0) return false
+    if (Object.keys(batchDetailsMap).length === 0) return false
+
+    return expandedRowKeys.some((id) => {
+      const batch = batchDetailsMap[id]
+      return batch && (
+        batch.status === 20 || // 预发布待触发
+        batch.status === 21 || // 预发布中
+        batch.status === 30 || // 生产部署待触发
+        batch.status === 31    // 生产部署中
+      )
+    })
+  }, [expandedRowKeys, batchDetailsMap])
+
+  // 轻量级状态轮询（仅用于部署中的批次，不设置loading状态）
+  // 注意：初次展开时不调用，因为 batch 详情接口已包含状态信息
+  // 只在轮询周期（每5秒）时才调用，用于更新状态
+  const { data: batchStatusMap = {} } = useQuery({
+    queryKey: ['batchStatus', expandedRowKeys, batchAppPagination],
+    queryFn: async () => {
+      const statusMap: Record<number, Batch> = {}
+      await Promise.all(
+        expandedRowKeys.map(async (id) => {
+          const pagination = batchAppPagination[id] || { page: 1, pageSize: 20 }
+          const res = await batchService.getStatus(id, pagination.page, pagination.pageSize)
+          statusMap[id] = res.data as Batch
+        })
+      )
+      return statusMap
+    },
+    // 只有在有部署中的批次时才启用查询
+    enabled: hasDeployingExpandedBatch,
+    // 避免初次挂载时立即执行，只依赖轮询间隔
+    refetchOnMount: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: ( ) => {
+      if (document.hidden) {
+        return 30_000;
+      }
+      return 5_000;
+    },
+    refetchIntervalInBackground: false,
+    staleTime: 5000,
+  })
+
+  // 当获取到详情数据或状态数据后，同步更新列表缓存中的数据
   useEffect(() => {
-    if (batchResponse && Object.keys(batchDetailsMap).length > 0) {
+    if (batchResponse && (Object.keys(batchDetailsMap).length > 0 || Object.keys(batchStatusMap).length > 0)) {
       // 更新列表缓存中的数据
       queryClient.setQueryData(['batchList', params], (oldData: any) => {
         if (!oldData) return oldData
 
         const updatedItems = oldData.items.map((item: Batch) => {
           const detail = batchDetailsMap[item.id]
+          const status = batchStatusMap[item.id]
+
+          // 优先使用详情数据，其次使用状态数据
           if (detail) {
             // 合并详情数据到列表项，优先使用详情数据
             return {
@@ -187,6 +216,22 @@ export default function BatchList() {
               // 确保关键字段使用最新的值
               status: detail.status ?? item.status,
               approval_status: detail.approval_status ?? item.approval_status,
+            }
+          } else if (status) {
+            // 只更新状态相关字段，保留列表项的其他数据
+            // 注意：状态接口返回 sealed_at，而详情接口返回 tagged_at
+            return {
+              ...item,
+              status: status.status ?? item.status,
+              approval_status: status.approval_status ?? item.approval_status,
+              tagged_at: (status as any).sealed_at ?? item.tagged_at, // 状态接口字段名不同
+              pre_deploy_started_at: status.pre_deploy_started_at ?? item.pre_deploy_started_at,
+              pre_deploy_finished_at: status.pre_deploy_finished_at ?? item.pre_deploy_finished_at,
+              prod_deploy_started_at: status.prod_deploy_started_at ?? item.prod_deploy_started_at,
+              prod_deploy_finished_at: status.prod_deploy_finished_at ?? item.prod_deploy_finished_at,
+              final_accepted_at: status.final_accepted_at ?? item.final_accepted_at,
+              cancelled_at: status.cancelled_at ?? item.cancelled_at,
+              updated_at: status.updated_at ?? item.updated_at,
             }
           }
           return item
@@ -199,7 +244,7 @@ export default function BatchList() {
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batchDetailsMap])
+  }, [batchDetailsMap, batchStatusMap])
 
   // 批次操作 Mutation
   const actionMutation = useMutation({
@@ -310,9 +355,15 @@ export default function BatchList() {
     }
   }
 
-  const renderActionButtons = (record: Batch) => (
-    <Space size="small" wrap>
-      {(record.status === 0 || record.approval_status === 'pending') && (
+  const renderActionButtons = (record: Batch) => {
+    // 如果批次已取消，不显示任何操作按钮
+    if (record.status === 90) {
+      return null
+    }
+
+    return (
+      <Space size="small" wrap>
+        {(record.status === 0 || record.approval_status === 'pending') && (
         <Button
           size="small"
           icon={<EditOutlined />}
@@ -466,13 +517,9 @@ export default function BatchList() {
       >
         {t('batch.cancelBatch')}
       </Button>
-      <Link to={`/batch/${record.id}/insights`} onClick={(e) => e.stopPropagation()}>
-        <Button size="small" icon={<EyeOutlined />}>
-          {t('batch.viewInsights')}
-        </Button>
-      </Link>
     </Space>
-  )
+    )
+  }
 
   const handleCardToggle = (record: Batch) => {
     const isExpanded = expandedRowKeys.includes(record.id)
@@ -505,10 +552,10 @@ export default function BatchList() {
 
     // 获取当前批次的分页状态
     const pagination = batchAppPagination[batchId] || { page: 1, pageSize: 20 }
-    
+
     // 获取当前批次的构建修改状态
     const currentBuildChanges = buildChanges[batchId] || {}
-    
+
     // 处理构建选择变更
     const handleBuildChange = (appId: number, buildId: number) => {
       setBuildChanges(prev => ({
@@ -519,7 +566,7 @@ export default function BatchList() {
         }
       }))
     }
-    
+
     // 保存构建变更
     const handleSaveBuildChanges = async () => {
       try {
@@ -529,14 +576,14 @@ export default function BatchList() {
           build_changes: currentBuildChanges,
         })
         message.success('构建版本更新成功')
-        
+
         // 清空该批次的修改记录
         setBuildChanges(prev => {
           const newChanges = { ...prev }
           delete newChanges[batchId]
           return newChanges
         })
-        
+
         // 刷新批次详情
         await queryClient.invalidateQueries({ queryKey: ['batchDetails'] })
         await refetchDetails()
@@ -544,7 +591,7 @@ export default function BatchList() {
         message.error(error.response?.data?.message || '更新失败，请重试')
       }
     }
-    
+
     // 还原/取消所有修改
     const handleCancelBuildChanges = () => {
       setBuildChanges(prev => {
@@ -554,7 +601,7 @@ export default function BatchList() {
       })
       message.info('已取消所有修改')
     }
-    
+
     // 处理分页变更
     const handlePaginationChange = (page: number, pageSize: number) => {
       setBatchAppPagination(prev => ({
@@ -750,7 +797,7 @@ export default function BatchList() {
                     pageSizeOptions={['10', '20', '50']}
                   />
                 )}
-                
+
                 {/* 还原和应用按钮 */}
                 {Object.keys(currentBuildChanges).length > 0 && (
                   <>
@@ -787,7 +834,7 @@ export default function BatchList() {
                   rowKey="id"
                   pagination={false}
                   size="small"
-                  rowClassName={(record: ReleaseApp) => 
+                  rowClassName={(record: ReleaseApp) =>
                     record.app_id in currentBuildChanges ? 'batch-app-row-modified' : ''
                   }
                 />
@@ -812,11 +859,15 @@ export default function BatchList() {
 
   const renderBatchCard = (record: Batch) => {
     const detail = batchDetailsMap[record.id]
+    const status = batchStatusMap[record.id]
     const isExpanded = expandedRowKeys.includes(record.id)
     const isDetailLoading = isExpanded && (isFetchingDetails || refreshingDetails)
 
+    // 合并数据：优先使用 detail（完整详情），其次使用 status（轻量状态），最后使用 record（列表数据）
+    const mergedBatch = detail ? detail : (status ? { ...record, ...status } : record)
+
     // 根据状态添加 CSS 类（使用最新的状态）
-    const currentStatus = detail?.status ?? record.status
+    const currentStatus = mergedBatch.status
     const statusClass =
       currentStatus === 0 ? 'status-draft' :            // 草稿 - 淡黄色
       currentStatus === 10 ? 'status-sealed' :          // 已封板 - 紫色
@@ -827,14 +878,8 @@ export default function BatchList() {
       currentStatus === 40 ? 'status-completed' :        // 已完成 - 绿色
       currentStatus === 90 ? 'status-cancelled' : ''     // 已取消 - 灰色
 
-    // 合并数据：优先使用 detail（最新数据），如果 detail 不存在或某些字段为空，则使用 record
-    const timelineBatch: Batch = detail ? {
-      ...record,
-      ...detail,
-      // 确保关键字段使用最新的值
-      status: detail.status ?? record.status,
-      approval_status: detail.approval_status ?? record.approval_status,
-    } : record
+    // 时间轴使用合并后的数据
+    const timelineBatch: Batch = mergedBatch
 
     const batchNumberContent = (
       <div className="batch-cell batch-cell-number">
@@ -882,8 +927,20 @@ export default function BatchList() {
           </div>
         </div>
 
-        <div className="batch-card-timeline">
-          <BatchTimeline batch={timelineBatch} />
+        <div
+          className="batch-card-timeline"
+          onClick={(e) => {
+            // 阻止触发卡片的展开/收起
+            e.stopPropagation()
+            // 跳转到洞察页面
+            navigate(`/batch/${record.id}/insights`)
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <BatchTimeline
+            batch={timelineBatch}
+            onAction={(action) => handleAction(record.id, action)}
+          />
         </div>
 
         {isExpanded && renderBatchDetail(detail, isDetailLoading)}
@@ -900,11 +957,12 @@ export default function BatchList() {
       )
     }
 
-    const isRefreshing = isFetching && !refreshingList && !refreshingDetails
+    // 只在用户主动刷新列表时显示 loading 状态，自动轮询不显示
+    const shouldShowRefreshing = refreshingList && expandedRowKeys.length === 0
 
     return (
       <div
-        className={`batch-card-list-wrapper ${(refreshingList && expandedRowKeys.length === 0) || isRefreshing ? 'refreshing' : ''}`}
+        className={`batch-card-list-wrapper ${shouldShowRefreshing ? 'refreshing' : ''}`}
       >
         <div className="batch-card-list">
           <div className="batch-card-header">
@@ -921,7 +979,7 @@ export default function BatchList() {
             <div className="batch-card-empty">暂无批次数据</div>
           )}
         </div>
-        {((refreshingList && expandedRowKeys.length === 0) || isRefreshing) && (
+        {shouldShowRefreshing && (
           <div className="batch-list-refresh-mask">
             <Spin />
           </div>

@@ -1,4 +1,5 @@
-import { Steps, Tag } from 'antd'
+import { Steps, Tag, Tooltip } from 'antd'
+import { LoadingOutlined, CheckCircleOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
@@ -7,9 +8,10 @@ import './index.css'
 
 interface BatchTimelineProps {
   batch: Batch
+  onAction?: (action: string) => void
 }
 
-export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch }) => {
+export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction }) => {
   const { t } = useTranslation()
   const [isVertical, setIsVertical] = useState(false)
 
@@ -122,6 +124,73 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch }) => {
   const preDeployTimes = getPreDeployTimeDescription()
   const prodDeployTimes = getProdDeployTimeDescription()
 
+  // 获取自定义图标（用于可点击和进行中状态）
+  const getCustomIcon = (stepIndex: number) => {
+    // 封板步骤 (index 2)
+    if (stepIndex === 2) {
+      // 如果还没封板且审批已通过，显示可点击的封板图标
+      if (!batch.tagged_at && batch.approval_status === 'approved' && onAction) {
+        return (
+          <Tooltip title={t('batch.seal')}>
+            <CheckCircleOutlined 
+              className="timeline-icon-clickable"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAction('seal')
+              }}
+            />
+          </Tooltip>
+        )
+      }
+    }
+
+    // 预发布步骤 (index 3)
+    if (stepIndex === 3) {
+      // 如果正在预发布中，显示转圈图标
+      if (batch.status === 20 || batch.status === 21) {
+        return <LoadingOutlined className="timeline-icon-loading" />
+      }
+      // 如果已封板且未开始预发布，显示可点击的开始图标
+      if (batch.status === 10 && onAction) {
+        return (
+          <Tooltip title={t('batch.startPreDeploy')}>
+            <PlayCircleOutlined 
+              className="timeline-icon-clickable"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAction('start_pre_deploy')
+              }}
+            />
+          </Tooltip>
+        )
+      }
+    }
+
+    // 生产部署步骤 (index 4)
+    if (stepIndex === 4) {
+      // 如果正在生产部署中，显示转圈图标
+      if (batch.status === 30 || batch.status === 31) {
+        return <LoadingOutlined className="timeline-icon-loading" />
+      }
+      // 如果预发布完成且未开始生产部署，显示可点击的开始图标
+      if (batch.status === 22 && onAction) {
+        return (
+          <Tooltip title={t('batch.startProdDeploy')}>
+            <PlayCircleOutlined 
+              className="timeline-icon-clickable"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAction('start_prod_deploy')
+              }}
+            />
+          </Tooltip>
+        )
+      }
+    }
+
+    return undefined
+  }
+
   const steps = [
     {
       title: t('batch.timelineCreate'),
@@ -184,10 +253,14 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch }) => {
       <Steps
         current={getCurrentStep()}
         direction={isVertical ? 'vertical' : 'horizontal'}
-        items={steps.map((step, index) => ({
-          ...step,
-          status: getStepStatus(index),
-        }))}
+        items={steps.map((step, index) => {
+          const customIcon = getCustomIcon(index)
+          return {
+            ...step,
+            status: getStepStatus(index),
+            icon: customIcon,
+          }
+        })}
       />
     </div>
   )

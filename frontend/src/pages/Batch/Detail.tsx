@@ -109,7 +109,6 @@ export default function BatchDetail() {
       message.error(error.response?.data?.message || t('common.error'))
     },
   })
-
   const updateDependenciesMutation = useMutation({
     mutationFn: ({
       releaseAppId,
@@ -644,7 +643,10 @@ export default function BatchDetail() {
       </Card>
 
       {/* 上线流程时间线 */}
-      <BatchTimeline batch={batch}/>
+      <BatchTimeline 
+        batch={batch} 
+        onAction={(action) => handleAction(action as BatchActionRequest['action'])}
+      />
 
       {/* 应用列表 */}
       <Card

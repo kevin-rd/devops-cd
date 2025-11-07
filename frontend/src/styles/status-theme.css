@@ -1,0 +1,86 @@
+/* ==================== 批次和应用状态主题颜色配置 ==================== */
+/* 此文件定义了所有状态相关的颜色变量，供 Batch Card、Timeline Card、AppNode 等组件复用 */
+
+:root {
+  /* ========== 草稿状态 ========== */
+  --status-draft-bg-start: #feffe6;
+  --status-draft-bg-end: #ffffff;
+  
+  /* ========== 封板状态 ========== */
+  --status-sealed-bg-start: #f0e6ff;
+  --status-sealed-bg-end: #ffffff;
+  
+  /* ========== 预发布状态（拂晓蓝系列 + 日暮背景） ========== */
+  /* 预发布等待/预发布中 - 日暮背景 #fff7e6 */
+  --status-pre-bg-start: #fff7e6;
+  --status-pre-bg-end: #ffffff;
+  
+  /* 预发布边框颜色 */
+  --status-pre-border-waiting: #1890ff;        /* 等待 - 标准蓝 */
+  --status-pre-border-deploying: #69c0ff;      /* 部署中 - 拂晓蓝4 */
+  --status-pre-border-deployed: #91d5ff;       /* 完成 - 拂晓蓝3 */
+  --status-pre-border-failed: #ff4d4f;         /* 失败 - 红色 */
+  
+  /* ========== 生产部署状态（橙红系列 + 火山背景） ========== */
+  /* 生产部署 - 火山1背景 #fff2e8 */
+  --status-prod-bg-start: #fff2e8;
+  --status-prod-bg-end: #ffffff;
+  
+  /* 生产部署边框颜色 */
+  --status-prod-border-waiting: #fa541c;       /* 等待 - 橙红 */
+  --status-prod-border-deploying: #ff9c6e;     /* 部署中 - 橙红亮色 */
+  --status-prod-border-deployed: #73d13d;      /* 完成 - 极光绿4 */
+  --status-prod-border-failed: #ff4d4f;        /* 失败 - 红色 */
+  
+  /* ========== 完成状态 ========== */
+  --status-completed-border: #95de64;          /* 极光绿5 */
+  --status-completed-bg-start: #f6ffed;
+  --status-completed-bg-end: #ffffff;
+  
+  /* ========== 取消状态 ========== */
+  --status-cancelled-border: #d9d9d9;
+  --status-cancelled-bg-start: #fafafa;
+  --status-cancelled-bg-end: #ffffff;
+  --status-cancelled-opacity: 0.85;
+  
+  /* ========== 失败状态（红色系列） ========== */
+  --status-failed-border: #ff4d4f;
+  --status-failed-bg-start: #fff1f0;
+  --status-failed-bg-end: #ffffff;
+  
+  /* ========== 边框宽度 ========== */
+  --status-border-width-normal: 2px;
+  --status-border-width-thin: 1px;
+  
+  /* ========== 边框圆角 ========== */
+  --status-border-radius: 6px;
+  --status-border-radius-inner: 4px;
+  
+  /* ========== 动画参数 ========== */
+  --status-animation-duration: 1.5s;
+  --status-dash-length: 12px;
+  --status-dash-gap: 24px;
+}
+
+/* ==================== 虚线边框滚动动画（统一） ==================== */
+@keyframes statusBorderDashMove {
+  0% {
+    background-position: 0 0, 100% 0, 0 100%, 0 0;
+  }
+  100% {
+    background-position: var(--status-dash-gap) 0, 100% var(--status-dash-gap), calc(-1 * var(--status-dash-gap)) 100%, 0 calc(-1 * var(--status-dash-gap));
+  }
+}
+
+/* ==================== 脉冲动画（可选） ==================== */
+@keyframes statusPulse {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+

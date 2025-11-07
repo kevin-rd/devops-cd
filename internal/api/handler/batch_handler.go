@@ -466,6 +466,38 @@ func (h *BatchHandler) List(c *gin.Context) {
 	utils.PageSuccess(c, responses, total, req.GetPage(), req.GetPageSize())
 }
 
+// GetStatus 获取批次状态（轻量级，用于状态轮询）
+// @Summary 获取批次状态
+// @Description 获取批次状态信息（轻量级接口，专门用于状态轮询）。只返回批次和应用的状态信息，不包含构建历史、依赖等详细数据。
+// @Tags 批次管理
+// @Accept json
+// @Produce json
+// @Param id query int64 true "批次ID"
+// @Param app_page query int false "应用列表页码" default(1)
+// @Param app_page_size query int false "应用列表每页数量" default(20)
+// @Success 200 {object} map[string]interface{} "成功响应"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 500 {object} map[string]interface{} "服务器错误"
+// @Security BearerAuth
+// @Router /api/v1/batch/status [get]
+func (h *BatchHandler) GetStatus(c *gin.Context) {
+	var req dto.BatchStatusRequest
+
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		return
+	}
+
+	response, err := h.batchService.GetBatchStatus(req.ID, req.GetAppPage(), req.GetAppPageSize())
+	if err != nil {
+		logger.Error("获取批次状态失败", zap.Int64("batch_id", req.ID), zap.Error(err))
+		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.Success(c, response)
+}
+
 // getStatusName 获取状态名称（仅用于错误响应）
 func getStatusName(status int8) string {
 	switch status {

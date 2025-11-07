@@ -35,6 +35,16 @@ export const batchService = {
       } 
     }),
 
+  // 获取批次状态（轻量级接口，用于状态轮询）
+  getStatus: (id: number, appPage?: number, appPageSize?: number) =>
+    get<ApiResponse<Batch>>('/v1/batch/status', { 
+      params: { 
+        id,
+        app_page: appPage,
+        app_page_size: appPageSize
+      } 
+    }),
+
   // 更新批次
   update: (data: UpdateBatchRequest) =>
     put<ApiResponse<{ message: string }>>('/v1/batch', data),

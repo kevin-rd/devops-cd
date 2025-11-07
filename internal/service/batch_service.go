@@ -615,6 +615,7 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			ReleaseNotes: release.ReleaseNotes,
 			IsLocked:     release.IsLocked,
 			Reason:       release.Reason,
+			Status:       release.Status,
 
 			// 时间信息
 			CreatedAt: release.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -1146,4 +1147,72 @@ func (s *BatchService) RejectBatch(batchID int64, operator string, reason string
 		zap.String("reason", reason))
 
 	return nil
+}
+
+// GetBatchStatus 获取批次状态（轻量级，用于状态轮询）
+// 只查询 release_batches 和 release_apps 两个表，不关联其他表
+func (s *BatchService) GetBatchStatus(batchID int64, appPage, appPageSize int) (*dto.BatchStatusResponse, error) {
+	// 1. 查询批次基本信息
+	var batch model.Batch
+	if err := s.db.First(&batch, batchID).Error; err != nil {
+		return nil, fmt.Errorf("查询批次失败: %w", err)
+	}
+
+	// 2. 查询应用总数
+	var totalApps int64
+	if err := s.db.Model(&model.ReleaseApp{}).
+		Where("batch_id = ?", batchID).
+		Count(&totalApps).Error; err != nil {
+		return nil, fmt.Errorf("查询应用总数失败: %w", err)
+	}
+
+	// 3. 查询应用状态列表（分页）
+	var releaseApps []model.ReleaseApp
+	offset := (appPage - 1) * appPageSize
+	if err := s.db.Where("batch_id = ?", batchID).
+		Order("id ASC").
+		Limit(appPageSize).
+		Offset(offset).
+		Find(&releaseApps).Error; err != nil {
+		return nil, fmt.Errorf("查询应用状态失败: %w", err)
+	}
+
+	// 4. 转换为响应格式
+	apps := make([]dto.ReleaseAppStatusResponse, len(releaseApps))
+	for i, app := range releaseApps {
+		apps[i] = dto.ReleaseAppStatusResponse{
+			ID:       app.ID,
+			AppID:    app.AppID,
+			Status:   app.Status,
+			IsLocked: app.IsLocked,
+		}
+	}
+
+	// 5. 获取状态名称
+	statusName := getStatusName(batch.Status)
+
+	// 6. 构造响应
+	response := &dto.BatchStatusResponse{
+		ID:             batch.ID,
+		BatchNumber:    batch.BatchNumber,
+		Status:         batch.Status,
+		StatusName:     statusName,
+		ApprovalStatus: batch.ApprovalStatus,
+
+		SealedAt:             dto.FormatTime(batch.SealedAt),
+		PreDeployStartedAt:   dto.FormatTime(batch.PreStartedAt),
+		PreDeployFinishedAt:  dto.FormatTime(batch.PreFinishedAt),
+		ProdDeployStartedAt:  dto.FormatTime(batch.ProdStartedAt),
+		ProdDeployFinishedAt: dto.FormatTime(batch.ProdFinishedAt),
+		FinalAcceptedAt:      dto.FormatTime(batch.FinalAcceptedAt),
+		CancelledAt:          dto.FormatTime(batch.CancelledAt),
+		UpdatedAt:            batch.UpdatedAt.Format(time.RFC3339),
+
+		Apps:        apps,
+		TotalApps:   totalApps,
+		AppPage:     appPage,
+		AppPageSize: appPageSize,
+	}
+
+	return response, nil
 }

@@ -226,7 +226,7 @@ export default {
 
       appName: 'Application',
       appType: 'App Type',
-      currentVersion: 'Current Version',
+      currentVersion: 'Current Version(Prod)',
       pendingDeploy: 'Pending Deploy',
       oldVersion: 'Old Version',
       deployed: 'Deployed',

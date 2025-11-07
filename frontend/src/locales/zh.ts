@@ -241,7 +241,7 @@ export default {
       // 应用信息
       appName: '应用名称',
       appType: '应用类型',
-      currentVersion: '当前版本',
+      currentVersion: '当前生产版本',
       pendingDeploy: '待部署',
       oldVersion: '旧版本',
       deployed: '已部署',

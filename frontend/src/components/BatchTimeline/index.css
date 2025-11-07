@@ -158,6 +158,39 @@
   line-height: 1.4;
 }
 
+/* 可点击的图标样式 */
+.batch-timeline .timeline-icon-clickable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #1890ff;
+  font-size: 16px;
+}
+
+.batch-timeline .timeline-icon-clickable:hover {
+  color: #40a9ff;
+  transform: scale(1.15);
+}
+
+.batch-timeline .timeline-icon-clickable:active {
+  transform: scale(0.95);
+}
+
+/* 转圈加载图标样式 */
+.batch-timeline .timeline-icon-loading {
+  color: #1890ff;
+  font-size: 16px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* 状态标签样式 - 在subTitle位置 */
 .batch-timeline .ant-steps-item-subtitle .status-tag {
   display: inline-block;

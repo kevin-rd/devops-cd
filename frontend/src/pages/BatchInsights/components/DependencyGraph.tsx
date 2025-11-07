@@ -735,12 +735,12 @@ const buildGraphData = (releaseApps: ReleaseApp[]): { nodes: Node[]; edges: Edge
           type: 'smoothstep', // 使用 smoothstep 让箭头自动跟随方向
           animated: false,
           style: {
-            stroke: '#722ed1',
-            strokeWidth: 2,
+            stroke: '#333333',
+            strokeWidth: 1.5,
           },
           markerEnd: {
             type: MarkerType.Arrow,
-            color: '#722ed1',
+            color: '#333333',
             width: 16,
             height: 10,
             strokeWidth: 2,
@@ -760,13 +760,13 @@ const buildGraphData = (releaseApps: ReleaseApp[]): { nodes: Node[]; edges: Edge
           type: 'default', // 使用 smoothstep 让箭头自动跟随方向
           animated: false,
           style: {
-            stroke: '#1890ff',
-            strokeWidth: 2,
+            stroke: '#333333',
+            strokeWidth: 1.5,
             strokeDasharray: '6,4',
           },
           markerEnd: {
             type: MarkerType.Arrow,
-            color: '#1890ff',
+            color: '#333333',
             width: 16,
             height: 10,
             strokeWidth: 2,
