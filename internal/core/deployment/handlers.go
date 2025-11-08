@@ -38,6 +38,7 @@ func (sm *StateMachine) HandlePending(ctx context.Context, dep *model.Deployment
 		if result.HasFailed() {
 			reason := result.Summary()
 			return constants.DeploymentStatusFailed, func(d *model.Deployment) {
+				d.TaskID = dep.TaskID
 				setErrorMessage(d, reason)
 			}, nil
 		}
@@ -45,6 +46,7 @@ func (sm *StateMachine) HandlePending(ctx context.Context, dep *model.Deployment
 		if result.HasPending() {
 			reason := result.Summary()
 			return constants.DeploymentStatusWaitingDependencies, func(d *model.Deployment) {
+				d.TaskID = dep.TaskID
 				setErrorMessage(d, reason)
 			}, nil
 		}

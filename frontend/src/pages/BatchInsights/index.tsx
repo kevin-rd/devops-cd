@@ -15,8 +15,8 @@ import {
   Spin,
   Tabs,
 } from 'antd'
-import { 
-  LeftOutlined, 
+import {
+  LeftOutlined,
   ReloadOutlined,
   EditOutlined,
   CheckCircleOutlined,
@@ -24,11 +24,9 @@ import {
   PlayCircleOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { batchService } from '@/services/batch'
 import type { Batch, BatchActionRequest } from '@/types'
-import { StatusTag } from '@/components/StatusTag'
 import { BatchTimeline } from '@/components/BatchTimeline'
 import { useAuthStore } from '@/stores/authStore'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
@@ -48,9 +46,6 @@ interface BatchOption {
   batch: Batch
 }
 
-const formatTime = (value?: string | null) =>
-  value ? dayjs(value).format('YYYY-MM-DD HH:mm') : undefined
-
 const environmentOptions: Array<{ label: string; value: Environment }> = [
   { label: 'Pre', value: 'pre' },
   { label: 'Prod', value: 'prod' },
@@ -63,6 +58,19 @@ export default function BatchInsights() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+
+  // Timeline 卡片标题组件
+  const TimelineCardTitle = ({ batch }: { batch: Batch }) => (
+    <div className={styles.timelineTitle}>
+      <div className={styles.titleMain}>
+        <span className={styles.batchId}>#{batch.id}</span>
+        <span className={styles.batchName}>{batch.batch_number}</span>
+      </div>
+      {batch.release_notes && (
+        <div className={styles.releaseNotes}>{batch.release_notes}</div>
+      )}
+    </div>
+  )
 
   const [environment, setEnvironment] = useState<Environment>(
     (searchParams.get('env') as Environment) || 'pre'
@@ -291,13 +299,6 @@ export default function BatchInsights() {
   const handleTimelineAction = (action: string) => {
     if (!currentBatchId) return
     handleAction(currentBatchId, action)
-  }
-
-  // 打开审批 Modal
-  const handleOpenApproval = () => {
-    setApprovalAction('approve')
-    setApprovalReason('')
-    setApprovalModalVisible(true)
   }
 
   // 确认审批
@@ -578,56 +579,15 @@ export default function BatchInsights() {
             <Empty description={t('batchInsights.noData')} />
           ) : (
             <>
-              <Card className={styles.section} title={t('batchInsights.batchInfo')}>
-                <div className={styles.batchInfoGrid}>
-                  <div>
-                    <div className={styles.label}>{t('batch.batchNumber')}</div>
-                    <div className={styles.value}>{mergedBatchDetail.batch_number}</div>
-                  </div>
-                  <div>
-                    <div className={styles.label}>{t('batch.initiator')}</div>
-                    <div className={styles.value}>{mergedBatchDetail.initiator || '-'}</div>
-                  </div>
-                  <div>
-                    <div className={styles.label}>{t('batch.status')}</div>
-                    <StatusTag status={mergedBatchDetail.status} />
-                  </div>
-                  <div>
-                    <div className={styles.label}>{t('batch.approvalStatus')}</div>
-                    <StatusTag
-                      status={mergedBatchDetail.status}
-                      approvalStatus={mergedBatchDetail.approval_status}
-                      showApproval
-                      onApprovalClick={handleOpenApproval}
-                      approvalTime={
-                        mergedBatchDetail.approved_at
-                          ? dayjs(mergedBatchDetail.approved_at).format('MM-DD HH:mm')
-                          : undefined
-                      }
-                      rejectReason={mergedBatchDetail.reject_reason}
-                      approvedBy={mergedBatchDetail.approved_by}
-                    />
-                  </div>
-                  <div>
-                    <div className={styles.label}>{t('batch.createdAt')}</div>
-                    <div className={styles.value}>{formatTime(mergedBatchDetail.created_at) || '-'}</div>
-                  </div>
-                  <div>
-                    <div className={styles.label}>{t('batchInsights.appCount')}</div>
-                    <div className={styles.value}>{mergedBatchDetail.total_apps || mergedBatchDetail.apps?.length || 0}</div>
-                  </div>
-                </div>
-              </Card>
-
-              <Card 
+              <Card
                 className={`${styles.section} ${getTimelineCardClass(mergedBatchDetail)}`}
-                title={t('batchInsights.timeline')}
+                title={<TimelineCardTitle batch={mergedBatchDetail} />}
                 extra={renderActionButtons(mergedBatchDetail)}
               >
                 <BatchTimeline batch={mergedBatchDetail} onAction={handleTimelineAction} />
               </Card>
 
-              <Card className={styles.graphSection} title={t('batchInsights.dependencyGraph')}>
+              <Card className={styles.graphSection} title={`${t('batchInsights.appDetails')} (${mergedBatchDetail.total_apps || mergedBatchDetail.apps?.length || 0})`}>
                 <DependencyGraph releaseApps={releaseApps} appTypeConfigs={mergedBatchDetail?.app_type_configs} />
               </Card>
             </>

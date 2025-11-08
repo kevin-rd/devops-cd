@@ -36,20 +36,41 @@
   overflow: visible;
 }
 
-.batchInfoGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+/* Timeline 卡片标题样式 */
+.timelineTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.label {
+.titleMain {
+  display: flex;
+  align-items: center;
+  line-height: 1.6;
+  gap: 8px;
+}
+
+.batchId {
+  color: #999;
   font-size: 12px;
-  color: #8c8c8c;
+  font-weight: normal;
 }
 
-.value {
-  font-size: 14px;
-  font-weight: 500;
+.batchName {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.releaseNotes {
+  color: #8c8c8c;
+  font-size: 12px;
+  line-height: 1.2;
+  /*margin-top: 2px;*/
+  max-width: 600px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Timeline 卡片状态样式 - 根据批次状态显示边框和背景 */
@@ -84,7 +105,7 @@
   inset: 0;
   border-radius: var(--status-border-radius);
   padding: var(--status-border-width-normal);
-  background: 
+  background:
     repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
@@ -92,12 +113,12 @@
   background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
   background-position: 0 0, 100% 0, 0 100%, 0 0;
   background-repeat: no-repeat;
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
   animation: statusBorderDashMove var(--status-animation-duration) linear infinite;
@@ -147,7 +168,7 @@
   inset: 0;
   border-radius: var(--status-border-radius);
   padding: var(--status-border-width-normal);
-  background: 
+  background:
     repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
@@ -155,12 +176,12 @@
   background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
   background-position: 0 0, 100% 0, 0 100%, 0 0;
   background-repeat: no-repeat;
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
   animation: statusBorderDashMove var(--status-animation-duration) linear infinite;

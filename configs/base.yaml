@@ -77,7 +77,10 @@ core:
       description: "Node.js/Express/Nest.js等应用"
       icon: "nodejs"
       color: "#339933"
-      dependencies: []
+      dependencies:
+        - go
+        - java
+        - py
     java:
       label: "Java应用"
       description: "Spring Boot/Spring Cloud等应用"

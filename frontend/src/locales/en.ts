@@ -264,6 +264,7 @@ export default {
       batchInfo: 'Batch Information',
       timeline: 'Release Timeline',
       dependencyGraph: 'Dependency Graph',
+      appDetails: 'Application Details',
       appCount: 'Applications',
       target: 'Target Version',
       updatedAt: 'Updated At',

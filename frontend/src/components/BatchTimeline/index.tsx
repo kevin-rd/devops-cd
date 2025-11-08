@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import type { Batch } from '@/types'
+import { formatCreatedTime } from '@/utils/time'
 import './index.css'
 
 interface BatchTimelineProps {
@@ -189,10 +190,17 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
     return undefined
   }
 
+  const createdTimeInfo = formatCreatedTime(batch.created_at)
+
   const steps = [
     {
       title: t('batch.timelineCreate'),
-      description: formatTime(batch.created_at),
+      description: (
+        <div>
+          <div>{formatTime(batch.created_at)}</div>
+          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>{createdTimeInfo.dayInfo}</div>
+        </div>
+      ),
       subTitle: batch.initiator,
     },
     {
