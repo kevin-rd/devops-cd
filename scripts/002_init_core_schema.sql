@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS `release_apps` (
     -- 版本信息
     `previous_deployed_tag` VARCHAR(100) DEFAULT NULL COMMENT '部署前的版本（封板时从 applications.deployed_tag 获取）',
     `target_tag` VARCHAR(100) DEFAULT NULL COMMENT '目标部署版本（封板时从 build.image_tag 获取并固定，部署期间代表期望版本，部署完成后代表已部署版本）',
+    `latest_build_id` BIGINT DEFAULT NULL COMMENT '最新检测到的构建ID（新tag到达时更新）',
 
     -- 业务字段
     `release_notes` TEXT DEFAULT NULL COMMENT '应用级发布说明（可选）',

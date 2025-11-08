@@ -13,8 +13,6 @@ type StateMachine struct {
 	db     *gorm.DB
 	logger *zap.Logger
 
-	// 外部触发动作
-	actions map[string]Action
 	// 内部Stata触发
 	handlers map[int8]StateHandler
 
@@ -30,7 +28,6 @@ func NewBatchStateMachine(db *gorm.DB, logger *zap.Logger) *StateMachine {
 		transitions: make(map[int8]map[int8]StateTransition),
 	}
 
-	sm.initActions()
 	sm.registerHandlers()
 	sm.registerTransitions()
 	return sm
@@ -56,17 +53,21 @@ func (sm *StateMachine) Process(ctx context.Context, batch *model.Batch) {
 
 	// 3. 状态更新
 	if nextStatus != 0 && nextStatus != batch.Status {
-		if err = sm.UnifiedUpdate(ctx, batch, nextStatus, TransitionSourceInside, updateFunc); err != nil {
+		if err = sm.ChangeStatus(ctx, batch, nextStatus, TransitionSourceInside, WithModelEffects(updateFunc)); err != nil {
 			sm.logger.Error(fmt.Sprintf("Batch:%v(%s) -> 状态流转失败 %d→%d: %v", batch.ID, batch.BatchNumber, batch.Status, nextStatus, err))
 			return
 		}
 	}
 }
 
-func (sm *StateMachine) UnifiedUpdate(ctx context.Context, batch *model.Batch, to, source int8, updateFunc func(*model.Batch)) error {
+func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to, source int8, opts ...TransitionOption) error {
 	log := sm.logger.Sugar().With(zap.Int64("batch_id", batch.ID))
 
-	var handler TransitionHandler
+	option := &transitionOptions{}
+	for _, opt := range opts {
+		opt(option)
+	}
+
 	var from int8
 	var afterHandler func()
 
@@ -82,17 +83,20 @@ func (sm *StateMachine) UnifiedUpdate(ctx context.Context, batch *model.Batch, t
 		if !ok {
 			return fmt.Errorf("当前状态 %s 不允许转换到 %s", constants.BatchStatusToString(batch.Status), constants.BatchStatusToString(to))
 		}
-		handler = h
 
-		// 3. 先进行业务字段更新
-		if updateFunc != nil {
-			updateFunc(batch)
+		// 3. 执行业务字段更新
+		if option.sideEffect != nil {
+			option.sideEffect(batch)
 		}
 
-		// 4. 处理强依赖操作, 失败自动回滚
-		if handler != nil {
-			if err := handler.Handle(batch, batch.Status, to); err != nil {
+		if h != nil {
+			// 4. 处理强依赖操作, 失败自动回滚
+			if err := h.Handle(batch, batch.Status, to, option); err != nil {
 				return err
+			}
+
+			afterHandler = func() {
+				h.After(batch, from, to, option)
 			}
 		}
 
@@ -106,13 +110,8 @@ func (sm *StateMachine) UnifiedUpdate(ctx context.Context, batch *model.Batch, t
 			return fmt.Errorf("update failed: status conflict")
 		}
 
-		afterHandler = func() {
-			if handler != nil {
-				handler.After(batch, from, to)
-			}
-			log.Infof("Batch:%v 状态变更成功: %v -> %v", batch.ID, from, to)
-		}
-		//batch.NextCheckAt = time.Now().Add(30 * time.Second) // 根据层级调整
+		log.Infof("Batch:%v 状态变更成功: %v -> %v", batch.ID, from, to)
+		// batch.NextCheckAt = time.Now().Add(30 * time.Second) // 根据层级调整
 		return nil
 	})
 

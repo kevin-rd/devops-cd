@@ -61,6 +61,7 @@ type ReleaseApp struct {
 	// 版本信息
 	PreviousDeployedTag *string `gorm:"column:previous_deployed_tag;size:100" json:"previous_deployed_tag"` // 部署前的版本（封板时从 applications.deployed_tag 获取）
 	TargetTag           *string `gorm:"column:target_tag;size:100" json:"target_tag"`                       // 目标部署版本（封板时从 build.image_tag 获取并固定，部署期间代表期望版本，部署完成后代表已部署版本）
+	LatestBuildID       *int64  `gorm:"column:latest_build_id" json:"latest_build_id"`                      // 最新检测到的构建ID（新tag到达时更新）
 
 	// 业务字段
 	ReleaseNotes *string `gorm:"type:text" json:"release_notes"` // 应用级发布说明（可选）
