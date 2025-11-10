@@ -284,11 +284,8 @@ func (s *applicationService) UpdateDefaultDependencies(appID int64, req *dto.Upd
 
 	graph := make(map[int64][]int64, len(apps))
 	for _, item := range apps {
-		ids, parseErr := decodeDependencyIDs(item.DefaultDependsOn)
-		if parseErr != nil {
-			return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError,
-				fmt.Sprintf("解析应用 %s 的依赖失败", item.Name), parseErr)
-		}
+		ids := item.DefaultDependsOn
+
 		if item.ID == appID {
 			ids = normalized
 		}
@@ -331,9 +328,7 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 		UpdatedAt:   app.UpdatedAt.Format(time.RFC3339),
 	}
 
-	if deps, err := decodeDependencyIDs(app.DefaultDependsOn); err == nil {
-		resp.DefaultDependsOn = deps
-	}
+	resp.DefaultDependsOn = app.DefaultDependsOn
 
 	// 添加代码库名称
 	if app.Repository != nil {
@@ -470,10 +465,7 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 }
 
 func (s *applicationService) buildDependenciesResponse(app *model.Application) (*dto.ApplicationDependenciesResponse, error) {
-	deps, err := decodeDependencyIDs(app.DefaultDependsOn)
-	if err != nil {
-		return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "解析应用默认依赖失败", err)
-	}
+	deps := app.DefaultDependsOn
 
 	return &dto.ApplicationDependenciesResponse{
 		AppID:        app.ID,

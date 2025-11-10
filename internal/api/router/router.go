@@ -131,7 +131,10 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 			// 发布应用配置
 			releaseAppGroup := authed.Group("/release_app")
 			{
+				releaseAppGroup.GET("", releaseAppHandler.GetByID) // 获取发布应用详情
 				releaseAppGroup.PUT(":id/dependencies", releaseAppHandler.UpdateDependencies)
+				releaseAppGroup.POST("/switch_version", batchHandler.SwitchVersion) // 切换版本
+				releaseAppGroup.POST("/manual_deploy", batchHandler.ManualDeploy)   // 手动部署
 			}
 
 			// 构建记录管理

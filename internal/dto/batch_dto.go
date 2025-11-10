@@ -120,7 +120,7 @@ type AppTypeConfigInfo struct {
 	Dependencies []string `json:"dependencies,omitempty"`
 }
 
-// ReleaseAppResponse 发布应用响应（简约版）
+// ReleaseAppResponse release_app 响应
 type ReleaseAppResponse struct {
 	// ReleaseApp 基本信息
 	ID      int64  `json:"id"`
@@ -129,6 +129,7 @@ type ReleaseAppResponse struct {
 	BuildID *int64 `json:"build_id,omitempty"` // 关联的构建ID
 
 	// 版本信息
+	LatestBuildID       *int64  `json:"latest_build_id"`                 // 最新检测到的构建ID（新tag到达时更新）
 	PreviousDeployedTag *string `json:"previous_deployed_tag,omitempty"` // 部署前的版本（封板时记录）
 	TargetTag           *string `json:"target_tag,omitempty"`            // 目标部署版本（封板时固定，部署期间代表期望版本，部署完成后代表已部署版本）
 
@@ -273,10 +274,18 @@ type BatchStatusResponse struct {
 
 // ReleaseAppStatusResponse 发布应用状态响应（轻量级，不关联其他表）
 type ReleaseAppStatusResponse struct {
-	ID       int64 `json:"id"`        // release_app ID
-	AppID    int64 `json:"app_id"`    // 应用 ID
-	Status   int8  `json:"status"`    // 应用发布状态
-	IsLocked bool  `json:"is_locked"` // 是否已锁定
+	ID            int64          `json:"id"`                        // release_app ID
+	AppID         int64          `json:"app_id"`                    // 应用 ID
+	Status        int8           `json:"status"`                    // 应用发布状态
+	IsLocked      bool           `json:"is_locked"`                 // 是否已锁定
+	BuildID       *int64         `json:"build_id,omitempty"`        // 构建 ID
+	LatestBuildID *int64         `json:"latest_build_id,omitempty"` // 最新构建 ID
+	RecentBuilds  []BuildSummary `json:"recent_builds,omitempty"`   // 最近的构建记录
+}
+
+// GetReleaseAppRequest 获取发布应用详情请求
+type GetReleaseAppRequest struct {
+	ID int64 `form:"id" binding:"required"` // 发布应用ID
 }
 
 // FormatTime 格式化时间

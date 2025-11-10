@@ -1,4 +1,5 @@
 // API Response Types
+
 export interface ApiResponse<T = any> {
   code: number
   message: string
@@ -68,7 +69,8 @@ export interface CreateRepositoryRequest {
   team_id?: number
 }
 
-export interface UpdateRepositoryRequest extends Partial<CreateRepositoryRequest> {}
+export interface UpdateRepositoryRequest extends Partial<CreateRepositoryRequest> {
+}
 
 // Application Types
 export interface Application {
@@ -98,7 +100,8 @@ export interface CreateApplicationRequest {
   team_id?: number
 }
 
-export interface UpdateApplicationRequest extends Partial<CreateApplicationRequest> {}
+export interface UpdateApplicationRequest extends Partial<CreateApplicationRequest> {
+}
 
 // Query Params
 export interface RepositoryQueryParams extends PaginationParams {
@@ -193,38 +196,6 @@ export interface AppTypeConfigInfo {
   dependencies?: string[]
 }
 
-// Batch Types
-export interface Batch {
-  id: number
-  batch_number: string
-  initiator: string
-  release_notes?: string
-  approval_status: 'pending' | 'approved' | 'rejected' | 'skipped'
-  approved_by?: string
-  approved_at?: string
-  reject_reason?: string
-  status: number // 0:草稿 10:已封板 21:预发布中 22:预发布完成 31:生产部署中 32:生产部署完成 40:已完成 90:已取消
-  status_name?: string // 状态名称（列表接口返回）
-  app_count?: number // 应用数量（列表接口返回）
-  tagged_at?: string
-  pre_deploy_started_at?: string
-  pre_deploy_finished_at?: string
-  prod_deploy_started_at?: string
-  prod_deploy_finished_at?: string
-  final_accepted_at?: string
-  final_accepted_by?: string
-  cancelled_at?: string
-  cancelled_by?: string
-  cancel_reason?: string
-  created_at: string
-  updated_at: string
-  apps?: ReleaseApp[] // 详情接口返回
-  total_apps?: number // 应用总数（详情接口分页）
-  app_page?: number // 当前页码（详情接口分页）
-  app_page_size?: number // 每页数量（详情接口分页）
-  app_type_configs?: Record<string, AppTypeConfigInfo>
-}
-
 // 构建摘要（用于 recent_builds）
 export interface BuildSummary {
   id: number
@@ -237,52 +208,6 @@ export interface BuildSummary {
   build_created: string
 }
 
-export interface ReleaseApp {
-  id: number
-  batch_id: number
-  app_id: number
-  app_name?: string
-  app_display_name?: string
-  app_type?: string
-  app_project?: string
-  app_status?: number
-  build_id?: number
-  latest_build_id?: number
-  tag?: string
-  version?: string
-  image_name?: string
-  image_tag?: string
-  deployed_tag?: string
-  target_tag?: string
-  previous_deployed_tag?: string
-  repo_id?: number
-  repo_name?: string
-  repo_full_name?: string
-  team_id?: number
-  build_number?: number
-  build_status?: string
-  image_url?: string
-  commit_id?: string
-  commit_sha?: string
-  commit_message?: string
-  branch?: string
-  commit_branch?: string
-  release_notes?: string
-  status: string
-  is_locked: boolean
-  reason?: string
-  pre_deploy_status?: string
-  prod_deploy_status?: string
-  deploy_retry_count?: number
-  last_deploy_error?: string
-  last_deploy_at?: string
-  deploy_task_id?: string
-  created_at: string
-  updated_at: string
-  recent_builds?: BuildSummary[] // 最近的构建记录（自上次部署以来）
-  default_depends_on?: number[]
-  temp_depends_on?: number[]
-}
 
 export interface CreateBatchRequest {
   batch_number: string
@@ -347,5 +272,36 @@ export interface BatchRejectRequest {
   batch_id: number
   operator: string
   reason: string
+}
+
+export interface SwitchVersionRequest {
+  batch_id: number
+  release_app_id: number
+  environment: 'pre' | 'prod'
+  operator: string
+  build_id: number
+  reason?: string
+}
+
+export interface TriggerDeployRequest {
+  batch_id: number
+  release_app_id: number
+  action: string
+  operator: string
+  reason?: string
+}
+
+export interface TriggerDeployResponse {
+  release_app_id: number
+  app_id: number
+  app_name: string
+  environment: string
+  old_status: number
+  new_status: number
+  old_build_id?: number
+  new_build_id?: number
+  old_tag: string
+  new_tag: string
+  message: string
 }
 

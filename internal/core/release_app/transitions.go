@@ -16,7 +16,7 @@ type TransitionHandler interface {
 
 // StateTransition 状态转换定义
 type StateTransition struct {
-	From    int8
+	From    []int8
 	To      int8
 	Event   string
 	Handler TransitionHandler
@@ -31,17 +31,35 @@ const (
 )
 
 func (sm *ReleaseStateMachine) registerTransitions() {
-	var transitions = []StateTransition{
+	transitions := []StateTransition{
 		// 重新预发布
 		{
-			From:        0, // todo
-			To:          constants.ReleaseAppStatusPreWaiting,
-			Handler:     TriggerManualPreDeploy{sm: sm},
+			From: []int8{
+				constants.ReleaseAppStatusTagged,
+				constants.ReleaseAppStatusPreWaiting, constants.ReleaseAppStatusPreCanTrigger, constants.ReleaseAppStatusPreTriggered, constants.ReleaseAppStatusPreDeployed,
+				constants.ReleaseAppStatusProdWaiting, constants.ReleaseAppStatusProdCanTrigger, constants.ReleaseAppStatusProdTriggered, constants.ReleaseAppStatusProdDeployed,
+			},
+			To:          constants.ReleaseAppStatusPreCanTrigger, // 跳过依赖检查
+			Handler:     SwitchVersionPreDeploy{sm: sm},
+			AllowSource: TransitionSourceOutside,
+		},
+		// 提前Pre发布
+		{
+			From:        []int8{constants.ReleaseAppStatusTagged},
+			To:          constants.ReleaseAppStatusPreCanTrigger,
+			Handler:     ManualTriggerPreDeploy{sm: sm},
+			AllowSource: TransitionSourceOutside,
+		},
+		// 手动触发Prod发布
+		{
+			From:        []int8{constants.ReleaseAppStatusPreDeployed},
+			To:          constants.ReleaseAppStatusProdCanTrigger,
+			Handler:     ManualTriggerProdDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
 		// 生产完成
 		{
-			From:        constants.ReleaseAppStatusProdTriggered,
+			From:        []int8{constants.ReleaseAppStatusProdTriggered},
 			To:          constants.ReleaseAppStatusProdDeployed,
 			Handler:     OnProdDeployCompleted{sm: sm},
 			AllowSource: TransitionSourceInside,
@@ -49,10 +67,13 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 	}
 
 	for _, t := range transitions {
-		if sm.transitions[t.From] == nil {
-			sm.transitions[t.From] = make(map[int8]StateTransition)
+		fs := t.From
+		for _, f := range fs {
+			if sm.transitions[f] == nil {
+				sm.transitions[f] = make(map[int8]StateTransition)
+			}
+			sm.transitions[f][t.To] = t
 		}
-		sm.transitions[t.From][t.To] = t
 	}
 }
 
@@ -74,11 +95,12 @@ func (sm *ReleaseStateMachine) canTransition(from, to int8, source int8) (Transi
 
 // ================== 状态转换处理函数 ==================
 
-type TriggerManualPreDeploy struct {
+// SwitchVersionPreDeploy 切换版本
+type SwitchVersionPreDeploy struct {
 	sm *ReleaseStateMachine
 }
 
-func (h TriggerManualPreDeploy) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
+func (h SwitchVersionPreDeploy) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
 	var batch model.Batch
 	if err := h.sm.db.First(&batch, release.BatchID).Error; err != nil {
 		return err
@@ -93,6 +115,10 @@ func (h TriggerManualPreDeploy) Handle(release *model.ReleaseApp, from int8, opt
 	if batch.Status >= constants.BatchStatusPreDeployed && batch.Status < constants.BatchStatusProdWaiting ||
 		batch.Status >= constants.BatchStatusProdDeployed && batch.Status < constants.BatchStatusFinalAccepted {
 		// 可以进行
+	} else
+	// 2. Batch未开始预发布时, 应用可能会提前预发布, 并重新发版
+	if batch.Status == constants.BatchStatusSealed {
+
 	} else {
 		return fmt.Errorf("当前批次状态不允许手动重新预发布")
 	}
@@ -105,8 +131,50 @@ func (h TriggerManualPreDeploy) Handle(release *model.ReleaseApp, from int8, opt
 
 	return nil
 }
+func (h SwitchVersionPreDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
+}
 
-func (h TriggerManualPreDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
+// ManualTriggerPreDeploy 手动触发Pre发布
+type ManualTriggerPreDeploy struct {
+	sm *ReleaseStateMachine
+}
+
+func (h ManualTriggerPreDeploy) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
+	var batch model.Batch
+	if err := h.sm.db.First(&batch, release.BatchID).Error; err != nil {
+		return err
+	}
+
+	if batch.Status < constants.BatchStatusSealed {
+		return fmt.Errorf("[Pre]发布失败: 批次未封板")
+	}
+
+	release.Status = constants.ReleaseAppStatusPreCanTrigger
+
+	return nil
+
+}
+func (h ManualTriggerPreDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
+}
+
+// ManualTriggerProdDeploy 手动触发Prod发布
+type ManualTriggerProdDeploy struct {
+	sm *ReleaseStateMachine
+}
+
+func (h ManualTriggerProdDeploy) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
+	var batch model.Batch
+	if err := h.sm.db.First(&batch, release.BatchID).Error; err != nil {
+		return err
+	}
+	if batch.Status < constants.BatchStatusSealed {
+		return fmt.Errorf("[Prod]发布失败: 批次未封板")
+	}
+
+	release.Status = constants.ReleaseAppStatusProdCanTrigger
+	return nil
+}
+func (h ManualTriggerProdDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
 }
 
 type OnProdDeployCompleted struct {

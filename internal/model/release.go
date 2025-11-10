@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"gorm.io/datatypes"
 )
 
 // Batch 发布批次
@@ -64,12 +62,11 @@ type ReleaseApp struct {
 	LatestBuildID       *int64  `gorm:"column:latest_build_id" json:"latest_build_id"`                      // 最新检测到的构建ID（新tag到达时更新）
 
 	// 业务字段
-	ReleaseNotes *string `gorm:"type:text" json:"release_notes"` // 应用级发布说明（可选）
-	IsLocked     bool    `gorm:"default:false" json:"is_locked"` // 是否已锁定（封板后为true）
-	Status       int8    `gorm:"index;not null;default:0" json:"status"`
-	Reason       string  `gorm:"type:text" json:"reason"`
-	// TempDependsOn 批次内临时依赖（JSON 数组，记录应用 ID）
-	TempDependsOn datatypes.JSON `gorm:"column:temp_depends_on;type:json" json:"temp_depends_on"`
+	ReleaseNotes  *string   `gorm:"type:text" json:"release_notes"` // 应用级发布说明（可选）
+	IsLocked      bool      `gorm:"default:false" json:"is_locked"` // 是否已锁定（封板后为true）
+	Status        int8      `gorm:"index;not null;default:0" json:"status"`
+	Reason        string    `gorm:"type:text" json:"reason"`
+	TempDependsOn Int64List `gorm:"column:temp_depends_on;type:json;default:[]" json:"temp_depends_on"` // 批次内临时依赖（JSON 数组，记录应用 ID）
 
 	// 系统字段
 	CreatedAt time.Time `json:"created_at"`

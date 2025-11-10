@@ -62,16 +62,22 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 type TransitionOption func(*transitionOptions)
 
 type transitionOptions struct {
-	operator string
-	reason   string
-	to       *int8
-	// data       map[string]interface{}
+	operator   string
+	reason     string
+	to         *int8
+	source     int8
+	data       map[string]interface{}
 	sideEffect func(r *model.ReleaseApp)
 }
 
 func WithStatus(to int8) TransitionOption {
 	return func(o *transitionOptions) {
 		o.to = &to
+	}
+}
+func WithSource(source int8) TransitionOption {
+	return func(o *transitionOptions) {
+		o.source = source
 	}
 }
 func WithModelEffects(sideEffects func(*model.ReleaseApp)) TransitionOption {
@@ -86,8 +92,16 @@ func WithOperator(operator string) TransitionOption {
 func WithReason(reason string) TransitionOption {
 	return func(o *transitionOptions) { o.reason = reason }
 }
+func WithData(key string, value interface{}) TransitionOption {
+	return func(o *transitionOptions) {
+		if o.data == nil {
+			o.data = make(map[string]interface{})
+		}
+		o.data[key] = value
+	}
+}
 func newTransitionOptions(opts ...TransitionOption) *transitionOptions {
-	option := &transitionOptions{}
+	option := &transitionOptions{source: 1}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(option)
@@ -121,7 +135,7 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.
 			to = *option.to
 
 			// 2. 检查是否允许
-			h, ok := sm.canTransition(old, to, TransitionSourceInside)
+			h, ok := sm.canTransition(old, to, option.source)
 			if !ok {
 				return fmt.Errorf("当前状态 %v 不允许转换到 %v", old, to)
 			}

@@ -7,15 +7,21 @@ import ReactFlow, {
 } from 'reactflow'
 import dagre from 'dagre'
 import { Empty } from 'antd'
-import type { ReleaseApp, AppTypeConfigInfo } from '@/types'
+import type { AppTypeConfigInfo } from '@/types'
 import AppNode from './AppNode'
 import GroupNode from './GroupNode'
+import AppNodeModal from './AppNodeModal'
 import 'reactflow/dist/style.css'
 import styles from './DependencyGraph.module.css'
+import {Batch} from "@/types/batch.ts";
+import {ReleaseApp} from "@/types/release_app.ts";
 
 interface DependencyGraphProps {
   releaseApps: ReleaseApp[]
   appTypeConfigs?: Record<string, AppTypeConfigInfo>
+  environment?: 'pre' | 'prod'
+  batch: Batch
+  onRefresh?: () => void
 }
 
 const nodeTypes = {
@@ -676,7 +682,7 @@ const adjustNodesToWidth = (
 }
 
 // 构建图数据
-const buildGraphData = (releaseApps: ReleaseApp[]): { nodes: Node[]; edges: Edge[] } => {
+const buildGraphData = (releaseApps: ReleaseApp[], onNodeClick?: (releaseApp: ReleaseApp) => void): { nodes: Node[]; edges: Edge[] } => {
   const nodes: Node[] = []
   const edges: Edge[] = []
   const appIdToIndex = new Map<number, number>()
@@ -716,6 +722,7 @@ const buildGraphData = (releaseApps: ReleaseApp[]): { nodes: Node[]; edges: Edge
       data: {
         releaseApp: app,
         isIsolated,
+        onNodeClick,
       },
     })
   })
@@ -901,9 +908,11 @@ const computeAppTypeLevels = (
   return levels
 }
 
-export default function DependencyGraph({ releaseApps, appTypeConfigs }: DependencyGraphProps) {
+export default function DependencyGraph({ releaseApps, appTypeConfigs, environment, batch, onRefresh }: DependencyGraphProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [containerWidth, setContainerWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth : 1200))
+  const [selectedReleaseApp, setSelectedReleaseApp] = useState<ReleaseApp | null>(null)
+  const [modalVisible, setModalVisible] = useState(false)
 
   useEffect(() => {
     const element = wrapperRef.current
@@ -925,12 +934,17 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs }: Depende
 
   const appTypeLevels = useMemo(() => computeAppTypeLevels(releaseApps, appTypeConfigs), [releaseApps, appTypeConfigs])
 
+  const handleNodeClick = useCallback((releaseApp: ReleaseApp) => {
+    setSelectedReleaseApp(releaseApp)
+    setModalVisible(true)
+  }, [])
+
   const { nodes, edges, layoutHeight } = useMemo(() => {
     if (releaseApps.length === 0) {
       return { nodes: [], edges: [], layoutHeight: TOP_PADDING + nodeHeight }
     }
 
-    const { nodes: baseNodes, edges: baseEdges } = buildGraphData(releaseApps)
+    const { nodes: baseNodes, edges: baseEdges } = buildGraphData(releaseApps, handleNodeClick)
     const { nodes: layoutedNodes, edges } = getLayoutedElements(baseNodes, baseEdges, appTypeLevels)
     const {
       nodes: positionedNodes,
@@ -944,7 +958,7 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs }: Depende
       edges,
       layoutHeight: totalHeight,
     }
-  }, [releaseApps, appTypeConfigs, containerWidth, appTypeLevels])
+  }, [releaseApps, appTypeConfigs, containerWidth, appTypeLevels, handleNodeClick])
 
   const graphDimensions = useMemo(() => {
     return calculateGraphDimensions(nodes)
@@ -962,10 +976,12 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs }: Depende
     [graphDimensions.height, graphDimensions.width],
   )
 
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    console.log('Node clicked:', node.data.releaseApp)
-    // TODO: 打开详情面板
-  }, [])
+  const onNodeClickReactFlow = useCallback((_event: React.MouseEvent, node: Node) => {
+    // 只处理 appNode 类型的点击
+    if (node.type === 'appNode' && node.data?.releaseApp) {
+      handleNodeClick(node.data.releaseApp)
+    }
+  }, [handleNodeClick])
 
   if (releaseApps.length === 0) {
     return (
@@ -976,48 +992,61 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs }: Depende
   }
 
   return (
-    <div ref={wrapperRef} className={styles.graphWrapper}>
-      <div
-        className={styles.graphContainer}
-        style={{
-          height: `${containerHeight}px`,
-        }}
-      >
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          elementsSelectable={false}
-          panOnDrag={true}
-          panOnScroll={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
-          zoomOnDoubleClick={false}
-          preventScrolling={false}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          translateExtent={translateExtent}
-          defaultEdgeOptions={{
-            type: 'smoothstep',
+    <>
+      <div ref={wrapperRef} className={styles.graphWrapper}>
+        <div
+          className={styles.graphContainer}
+          style={{
+            height: `${containerHeight}px`,
           }}
         >
-          <MiniMap
-            nodeColor={(node) => {
-              if (node.type === 'groupNode') return 'rgba(0,0,0,0)'
-              if (node.data?.isIsolated) return '#faad14'
-              return '#1890ff'
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodeClick={onNodeClickReactFlow}
+            nodeTypes={nodeTypes}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            panOnDrag={true}
+            panOnScroll={false}
+            zoomOnScroll={false}
+            zoomOnPinch={false}
+            zoomOnDoubleClick={false}
+            preventScrolling={false}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            translateExtent={translateExtent}
+            defaultEdgeOptions={{
+              type: 'smoothstep',
             }}
-            maskColor="rgba(0, 0, 0, 0.05)"
-            style={{
-              backgroundColor: 'rgba(245, 245, 245, 0.7)',
-              backdropFilter: 'blur(4px)',
-            }}
-          />
-        </ReactFlow>
+          >
+            <MiniMap
+              nodeColor={(node) => {
+                if (node.type === 'groupNode') return 'rgba(0,0,0,0)'
+                if (node.data?.isIsolated) return '#faad14'
+                return '#1890ff'
+              }}
+              maskColor="rgba(0, 0, 0, 0.05)"
+              style={{
+                backgroundColor: 'rgba(245, 245, 245, 0.7)',
+                backdropFilter: 'blur(4px)',
+              }}
+            />
+          </ReactFlow>
+        </div>
       </div>
-    </div>
+
+      <AppNodeModal
+        visible={modalVisible}
+        releaseApp={selectedReleaseApp}
+        environment={environment}
+        batch={batch}
+        onClose={() => {
+          setModalVisible(false)
+        }}
+        onRefresh={onRefresh}
+      />
+    </>
   )
 }
 

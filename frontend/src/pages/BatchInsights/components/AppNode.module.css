@@ -10,8 +10,8 @@
   cursor: default;
   pointer-events: none;
   position: relative;
-  z-index: 10;
-  overflow: hidden;
+  /* 不设置 z-index，避免创建层叠上下文 */
+  overflow: visible; /* 改为 visible 以显示缎带 */
   box-sizing: border-box; /* 确保 padding 和 border 包含在宽高内 */
 }
 
@@ -21,24 +21,31 @@
   inset: -3px;
   background: #ffffff;
   border-radius: 8px;
-  z-index: -2;
+  z-index: -2; /* 背景层在最下方 */
 }
 
-/* 缎带徽标 - 更小更精致 */
-.appNode .ribbon {
-  position: absolute;
-  top: 4px;
-  right: -10px;
-  width: 40px;
-  padding: 0 0;
-  text-align: center;
-  font-size: 8px;
-  font-weight: 800;
-  color: #ffffff;
-  text-transform: capitalize;
-  transform: rotate(45deg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  z-index: 2;
+/* 缎带徽标 - 已移至 Badge.Ribbon 组件 */
+/* 保留此注释以说明样式已迁移 */
+
+/* 全局样式作为后备 */
+/* Ribbon wrapper - 确保不创建层叠上下文 */
+:global(.ant-ribbon-wrapper) {
+  position: relative;
+}
+
+:global(.ant-ribbon) {
+  /*position: absolute !important;*/
+  /*z-index: 20; !* 使用更高的值确保在最上层 *!*/
+  font-size: 10px !important;
+  height: 16px !important;
+  line-height: 16px !important;
+  padding: 0 4px !important;
+}
+
+:global(.ant-ribbon-corner) {
+  position: absolute !important;
+  z-index: -1 !important; /* 使用负值确保在 node 下方 */
+  border-width: 9px !important;
 }
 
 .appNode:hover {
@@ -63,7 +70,7 @@
   justify-content: center;
   height: 100%;
   position: relative;
-  z-index: 2;
+  z-index: 10; /* 内容在 node 上方，但在 ribbon 文字下方 */
 }
 
 .appName {
@@ -116,7 +123,7 @@
   inset: 0;
   border-radius: var(--status-border-radius);
   padding: 3px;
-  background: 
+  background:
     repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
@@ -125,12 +132,12 @@
   background-position: 0 0, 100% 0, 0 100%, 0 0;
   background-repeat: no-repeat;
   mask:
-    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
   animation: statusBorderDashMove var(--status-animation-duration) linear infinite;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0; /* 边框在 content 上方 */
 }
 
 .appNode.preDeploying:hover {
@@ -187,25 +194,25 @@
   inset: 0;
   border-radius: var(--status-border-radius);
   padding: 3px;
-  background: 
+  background:
     repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
     repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
-    repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap));
+    repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap));
   background-size: 200% 3px, 3px 200%, 200% 3px, 3px 200%;
   background-position: 0 0, 100% 0, 0 100%, 0 0;
   background-repeat: no-repeat;
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
   animation: statusBorderDashMove var(--status-animation-duration) linear infinite;
   pointer-events: none;
-  z-index: 1;
+  z-index: 20; /* 边框在 content 上方 */
 }
 
 .appNode.prodDeploying:hover {

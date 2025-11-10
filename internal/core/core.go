@@ -114,7 +114,7 @@ func (e *CoreEngine) runScanner(interval time.Duration) {
 func (e *CoreEngine) ScanBatches() {
 	var batches []model.Batch
 	// 查询 Sealed < status < Completed 并且 create_at < 30 Days
-	if err := e.db.Where("status > ? AND status < ?", constants.BatchStatusSealed, constants.BatchStatusCompleted).
+	if err := e.db.Where("status > ? AND status < ?", constants.BatchStatusDraft, constants.BatchStatusCompleted).
 		Where("created_at > ?", time.Now().Add(-time.Hour*24*30)).
 		Order("id DESC").Find(&batches).Error; err != nil {
 		e.logger.Error(fmt.Sprintf("[BatchScaner] 查询批次失败: %v", err))

@@ -35,7 +35,7 @@ fi
 
 # 生成新文档
 echo "📝 生成 Swagger 文档..."
-swag init -g cmd/base/main.go -o docs --parseDependency --parseInternal
+swag init -g cmd/devops-cd/main.go -o docs --parseDependency --parseInternal
 
 if [ $? -eq 0 ]; then
     echo ""
@@ -50,7 +50,7 @@ if [ $? -eq 0 ]; then
     echo "  http://localhost:8080/swagger/index.html"
     echo ""
     echo "使用说明："
-    echo "  1. 启动服务: go run cmd/base/main.go -config=configs/base.yaml"
+    echo "  1. 启动服务: go run cmd/devops-cd/main.go -config=configs/base.yaml"
     echo "  2. 打开浏览器访问上述地址"
     echo "  3. 查看详细使用说明: docs/SWAGGER_GUIDE.md"
     echo ""

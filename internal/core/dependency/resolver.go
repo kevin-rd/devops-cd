@@ -203,18 +203,14 @@ func (r *Resolver) collectDependencies(ctx context.Context, release *model.Relea
 		entry.addSource(source)
 	}
 
-	defaultIDs, err := decodeIDs(app.DefaultDependsOn)
-	if err != nil {
-		return nil, fmt.Errorf("解析应用默认依赖失败: %w", err)
-	}
+	defaultIDs := app.DefaultDependsOn
+
 	for _, id := range defaultIDs {
 		add(id, "default")
 	}
 
-	tempIDs, err := decodeIDs(release.TempDependsOn)
-	if err != nil {
-		return nil, fmt.Errorf("解析批次临时依赖失败: %w", err)
-	}
+	tempIDs := release.TempDependsOn
+
 	for _, id := range tempIDs {
 		add(id, "temporary")
 	}

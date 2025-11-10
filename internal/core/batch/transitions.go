@@ -193,8 +193,8 @@ func (h TriggerSealTransition) Handle(batch *model.Batch, from, to int8, options
 	}
 
 	// 3. 锁定所有应用记录（防止封板后修改）
-	if err := h.sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ?", batch.ID).
+	if err := h.sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).
+		UpdateColumn("status", constants.ReleaseAppStatusTagged).
 		Update("is_locked", true).Error; err != nil {
 		return fmt.Errorf("锁定应用记录失败: %w", err)
 	}

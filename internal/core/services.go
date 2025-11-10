@@ -2,6 +2,7 @@ package core
 
 import (
 	"devops-cd/internal/core/release_app"
+	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
@@ -32,7 +33,7 @@ func (e *CoreEngine) GetBatchStatus(batchID int64) (map[string]interface{}, erro
 	}, nil
 }
 
-// NewTag 处理新 Tag 事件
+// NewTag 处理新 Build 事件
 func (e *CoreEngine) NewTag(appID int64, build *model.Build) {
 	log := e.logger.Sugar().With(zap.Int64("app_id", appID), zap.Int64("build_id", build.ID))
 
@@ -82,4 +83,19 @@ func (e *CoreEngine) NewTag(appID int64, build *model.Build) {
 		}
 	}
 
+}
+
+// SwitchVersion 切换版本
+func (e *CoreEngine) SwitchVersion(req *dto.SwitchVersionRequest) (*string, error) {
+	if req.Environment == constants.EnvTypePre {
+		return nil, e.releaseSM.TriggerPre(req.ReleaseAppID, req.BuildID, req.Operator, req.Reason)
+	} else if req.Environment == constants.EnvTypeProd {
+		return nil, e.releaseSM.TriggerProd(req.ReleaseAppID, req.BuildID, req.Operator, req.Reason)
+	}
+	return nil, fmt.Errorf("无效的环境类型: %s", req.Environment)
+}
+
+// ManualDeploy 手动部署
+func (e *CoreEngine) ManualDeploy(req *dto.ManualDeployRequest) (string, error) {
+	return "ok", e.releaseSM.ManualDeploy(req.ReleaseAppID, req.Action, req.Operator, req.Reason)
 }

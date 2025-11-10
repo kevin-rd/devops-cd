@@ -12,22 +12,50 @@ type Event struct {
 }
 
 var events = map[string]Event{
-	"new_tag":             {},
 	"manual_trigger_pre":  {To: constants.ReleaseAppStatusPreCanTrigger},
 	"manual_trigger_prod": {To: constants.ReleaseAppStatusProdCanTrigger},
 }
 
-// ProcessStateChange 触发状态更新, 外部调用层
-func (sm *ReleaseStateMachine) ProcessStateChange(id int64, event string, operator, reason string) error {
-	e, ok := events[event]
+// ManualDeploy 手动触发部署
+func (sm *ReleaseStateMachine) ManualDeploy(releaseAppID int64, action, operator, reason string) error {
+	e, ok := events[action]
 	if !ok {
-		return fmt.Errorf("无效的状态转换事件: %s", event)
+		return fmt.Errorf("无效的状态转换动作: %s", action)
 	}
 
-	// 事务更新
-	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: id},
+	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
 		WithStatus(e.To),
+		WithSource(TransitionSourceOutside),
 		WithOperator(operator),
 		WithReason(reason),
+	)
+}
+
+// SwitchVersion 切换版本
+func (sm *ReleaseStateMachine) SwitchVersion(releaseAppID, buildID int64, operator, reason string) error {
+	return nil
+}
+
+// TriggerPre 手动触发Pre部署
+func (sm *ReleaseStateMachine) TriggerPre(releaseAppID, buildID int64, operator, reason string) error {
+	// 事务更新
+	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
+		WithStatus(constants.ReleaseAppStatusPreCanTrigger),
+		WithSource(TransitionSourceOutside),
+		WithOperator(operator),
+		WithReason(reason),
+		WithData("build_id", buildID),
+	)
+}
+
+// TriggerProd 手动触发Prod部署
+func (sm *ReleaseStateMachine) TriggerProd(releaseAppID, buildID int64, operator, reason string) error {
+	// 事务更新
+	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
+		WithStatus(constants.ReleaseAppStatusProdCanTrigger),
+		WithSource(TransitionSourceOutside),
+		WithOperator(operator),
+		WithReason(reason),
+		WithData("build_id", buildID),
 	)
 }
