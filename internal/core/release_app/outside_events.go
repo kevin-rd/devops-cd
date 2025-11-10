@@ -25,7 +25,8 @@ func (sm *ReleaseStateMachine) ProcessStateChange(id int64, event string, operat
 	}
 
 	// 事务更新
-	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: id}, e.To,
+	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: id},
+		WithStatus(e.To),
 		WithOperator(operator),
 		WithReason(reason),
 	)

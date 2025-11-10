@@ -76,6 +76,7 @@ type ReleaseApp struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// 关联关系（用于 JOIN 查询时获取完整构建信息）
+	Batch       *Batch       `gorm:"foreignKey:BatchID" json:"batch,omitempty"`
 	Application *Application `gorm:"foreignKey:AppID" json:"application,omitempty"`
 	Build       *Build       `gorm:"foreignKey:BuildID" json:"build,omitempty"` // 通过 JOIN 获取完整构建信息
 }

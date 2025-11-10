@@ -6,10 +6,10 @@ import "fmt"
 const (
 	BatchStatusDraft         int8 = 0  // 草稿/准备中
 	BatchStatusSealed        int8 = 10 // 已封板
-	BatchStatusPreWaiting    int8 = 20 // 预发布待触发中
+	BatchStatusPreWaiting    int8 = 20 // 预发布已触发
 	BatchStatusPreDeploying  int8 = 21 // 预发布部署中
 	BatchStatusPreDeployed   int8 = 22 // 预发布已部署完成, 验收中
-	BatchStatusProdWaiting   int8 = 30 // 生产待触发中
+	BatchStatusProdWaiting   int8 = 30 // 生产已触发
 	BatchStatusProdDeploying int8 = 31 // 生产部署中
 	BatchStatusProdDeployed  int8 = 32 // 生产已部署完成, 验收中
 	BatchStatusCompleted     int8 = 40 // 已完成

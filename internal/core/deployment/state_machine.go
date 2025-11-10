@@ -38,26 +38,27 @@ func (sm *StateMachine) Process(ctx context.Context, dep *model.Deployment) {
 	}
 
 	if nextStatus != "" && nextStatus != dep.Status {
-		if err := sm.UnifiedUpdate(ctx, dep, nextStatus, updateFunc); err != nil {
+		if err := sm.UnifiedUpdate(ctx, dep.ID, nextStatus, updateFunc); err != nil {
 			sm.logger.Error("更新失败", zap.Error(err))
 		}
 	} else if updateFunc != nil {
 		// 状态不变但有字段更新
-		if err := sm.UnifiedUpdate(ctx, dep, dep.Status, updateFunc); err != nil {
+		if err := sm.UnifiedUpdate(ctx, dep.ID, dep.Status, updateFunc); err != nil {
 			sm.logger.Error("字段更新失败", zap.Error(err))
 		}
 	}
 }
 
-func (sm *StateMachine) UnifiedUpdate(ctx context.Context, dep *model.Deployment, to string, updateFunc func(*model.Deployment)) error {
+func (sm *StateMachine) UnifiedUpdate(ctx context.Context, dep_id int64, to string, updateFunc func(*model.Deployment)) error {
 	return sm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.First(dep, dep.ID).Error; err != nil {
+		var dep model.Deployment
+		if err := tx.First(&dep, dep_id).Error; err != nil {
 			return err
 		}
 
 		old := dep.Status
 		if updateFunc != nil {
-			updateFunc(dep)
+			updateFunc(&dep)
 		}
 
 		if old != to {

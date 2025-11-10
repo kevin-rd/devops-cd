@@ -113,7 +113,7 @@ func (m *MockDeployer) CheckStatus(ctx context.Context, dep *model.Deployment) (
 			return "running", nil
 		}
 		return m.finalStatus, nil
-	case 5:
+	case 3:
 		return "success", nil
 	default:
 		return m.finalStatus, nil

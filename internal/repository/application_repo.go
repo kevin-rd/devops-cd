@@ -16,6 +16,7 @@ type ApplicationRepository interface {
 	FindByID(id int64) (*model.Application, error)
 	FindByName(name string) (*model.Application, error)
 	FindByProjectAndName(project, name string) (*model.Application, error)
+	FindByRepoIDAndName(repoID int64, name string) (*model.Application, error)
 	List(page, pageSize int, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error)
 	ListByRepoID(repoID int64) ([]*model.Application, error)
 	SearchWithBuilds(page, pageSize int, keyword string, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error)
@@ -68,6 +69,18 @@ func (r *applicationRepository) FindByName(name string) (*model.Application, err
 func (r *applicationRepository) FindByProjectAndName(project, name string) (*model.Application, error) {
 	var app model.Application
 	err := r.db.Where("project = ? AND name = ? AND deleted_at IS NULL", project, name).First(&app).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, pkgErrors.ErrRecordNotFound
+		}
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询应用失败", err)
+	}
+	return &app, nil
+}
+
+func (r *applicationRepository) FindByRepoIDAndName(repoID int64, name string) (*model.Application, error) {
+	var app model.Application
+	err := r.db.Where("repo_id = ? AND name = ? AND deleted_at IS NULL", repoID, name).First(&app).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound

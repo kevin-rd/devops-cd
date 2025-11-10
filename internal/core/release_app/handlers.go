@@ -9,6 +9,7 @@ import (
 )
 
 type Handler interface {
+	// todo: nextStatus 可以改为*int8
 	Handle(ctx context.Context, release *model.ReleaseApp) (nextStatus int8, updateFunc func(*model.ReleaseApp), err error)
 }
 

@@ -221,9 +221,9 @@
 
 /* 已完成状态 - 绿色边框 */
 .batch-card.status-completed {
-    border-color: var(--status-completed-border);
+    /*border-color: var(--status-completed-border);*/
     border-width: 1px;
-    background: linear-gradient(to bottom, var(--status-completed-bg-start) 0%, var(--status-completed-bg-start) 100%);
+    background: linear-gradient(to bottom, var(--status-completed-bg-start) 0%, var(--status-completed-bg-end) 100%);
 }
 
 /* 清除已完成状态的伪元素 */

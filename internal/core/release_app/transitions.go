@@ -8,12 +8,13 @@ import (
 
 type TransitionHandler interface {
 	// Handle 检查合法性, 处理强依赖操作
-	Handle(release *model.ReleaseApp, from, to int8, options *transitionOptions) error
+	Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error
 
 	// After 状态转换成功后, 异步操作
-	After(release *model.ReleaseApp, from, to int8, options *transitionOptions)
+	After(release *model.ReleaseApp, from int8, options *transitionOptions)
 }
 
+// StateTransition 状态转换定义
 type StateTransition struct {
 	From    int8
 	To      int8
@@ -37,6 +38,13 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 			To:          constants.ReleaseAppStatusPreWaiting,
 			Handler:     TriggerManualPreDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
+		},
+		// 生产完成
+		{
+			From:        constants.ReleaseAppStatusProdTriggered,
+			To:          constants.ReleaseAppStatusProdDeployed,
+			Handler:     OnProdDeployCompleted{sm: sm},
+			AllowSource: TransitionSourceInside,
 		},
 	}
 
@@ -70,7 +78,7 @@ type TriggerManualPreDeploy struct {
 	sm *ReleaseStateMachine
 }
 
-func (h TriggerManualPreDeploy) Handle(release *model.ReleaseApp, from, to int8, options *transitionOptions) error {
+func (h TriggerManualPreDeploy) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
 	var batch model.Batch
 	if err := h.sm.db.First(&batch, release.BatchID).Error; err != nil {
 		return err
@@ -98,5 +106,28 @@ func (h TriggerManualPreDeploy) Handle(release *model.ReleaseApp, from, to int8,
 	return nil
 }
 
-func (h TriggerManualPreDeploy) After(release *model.ReleaseApp, from, to int8, options *transitionOptions) {
+func (h TriggerManualPreDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
+}
+
+type OnProdDeployCompleted struct {
+	sm *ReleaseStateMachine
+}
+
+func (h OnProdDeployCompleted) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
+	// todo: check all prod deployment is success
+
+	if release.TargetTag == nil {
+		return fmt.Errorf("目标版本为空, 无法更新应用部署版本")
+	}
+
+	// 1. 更新app的deployed_tag
+	if err := h.sm.db.Model(&model.Application{}).
+		Where("id = ?", release.AppID).Update("deployed_tag", release.TargetTag).Error; err != nil {
+		return fmt.Errorf("更新应用部署版本失败: %w", err)
+	}
+
+	return nil
+}
+
+func (h OnProdDeployCompleted) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
 }

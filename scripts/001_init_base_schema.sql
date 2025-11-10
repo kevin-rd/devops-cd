@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS `applications` (
   `app_type` VARCHAR(50) NOT NULL COMMENT '应用类型(web/api/job/microservice等)',
   `team_id` BIGINT DEFAULT NULL COMMENT '所属团队ID',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用)',
-  `deployed_tag` VARCHAR(100) DEFAULT NULL COMMENT '当前部署的镜像标签',
+  `deployed_tag` VARCHAR(100) DEFAULT NULL COMMENT '当前线上部署的tag（ProdDeployed时更新）',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',

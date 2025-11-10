@@ -1,6 +1,8 @@
 package service
 
 import (
+	"devops-cd/internal/core"
+	"devops-cd/pkg/utils"
 	"fmt"
 	"strings"
 	"time"
@@ -26,10 +28,11 @@ type BuildService interface {
 }
 
 type buildService struct {
-	db        *gorm.DB
-	buildRepo repository.BuildRepository
-	repoRepo  repository.RepositoryRepository
-	appRepo   repository.ApplicationRepository
+	db         *gorm.DB
+	buildRepo  repository.BuildRepository
+	repoRepo   repository.RepositoryRepository
+	appRepo    repository.ApplicationRepository
+	coreEngine *core.CoreEngine
 }
 
 // NewBuildService 创建构建服务实例
@@ -38,12 +41,14 @@ func NewBuildService(
 	buildRepo repository.BuildRepository,
 	repoRepo repository.RepositoryRepository,
 	appRepo repository.ApplicationRepository,
+	coreEngine *core.CoreEngine,
 ) BuildService {
 	return &buildService{
-		db:        db,
-		buildRepo: buildRepo,
-		repoRepo:  repoRepo,
-		appRepo:   appRepo,
+		db:         db,
+		buildRepo:  buildRepo,
+		repoRepo:   repoRepo,
+		appRepo:    appRepo,
+		coreEngine: coreEngine,
 	}
 }
 
@@ -89,7 +94,16 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 	var failedApps []string
 
 	for _, appReq := range req.Apps {
-		if err := s.processAppBuild(repo, req, appReq, func(build *model.Build) {
+		if err := s.processAppBuild(repo, appReq, func(build *model.Build) {
+			build.BuildStatus = req.BuildStatus
+			build.BuildEvent = req.BuildEvent
+			build.BuildLink = req.BuildLink
+			build.CommitSHA = req.CommitID
+			build.CommitRef = req.CommitRef
+			build.CommitBranch = req.CommitBranch
+			build.CommitMessage = req.CommitMessage
+			build.CommitLink = req.CommitLink
+
 			build.CommitAuthor = commitAuthor
 			build.BuildCreated = buildCreatedTime
 			build.BuildStarted = buildStartedTime
@@ -103,7 +117,7 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 		}
 	}
 
-	logger.Info("构建通知处理完成", zap.String("repo", req.Repo), zap.Int64("build_number", req.BuildNumber), zap.Int("success", successCount), zap.Int("failed", len(failedApps)))
+	log.With(zap.Int64("build_number", req.BuildNumber)).Infof("构建通知处理完成, success: %d, failed: %v", successCount, utils.Condexpr(len(failedApps) > 0, failedApps, len(failedApps)))
 
 	if len(failedApps) > 0 {
 		return pkgErrors.Wrap(pkgErrors.CodePartialSuccess, fmt.Sprintf("部分应用处理失败: %s", strings.Join(failedApps, ", ")), nil)
@@ -113,20 +127,19 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 }
 
 // processAppBuild 处理单个应用的构建记录
-func (s *buildService) processAppBuild(repo *model.Repository, req *dto.BuildNotifyRequest, appReq dto.BuildNotifyApp, updateFunc func(build *model.Build),
-) error {
-	// 1. 查询应用（按 project + name 查询，确保唯一性）, todo: 可以修改为根据repo_id和name查询
-	app, err := s.appRepo.FindByProjectAndName(repo.Project, appReq.Name)
+func (s *buildService) processAppBuild(repo *model.Repository, appReq dto.BuildNotifyApp, updateFunc func(build *model.Build)) error {
+	// 1. 查询应用（按 repo_id + name 查询，确保唯一性）
+	app, err := s.appRepo.FindByRepoIDAndName(repo.ID, appReq.Name)
 	if err != nil {
 		if err == pkgErrors.ErrRecordNotFound {
-			return pkgErrors.Wrap(pkgErrors.CodeNotFound, fmt.Sprintf("应用不存在: %s/%s", repo.Project, appReq.Name), nil)
+			return pkgErrors.Wrap(pkgErrors.CodeNotFound, fmt.Sprintf("应用不存在: %s/%s", repo.Name, appReq.Name), nil)
 		}
 		return err
 	}
 
 	// 2. 检查应用是否属于该仓库
 	if app.RepoID != repo.ID {
-		return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("应用 %s 不属于仓库 %s", appReq.Name, req.Repo), nil)
+		return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("应用 %s 不属于仓库 %s", appReq.Name, repo.Name), nil)
 	}
 
 	// 3. 构建镜像地址（如果未提供）
@@ -146,15 +159,6 @@ func (s *buildService) processAppBuild(repo *model.Repository, req *dto.BuildNot
 	build := &model.Build{
 		RepoID:          repo.ID,
 		AppID:           app.ID,
-		BuildNumber:     int(req.BuildNumber),
-		BuildStatus:     req.BuildStatus,
-		BuildEvent:      req.BuildEvent,
-		BuildLink:       req.BuildLink,
-		CommitSHA:       req.CommitID,
-		CommitRef:       req.CommitRef,
-		CommitBranch:    req.CommitBranch,
-		CommitMessage:   req.CommitMessage,
-		CommitLink:      req.CommitLink,
 		ImageTag:        appReq.ImageTag,
 		ImageURL:        imageURL,
 		AppBuildSuccess: buildSuccess,
@@ -164,6 +168,9 @@ func (s *buildService) processAppBuild(repo *model.Repository, req *dto.BuildNot
 	if err := s.buildRepo.Create(build); err != nil {
 		return err
 	}
+
+	// 6. 通知New Tag事件
+	s.coreEngine.NewTag(app.ID, build)
 
 	logger.Info("应用构建记录已创建", zap.Int64("build_id", build.ID), zap.Int64("app_id", app.ID), zap.String("app_name", app.Name), zap.String("tag", appReq.ImageTag))
 

@@ -477,35 +477,27 @@ export default function BatchInsights() {
     if (status === 10) {
       return styles.timelineSealed
     }
-    // 预发布等待 (20)
-    if (status === 20) {
-      return styles.timelinePreWaiting
-    }
-    // 预发布中 (21)
-    if (status === 21) {
+    // 预发布已触发(20) 预发布中(21)
+    if (status === 20 || status === 21) {
       return styles.timelinePreDeploying
     }
-    // 预发布完成 (22)
+    // 预发布完成(22)
     if (status === 22) {
       return styles.timelinePreDeployed
     }
-    // 预发布失败 (23) - 可根据实际状态码调整
+    // 预发布失败(23) - 可根据实际状态码调整
     if (status === 23) {
       return styles.timelinePreFailed
     }
-    // 生产等待 (30)
-    if (status === 30) {
-      return styles.timelineProdWaiting
-    }
-    // 生产部署中 (31)
-    if (status === 31) {
+    // 生产已触发(30) 生产部署中(31)
+    if (status === 30 || status === 31) {
       return styles.timelineProdDeploying
     }
-    // 生产部署完成 (32)
+    // 生产部署完成(32)
     if (status === 32) {
       return styles.timelineProdDeployed
     }
-    // 生产部署失败 (33) - 可根据实际状态码调整
+    // 生产部署失败(33) - 可根据实际状态码调整
     if (status === 33) {
       return styles.timelineProdFailed
     }

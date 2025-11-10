@@ -62,6 +62,7 @@ func (sm *StateMachine) HandlePending(ctx context.Context, dep *model.Deployment
 
 	// 2. 变更为 Running
 	return constants.DeploymentStatusRunning, func(d *model.Deployment) {
+		d.TaskID = dep.TaskID
 		setErrorMessage(d, "")
 	}, nil
 }

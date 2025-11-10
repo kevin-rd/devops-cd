@@ -50,8 +50,8 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	}
 
 	// 3. 状态更新
-	if nextStatus != 0 {
-		if err = sm.UpdateStatus(ctx, release, nextStatus, WithModelEffects(updateFunc)); err != nil {
+	if nextStatus != 0 || updateFunc != nil {
+		if err = sm.UpdateStatus(ctx, release, WithStatus(nextStatus), WithModelEffects(updateFunc)); err != nil {
 			log.Errorf("[ReleaseApp SM] [db] 状态更新失败: %v", err)
 		}
 	}
@@ -64,11 +64,20 @@ type TransitionOption func(*transitionOptions)
 type transitionOptions struct {
 	operator string
 	reason   string
+	to       *int8
 	// data       map[string]interface{}
 	sideEffect func(r *model.ReleaseApp)
 }
 
+func WithStatus(to int8) TransitionOption {
+	return func(o *transitionOptions) {
+		o.to = &to
+	}
+}
 func WithModelEffects(sideEffects func(*model.ReleaseApp)) TransitionOption {
+	if sideEffects == nil {
+		return nil
+	}
 	return func(o *transitionOptions) { o.sideEffect = sideEffects }
 }
 func WithOperator(operator string) TransitionOption {
@@ -77,17 +86,23 @@ func WithOperator(operator string) TransitionOption {
 func WithReason(reason string) TransitionOption {
 	return func(o *transitionOptions) { o.reason = reason }
 }
-
-func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.ReleaseApp, to int8, opts ...TransitionOption) error {
-
-	log := sm.logger.Sugar().With(zap.Int64("batch_id", release.BatchID), zap.Int64("release_id", release.ID))
-
+func newTransitionOptions(opts ...TransitionOption) *transitionOptions {
 	option := &transitionOptions{}
 	for _, opt := range opts {
-		opt(option)
+		if opt != nil {
+			opt(option)
+		}
 	}
+	return option
+}
+
+func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.ReleaseApp, opts ...TransitionOption) error {
+	log := sm.logger.Sugar().With(zap.Int64("batch_id", release.BatchID), zap.Int64("release_id", release.ID))
+
+	option := newTransitionOptions(opts...)
 
 	var old int8
+	var to int8
 	var afterHandler func()
 
 	err := sm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -97,38 +112,36 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.
 		}
 		old = release.Status
 
-		// 2. 检查是否允许
-		h, ok := sm.canTransition(old, to, TransitionSourceInside)
-		if !ok {
-			return fmt.Errorf("当前状态 %v 不允许转换到 %v", old, to)
-		}
-
 		// 3. 应用业务字段更新
 		if option.sideEffect != nil {
 			option.sideEffect(release)
 		}
 
-		if h != nil {
-			// 4. 处理强依赖操作, 失败自动回滚
-			if err := h.Handle(release, old, to, option); err != nil {
-				return err
+		if option.to != nil {
+			to = *option.to
+
+			// 2. 检查是否允许
+			h, ok := sm.canTransition(old, to, TransitionSourceInside)
+			if !ok {
+				return fmt.Errorf("当前状态 %v 不允许转换到 %v", old, to)
 			}
 
-			afterHandler = func() {
-				h.After(release, old, to, option)
+			if h != nil {
+				// 4. 处理强依赖操作, 失败自动回滚
+				if err := h.Handle(release, old, option); err != nil {
+					return err
+				}
+
+				afterHandler = func() {
+					h.After(release, old, option)
+				}
 			}
+
+			release.Status = to
 		}
 
-		// 5. 条件更新：如果状态没变，用 WHERE id=?；如果变了，用 WHERE status=old
-		release.Status = to
-		var result *gorm.DB
-		if old == to {
-			// 状态不变，只更新业务字段
-			result = tx.Model(release).Where("id = ?", release.ID).Save(release)
-		} else {
-			// 状态变更，乐观锁
-			result = tx.Model(release).Where("id = ? AND status = ?", release.ID, old).Save(release)
-		}
+		// 5. 条件更新
+		var result = tx.Model(release).Where("id = ?", release.ID).Save(release)
 		if result.Error != nil {
 			return result.Error
 		}

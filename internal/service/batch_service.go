@@ -136,6 +136,7 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 			if hasBuild {
 				releaseApp.BuildID = &build.ID
 				releaseApp.TargetTag = &build.ImageTag
+				releaseApp.LatestBuildID = &build.ID
 			} else {
 				// 无构建记录，留空
 				releaseApp.BuildID = nil
@@ -257,6 +258,7 @@ func (s *BatchService) UpdateBatch(req *UpdateBatchRequest) (*model.Batch, map[s
 				if hasBuild {
 					releaseApp.BuildID = &build.ID
 					releaseApp.TargetTag = &build.ImageTag
+					releaseApp.LatestBuildID = &build.ID
 				} else {
 					// 无构建记录，留空
 					releaseApp.BuildID = nil
