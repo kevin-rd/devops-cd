@@ -29,7 +29,7 @@ import {
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useTranslation} from 'react-i18next'
 import dayjs from 'dayjs'
-import { formatCreatedTime } from '@/utils/time'
+import {formatCreatedTime} from '@/utils/time'
 
 import type {ColumnsType} from 'antd/es/table'
 import {batchService} from '@/services/batch'
@@ -39,8 +39,10 @@ import {StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
-import type {Batch, BatchActionRequest, BatchQueryParams, BuildSummary, ReleaseApp} from '@/types'
+import type {BatchActionRequest, BatchQueryParams, BuildSummary} from '@/types'
 import './index.css'
+import {Batch} from "@/types/batch.ts";
+import {ReleaseApp} from "@/types/release_app.ts";
 
 const {RangePicker} = DatePicker
 const {TextArea} = Input
@@ -924,7 +926,12 @@ export default function BatchList() {
             })()}
           </div>
           <div className="batch-cell batch-cell-apps">
-            <span className="batch-app-count">{record.app_count || 0} {t('batch.apps')}</span>
+            <span className="batch-app-count" style={{cursor: 'pointer'}}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/batch/${record.id}/detail`)
+                  }}>{record.app_count || 0} {t('batch.apps')}
+            </span>
           </div>
           <div className="batch-cell batch-cell-approval">
             <StatusTag
@@ -936,8 +943,8 @@ export default function BatchList() {
                 detail?.approved_at
                   ? dayjs(detail.approved_at).format('MM-DD HH:mm')
                   : record.approved_at
-                  ? dayjs(record.approved_at).format('MM-DD HH:mm')
-                  : undefined
+                    ? dayjs(record.approved_at).format('MM-DD HH:mm')
+                    : undefined
               }
               rejectReason={detail?.reject_reason ?? record.reject_reason}
               approvedBy={detail?.approved_by ?? record.approved_by}

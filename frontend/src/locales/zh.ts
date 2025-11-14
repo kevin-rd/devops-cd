@@ -172,6 +172,8 @@ export default {
       appCount: '应用数量',
       apps: '个应用',
       appList: '应用列表',
+      modeAppList: '应用列表',
+      modeInsights: '发布详情',
       
       // 状态
       status: '批次状态',

@@ -1,41 +1,338 @@
+/* 容器样式 */
 .batch-detail-container {
   padding: 24px;
   background: #f0f2f5;
   min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
+/* 头部区域 */
 .batch-detail-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  justify-content: space-between;
 }
 
-.batch-detail-header h2 {
-  margin: 0;
-  font-size: 20px;
+.batch-detail-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 内容区域 */
+.batch-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 通用 Section 样式 */
+.batch-detail-section {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  overflow: visible;
+}
+
+/* 批次信息标题样式 */
+.batch-info-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.batch-info-title .title-main {
+  display: flex;
+  align-items: center;
+  line-height: 1.6;
+  gap: 8px;
+}
+
+.batch-info-title .batch-id {
+  color: #999;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.batch-info-title .batch-name {
+  font-size: 16px;
   font-weight: 600;
 }
 
-.batch-info-card {
-  margin-bottom: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+.batch-info-title .release-notes {
+  color: #8c8c8c;
+  font-size: 12px;
+  line-height: 1.2;
+  max-width: 600px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.batch-actions {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #f0f0f0;
+/* 批次信息卡片固定高度 */
+.batch-info-fixed-height {
+  min-height: 200px;
 }
 
-.batch-detail-container .ant-card {
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+.batch-info-fixed-height .ant-card-body {
+  min-height: 130px;
+  display: flex;
+  align-items: center;
 }
 
-.batch-detail-container .ant-descriptions-item-label {
+/* 批次信息内容 */
+.batch-info-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 批次信息描述区域（应用列表模式） */
+.batch-descriptions-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.batch-info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.batch-info-label {
+  color: #8c8c8c;
   font-weight: 500;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.batch-info-value {
+  color: #262626;
+  font-weight: 400;
+}
+
+/* 时间线包装器（发布详情模式） */
+.batch-timeline-wrapper {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* 批次信息卡片状态样式 - 根据批次状态显示边框和背景 */
+
+/* 草稿状态 - 淡黄色背景 */
+.batch-info-section.status-draft {
+  background: linear-gradient(to bottom, var(--status-draft-bg-start) 0%, var(--status-draft-bg-end) 100%) !important;
+}
+
+/* 封板状态 - 紫色背景 */
+.batch-info-section.status-sealed {
+  background: linear-gradient(to bottom, var(--status-sealed-bg-start) 0%, var(--status-sealed-bg-end) 100%) !important;
+}
+
+/* 预发布等待 - 标准蓝静态虚线边框 + 日暮背景 */
+.batch-info-section.status-pre-waiting {
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%) !important;
+  border: var(--status-border-width-normal) dashed var(--status-pre-border-waiting) !important;
+}
+
+/* 预发布中状态 - 蓝色虚线滚动边框 + 日暮背景 */
+.batch-info-section.status-pre-deploying {
+  border: none !important;
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%) !important;
+  position: relative;
+  overflow: visible;
+}
+
+.batch-info-section.status-pre-deploying::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--status-border-radius);
+  padding: var(--status-border-width-normal);
+  background:
+    repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
+    repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
+    repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
+    repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap));
+  background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-repeat: no-repeat;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: statusBorderDashMove var(--status-animation-duration) linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.batch-info-section.status-pre-deploying::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--status-border-radius-inner);
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 预发布完成状态 - 蓝色实线边框 + 日暮背景 */
+.batch-info-section.status-pre-deployed {
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 150%) !important;
+  border: var(--status-border-width-normal) solid var(--status-pre-border-deployed) !important;
+}
+
+/* 生产等待 - 橙红静态虚线边框 + 火山背景 */
+.batch-info-section.status-prod-waiting {
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%) !important;
+  border: var(--status-border-width-normal) dashed var(--status-prod-border-waiting) !important;
+}
+
+/* 生产部署中状态 - 橙红虚线滚动边框 + 火山背景 */
+.batch-info-section.status-prod-deploying {
+  border: none !important;
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%) !important;
+  position: relative;
+  overflow: visible;
+}
+
+.batch-info-section.status-prod-deploying::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--status-border-radius);
+  padding: var(--status-border-width-normal);
+  background:
+    repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
+    repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
+    repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap)),
+    repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length), transparent var(--status-dash-length), transparent var(--status-dash-gap));
+  background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-repeat: no-repeat;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: statusBorderDashMove var(--status-animation-duration) linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.batch-info-section.status-prod-deploying::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--status-border-radius-inner);
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 生产部署完成状态 - 绿色实线边框 + 火山背景 */
+.batch-info-section.status-prod-deployed {
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 150%) !important;
+  border: var(--status-border-width-normal) solid var(--status-prod-border-deployed) !important;
+}
+
+/* 已完成状态 - 绿色边框 + 绿色背景 */
+.batch-info-section.status-completed {
+  background: linear-gradient(to bottom, var(--status-completed-bg-start) 0%, var(--status-completed-bg-end) 100%) !important;
+  border: var(--status-border-width-thin) solid var(--status-completed-border) !important;
+}
+
+/* 已取消状态 - 灰色边框 + 灰色背景 */
+.batch-info-section.status-cancelled {
+  background: linear-gradient(to bottom, var(--status-cancelled-bg-start) 0%, var(--status-cancelled-bg-end) 100%) !important;
+  border: var(--status-border-width-thin) solid var(--status-cancelled-border) !important;
+  opacity: var(--status-cancelled-opacity);
+}
+
+/* 清除部署中状态以外的伪元素 */
+.batch-detail-section:not(.status-pre-deploying):not(.status-prod-deploying)::before,
+.batch-detail-section:not(.status-pre-deploying):not(.status-prod-deploying)::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* 动画定义（复制自 status-theme.css 以支持动画） */
+@keyframes statusBorderDashMove {
+  0% {
+    background-position: 0 0, 100% 0, 0 100%, 0 0;
+  }
+  100% {
+    background-position: 24px 0, 100% 24px, -24px 100%, 0 -24px;
+  }
+}
+
+/* 批次内容卡片 */
+.batch-content-card {
+  min-height: 500px;
+}
+
+.batch-content-card .ant-card-body {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 应用列表Table容器 - 添加padding */
+.batch-content-card .ant-table-wrapper {
+  padding: 16px 24px;
+}
+
+/* 优化Table样式 */
+.batch-content-card .ant-table {
+  font-size: 13px;
+}
+
+.batch-content-card .ant-table-thead > tr > th {
+  padding: 12px 16px;
+  font-size: 13px;
   background: #fafafa;
 }
 
+.batch-content-card .ant-table-tbody > tr > td {
+  padding: 10px 16px;
+}
+
+/* DependencyGraph 容器优化 */
+.batch-content-card > div > div[style*="position: relative"] {
+  min-height: 450px;
+}
+
+
+/* 响应式调整 */
+@media (max-width: 992px) {
+  .batch-detail-container {
+    padding: 16px;
+  }
+  
+  .batch-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .batch-info-fixed-height {
+    min-height: auto;
+  }
+  
+  .batch-content-card {
+    min-height: 400px;
+  }
+}

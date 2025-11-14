@@ -172,6 +172,8 @@ export default {
       appCount: 'Applications',
       apps: 'apps',
       appList: 'Application List',
+      modeAppList: 'Application List',
+      modeInsights: 'Release Insights',
 
       status: 'Batch Status',
       statusDraft: 'Draft',

@@ -1,13 +1,13 @@
-import {useMemo, useState} from 'react'
 import type {ReactNode} from 'react'
-import {Button, Card, Checkbox, Descriptions, Empty, Input, message, Modal, Pagination, Select, Space, Spin, Table, Tag,} from 'antd'
+import {useEffect, useMemo, useState} from 'react'
+import {Button, Card, Checkbox, Empty, Input, message, Modal, Segmented, Select, Space, Spin, Table, Tag,} from 'antd'
 import {
-  ArrowLeftOutlined,
   CheckCircleOutlined,
-  EditOutlined,
+  LeftOutlined,
   PlayCircleOutlined,
   SaveOutlined,
   StopOutlined,
+  UndoOutlined,
 } from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useNavigate, useParams} from 'react-router-dom'
@@ -16,18 +16,14 @@ import dayjs from 'dayjs'
 import type {ColumnsType} from 'antd/es/table'
 import {batchService} from '@/services/batch'
 import {applicationService} from '@/services/application'
-import {StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import {useAuthStore} from '@/stores/authStore'
-import type {
-  ApplicationWithBuild,
-  Batch,
-  BatchActionRequest,
-  BuildSummary,
-  ReleaseApp,
-  UpdateReleaseDependenciesRequest,
-} from '@/types'
+import type {ApplicationWithBuild, BatchActionRequest, BuildSummary, UpdateReleaseDependenciesRequest,} from '@/types'
+import DependencyGraph from '@/pages/BatchInsights/components/DependencyGraph'
+import '@/styles/status-theme.css'
 import './Detail.css'
+import {ReleaseApp} from "@/types/release_app.ts";
+import {Batch} from "@/types/batch.ts";
 
 type DependencyOption = {
   label: ReactNode
@@ -47,24 +43,23 @@ export default function BatchDetail() {
   const [cancelReason, setCancelReason] = useState('')
   const [manageAppsModalVisible, setManageAppsModalVisible] = useState(false)
   const [selectedAppIds, setSelectedAppIds] = useState<number[]>([])
-  
-  // 【新增】应用列表分页状态
-  const [appPage, setAppPage] = useState(1)
-  const [appPageSize, setAppPageSize] = useState(20)
-  
-  // 【新增】构建修改状态（app_id -> selected_build_id）
-  const [buildChanges, setBuildChanges] = useState<Record<number, number>>({})
 
-  // 【新增】依赖配置状态
+  // 依赖配置状态
   const [dependencyModalVisible, setDependencyModalVisible] = useState(false)
   const [editingRelease, setEditingRelease] = useState<ReleaseApp | null>(null)
   const [tempDependencySelection, setTempDependencySelection] = useState<number[]>([])
 
-  // 查询批次详情（支持分页）
+  // 视图模式状态（根据批次状态设置默认值）
+  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list')
+
+  // 构建修改状态（app_id -> selected_build_id）
+  const [buildChanges, setBuildChanges] = useState<Record<number, number>>({})
+
+  // 查询批次详情
   const {data: batchData, isLoading} = useQuery({
-    queryKey: ['batchDetail', id, appPage, appPageSize],
+    queryKey: ['batchDetail', id],
     queryFn: async () => {
-      const res = await batchService.get(Number(id), appPage, appPageSize)
+      const res = await batchService.get(Number(id), 1, 200) // 获取所有应用
       console.log('Batch detail response:', res)
       return res.data as Batch
     },
@@ -72,6 +67,17 @@ export default function BatchDetail() {
   })
 
   const batch = batchData
+
+  // 根据批次状态设置默认视图（仅在首次加载时）
+  useEffect(() => {
+    if (batch && viewMode === 'list') {
+      // status >= 22 表示预发布完成或更晚，默认显示图形视图
+      if (batch.status >= 22) {
+        setViewMode('graph')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batch?.status])
 
   const appIdMap = useMemo(() => {
     const map = new Map<number, ReleaseApp>()
@@ -111,15 +117,15 @@ export default function BatchDetail() {
   })
   const updateDependenciesMutation = useMutation({
     mutationFn: ({
-      releaseAppId,
-      payload,
-    }: {
+                   releaseAppId,
+                   payload,
+                 }: {
       releaseAppId: number
       payload: UpdateReleaseDependenciesRequest
     }) => batchService.updateDependencies(releaseAppId, payload),
     onSuccess: () => {
       message.success('依赖配置已更新')
-      queryClient.invalidateQueries({queryKey: ['batchDetail', id, appPage, appPageSize]})
+      queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
       setDependencyModalVisible(false)
       setEditingRelease(null)
       setTempDependencySelection([])
@@ -200,14 +206,6 @@ export default function BatchDetail() {
     handleAction('cancel', false)
   }
 
-  // 打开管理应用 Modal
-  const handleManageApps = () => {
-    // 初始化已选应用 ID
-    const currentAppIds = batch?.apps?.map(app => app.app_id) || []
-    setSelectedAppIds(currentAppIds)
-    setManageAppsModalVisible(true)
-  }
-
   // 提交应用修改
   const handleSubmitApps = () => {
     if (!batch) return
@@ -258,6 +256,41 @@ export default function BatchDetail() {
     setDependencyModalVisible(false)
     setEditingRelease(null)
     setTempDependencySelection([])
+  }
+
+  // 处理构建选择变更
+  const handleBuildChange = (appId: number, buildId: number) => {
+    setBuildChanges(prev => ({
+      ...prev,
+      [appId]: buildId
+    }))
+  }
+
+  // 保存构建变更
+  const handleSaveBuildChanges = async () => {
+    if (!batch) return
+    try {
+      await batchService.updateBuilds({
+        batch_id: batch.id,
+        operator: user?.username || 'unknown',
+        build_changes: buildChanges,
+      })
+      message.success('构建版本更新成功')
+
+      // 清空修改记录
+      setBuildChanges({})
+
+      // 刷新批次详情
+      await queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '更新失败，请重试')
+    }
+  }
+
+  // 还原/取消所有修改
+  const handleCancelBuildChanges = () => {
+    setBuildChanges({})
+    message.info('已取消所有修改')
   }
 
   const dependencyOptions = useMemo<DependencyOption[]>(() => {
@@ -413,23 +446,6 @@ export default function BatchDetail() {
   const batchStatusValue = Number(batch.status)
   const isBatchCompleted = batchStatusValue === 40
 
-  // 【新增】处理构建选择变更
-  const handleBuildChange = (appId: number, buildId: number) => {
-    setBuildChanges(prev => ({
-      ...prev,
-      [appId]: buildId
-    }))
-  }
-
-  // 【新增】保存构建变更
-  const saveBuildChanges = () => {
-    // TODO: 调用后端 API 保存构建变更
-    message.info(`TODO: 保存构建变更 ${JSON.stringify(buildChanges)}`)
-    // 成功后清空变更记录
-    // setBuildChanges({})
-    // queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
-  }
-
   const appColumns: ColumnsType<ReleaseApp> = [
     {
       title: t('batch.appName'),
@@ -473,33 +489,72 @@ export default function BatchDetail() {
         // 如果批次未封板且有 recent_builds，显示下拉选择
         if (!isBatchCompleted && batch && batch.status < 10 && record.recent_builds && record.recent_builds.length > 0) {
           const currentValue = buildChanges[record.app_id] || record.build_id
+          const isModified = record.app_id in buildChanges
+          const initialBuildId = record.build_id
+
+          // 处理长文本：优先显示后段
+          const formatLabel = (text: string, maxLen: number = 20) => {
+            if (!text) return ''
+            if (text.length <= maxLen) return text
+            return '...' + text.slice(-(maxLen - 3))
+          }
+
           return (
-            <Select
-              style={{ width: '100%' }}
-              value={currentValue}
-              onChange={(value) => handleBuildChange(record.app_id, value)}
-              size="small"
-              optionLabelProp="label"
-            >
-              {record.recent_builds.map((build: BuildSummary) => (
-                <Select.Option 
-                  key={build.id} 
-                  value={build.id}
-                  label={build.image_tag}
-                >
-                  <div style={{fontSize: 12}}>
-                    <div><code>{build.image_tag}</code></div>
-                    <div style={{color: '#8c8c8c', fontSize: 11}}>
-                      {build.commit_message?.substring(0, 40)}
-                      {(build.commit_message?.length || 0) > 40 && '...'}
-                    </div>
-                    <div style={{color: '#8c8c8c', fontSize: 10}}>
-                      {dayjs(build.build_created).format('MM-DD HH:mm')}
-                    </div>
-                  </div>
-                </Select.Option>
-              ))}
-            </Select>
+            <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+              <Select
+                style={{width: 'calc(100% - 22px)', fontSize: 13}}
+                value={currentValue}
+                onChange={(value) => handleBuildChange(record.app_id, value)}
+                size="small"
+                optionLabelProp="label"
+                status={isModified ? 'warning' : undefined}
+                dropdownMatchSelectWidth={false}
+                dropdownStyle={{width: 280}}
+              >
+                {record.recent_builds.map((build: BuildSummary) => {
+                  const isInitial = build.id === initialBuildId
+                  return (
+                    <Select.Option
+                      key={build.id}
+                      value={build.id}
+                      label={formatLabel(build.image_tag)}
+                    >
+                      <div style={{fontSize: 11}}>
+                        <div>
+                          <code style={{fontSize: 12, fontWeight: isInitial ? 600 : 400}}>
+                            {build.image_tag}
+                          </code>
+                        </div>
+                        <div style={{
+                          color: '#8c8c8c',
+                          fontSize: 11,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          direction: 'rtl',
+                          textAlign: 'left',
+                        }}>
+                          {build.commit_message || ''}
+                        </div>
+                        <div style={{
+                          color: '#8c8c8c',
+                          fontSize: 10,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}>
+                          <span>{dayjs(build.build_created).format('YYYY-MM-DD HH:mm')}</span>
+                          <span style={{marginLeft: 8, flexShrink: 0}}>#{build.id}</span>
+                        </div>
+                      </div>
+                    </Select.Option>
+                  )
+                })}
+              </Select>
+              {isModified && (
+                <span style={{color: '#faad14', fontSize: 14}}>●</span>
+              )}
+            </div>
           )
         }
         // 否则显示普通文本
@@ -574,58 +629,41 @@ export default function BatchDetail() {
     },
   ]
 
+  // 根据批次状态获取对应的CSS类名（用于卡片样式）
+  const getStatusClassName = () => {
+    const status = Number(batch.status)
+    if (status === 0) return 'status-draft'
+    if (status === 10) return 'status-sealed'
+    if (status === 20) return 'status-pre-waiting'
+    if (status === 21) return 'status-pre-deploying'
+    if (status === 22) return 'status-pre-deployed'
+    if (status === 30) return 'status-prod-waiting'
+    if (status === 31) return 'status-prod-deploying'
+    if (status === 32) return 'status-prod-deployed'
+    if (status === 40) return 'status-completed'
+    if (status === 90) return 'status-cancelled'
+    return ''
+  }
+
   return (
     <div className="batch-detail-container">
-      {/* 头部导航 */}
+      {/* 头部区域 */}
       <div className="batch-detail-header">
-        <Button
-          icon={<ArrowLeftOutlined/>}
-          onClick={() => navigate('/batch')}
-        >
-          {t('common.back')}
+        <Button icon={<LeftOutlined/>} onClick={() => navigate('/batch')} type="link">
+          {t('batchInsights.back')}
         </Button>
-        <h2>{batch.batch_number}</h2>
-      </div>
-
-      {/* 批次基本信息 */}
-      <Card className="batch-info-card" title={t('batch.batchInfo')}>
-        <Descriptions column={2} bordered>
-          <Descriptions.Item label={t('batch.batchNumber')} span={2}>
-            {batch.batch_number}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('batch.initiator')}>
-            {batch.initiator}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('batch.createdAt')}>
-            {dayjs(batch.created_at).format('YYYY-MM-DD HH:mm:ss')}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('batch.status')}>
-            <StatusTag status={batch.status}/>
-          </Descriptions.Item>
-          <Descriptions.Item label={t('batch.approvalStatus')}>
-            <StatusTag
-              status={batch.status}
-              approvalStatus={batch.approval_status}
-              showApproval
-              approvalTime={
-                batch.approved_at
-                  ? dayjs(batch.approved_at).format('MM-DD HH:mm')
-                  : undefined
-              }
-              rejectReason={batch.reject_reason}
-              approvedBy={batch.approved_by}
-            />
-          </Descriptions.Item>
-          {batch.release_notes && (
-            <Descriptions.Item label={t('batch.releaseNotes')} span={2}>
-              <div style={{whiteSpace: 'pre-wrap'}}>{batch.release_notes}</div>
-            </Descriptions.Item>
-          )}
-        </Descriptions>
-
-        {/* 操作按钮 */}
-        <div className="batch-actions">
+        <div className="batch-detail-header-controls">
           <Space size="middle">
+            {/* 视图切换 */}
+            <Segmented
+              value={viewMode}
+              onChange={(value) => setViewMode(value as 'list' | 'graph')}
+              options={[
+                {label: t('batch.modeAppList'), value: 'list'},
+                {label: t('batch.modeInsights'), value: 'graph'},
+              ]}
+            />
+            {/* 操作按钮 */}
             {getAvailableActions().map((action) => (
               <Button
                 key={action.key}
@@ -646,91 +684,116 @@ export default function BatchDetail() {
             ))}
           </Space>
         </div>
-      </Card>
+      </div>
 
-      {/* 上线流程时间线 */}
-      <BatchTimeline 
-        batch={batch} 
-        onAction={(action) => handleAction(action as BatchActionRequest['action'])}
-      />
-
-      {/* 应用列表 */}
-      <Card
-        title={`${t('batch.apps')} (${batch.total_apps || batch.apps?.length || 0})`}
-        extra={
-          <Space>
-            {/* 分页器（如果应用数量大于 page_size 才显示） */}
-            {batch.total_apps && batch.total_apps > (batch.app_page_size || 20) && (
-              <Pagination
-                simple
-                current={appPage}
-                pageSize={appPageSize}
-                total={batch.total_apps}
-                onChange={(page, pageSize) => {
-                  setAppPage(page)
-                  setAppPageSize(pageSize || 20)
-                }}
-                showSizeChanger
-                pageSizeOptions={['10', '20', '50']}
-                size="small"
-              />
-            )}
-            
-            {/* 应用按钮（有构建变更时显示） */}
-            {Object.keys(buildChanges).length > 0 && (
-              <Button
-                type="primary"
-                icon={<SaveOutlined/>}
-                onClick={saveBuildChanges}
-                size="small"
-              >
-                应用 ({Object.keys(buildChanges).length})
-              </Button>
-            )}
-            
-            {/* 管理应用按钮 */}
-            {batch.status < 10 && (
-              <Button
-                icon={<EditOutlined/>}
-                onClick={handleManageApps}
-                size="small"
-              >
-                {t('batch.manageApps')}
-              </Button>
-            )}
-          </Space>
-        }
-      >
-        <Table
-          key={`batch-table-${batchStatusValue}-${isBatchCompleted ? 'completed' : 'in-progress'}`}
-          columns={appColumns}
-          dataSource={batch.apps || []}
-          rowKey="id"
-          pagination={false}
-          scroll={{ x: 1200 }}
-          expandable={{
-            expandedRowRender: (record) => (
-              <div style={{padding: '12px 24px', background: '#fafafa'}}>
-                {record.release_notes && (
-                  <div style={{marginBottom: 8}}>
-                    <strong>{t('batch.appReleaseNotes')}:</strong>
-                    <div style={{marginTop: 4, whiteSpace: 'pre-wrap'}}>
-                      {record.release_notes}
-                    </div>
-                  </div>
-                )}
-                <div style={{fontSize: 12, color: '#8c8c8c'}}>
-                  <div>Commit: {record.commit_sha?.substring(0, 8)}</div>
-                  <div>Image: {record.image_url}</div>
+      {/* 内容区域 */}
+      <div className="batch-detail-content">
+        {/* 批次信息和时间线 Section */}
+        <Card
+          className={`batch-detail-section batch-info-section batch-info-fixed-height ${getStatusClassName()}`}
+          title={
+            <div className="batch-info-title">
+              <div className="title-main">
+                <span className="batch-id">#{batch.id}</span>
+                <span className="batch-name">{batch.batch_number}</span>
+              </div>
+              {batch.release_notes && (
+                <div className="release-notes">{batch.release_notes}</div>
+              )}
+            </div>
+          }
+        >
+          <div className="batch-info-content">
+            {viewMode === 'list' ? (
+              /* 应用列表模式：显示批次基本信息 */
+              <div className="batch-descriptions-wrapper">
+                <div className="batch-info-item">
+                  <span className="batch-info-label">{t('batch.initiator')}:</span>
+                  <span className="batch-info-value">{batch.initiator}</span>
+                </div>
+                <div className="batch-info-item">
+                  <span className="batch-info-label">{t('batch.createdAt')}:</span>
+                  <span className="batch-info-value">{dayjs(batch.created_at).format('YYYY-MM-DD HH:mm:ss')}</span>
+                </div>
+                <div className="batch-info-item">
+                  <span className="batch-info-label">{t('batch.totalApps')}:</span>
+                  <span className="batch-info-value">{batch.total_apps || batch.apps?.length || 0} 个应用</span>
                 </div>
               </div>
-            ),
-            rowExpandable: (record) => !!record.release_notes || !!record.commit_sha,
-          }}
-        />
-      </Card>
+            ) : (
+              /* 发布详情模式：显示上线流程时间线 */
+              <div className="batch-timeline-wrapper">
+                <BatchTimeline
+                  batch={batch}
+                  onAction={(action) => handleAction(action as BatchActionRequest['action'])}
+                />
+              </div>
+            )}
+          </div>
+        </Card>
 
-      {/* 取消批次 Modal */}
+        {/* 应用列表或依赖图 Section */}
+        <Card
+          className="batch-detail-section batch-content-card"
+          title={(viewMode === 'list' ? t('batch.appList') : t('batchInsights.appDetails')) +
+            " (" + (batch.total_apps || batch.apps?.length || 0) + " " + t('batch.apps') + ")"}
+          extra={
+            viewMode === 'list' && Object.keys(buildChanges).length > 0 && (
+              <Space size="small">
+                <Button icon={<UndoOutlined/>} onClick={handleCancelBuildChanges} size="small">
+                  还原
+                </Button>
+                <Button type="primary" icon={<SaveOutlined/>} onClick={handleSaveBuildChanges} size="small">
+                  应用 ({Object.keys(buildChanges).length})
+                </Button>
+              </Space>
+            )
+          }
+        >
+          {viewMode === 'list' ? (
+            /* 应用列表模式：显示应用列表 */
+            <Table
+              key={`batch-table-${batchStatusValue}-${isBatchCompleted ? 'completed' : 'in-progress'}`}
+              columns={appColumns}
+              dataSource={batch.apps || []}
+              rowKey="id"
+              pagination={false}
+              scroll={{x: 1200}}
+              expandable={{
+                expandedRowRender: (record) => (
+                  <div style={{padding: '12px 24px', background: '#fafafa'}}>
+                    {record.release_notes && (
+                      <div style={{marginBottom: 8}}>
+                        <strong>{t('batch.appReleaseNotes')}:</strong>
+                        <div style={{marginTop: 4, whiteSpace: 'pre-wrap'}}>
+                          {record.release_notes}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{fontSize: 12, color: '#8c8c8c'}}>
+                      <div>Commit: {record.commit_sha?.substring(0, 8)}</div>
+                      <div>Image: {record.image_url}</div>
+                    </div>
+                  </div>
+                ),
+                rowExpandable: (record) => !!record.release_notes || !!record.commit_sha,
+              }}
+            />
+          ) : (
+            /* 发布详情模式：显示应用依赖图 */
+            <DependencyGraph
+              releaseApps={batch.apps || []}
+              appTypeConfigs={batch.app_type_configs}
+              environment="prod"
+              batch={batch}
+              onRefresh={() => queryClient.invalidateQueries({queryKey: ['batchDetail', id]})}
+            />
+          )}
+        </Card>
+      </div>
+
+      {/* 取消批次 Modal */
+      }
       <Modal
         title={t('batch.cancelBatch')}
         open={cancelModalVisible}
@@ -797,7 +860,8 @@ export default function BatchDetail() {
         )}
       </Modal>
 
-      {/* 管理应用 Modal */}
+      {/* 管理应用 Modal */
+      }
       <Modal
         title={t('batch.manageApps')}
         open={manageAppsModalVisible}

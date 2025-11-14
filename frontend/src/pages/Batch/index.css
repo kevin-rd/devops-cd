@@ -103,14 +103,14 @@
     max-width: 100%;
 }
 
-/* 草稿 - 默认边框 */
+/* 草稿 - 黄色背景 */
 .batch-card.status-draft {
-    background: linear-gradient(to bottom, var(--status-draft-bg-start) 0%, var(--status-draft-bg-end) 100%);
+    background: linear-gradient(to bottom, var(--status-draft-bg-start) -50%, var(--status-draft-bg-end) 100%);
 }
 
 /* 已封板 - 紫色背景 */
 .batch-card.status-sealed {
-    background: linear-gradient(to bottom, var(--status-sealed-bg-start) 0%, var(--status-sealed-bg-end) 100%);
+    background: linear-gradient(to bottom, var(--status-sealed-bg-start) -50%, var(--status-sealed-bg-end) 100%);
     position: relative;
 }
 
@@ -200,7 +200,7 @@
     position: absolute;
     inset: 2px;
     border-radius: 4px;
-    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%);
+    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 150%);
     z-index: -1;
     pointer-events: none;
 }
@@ -208,7 +208,7 @@
 /* 生产部署完成 - 极光绿4边框 */
 .batch-card.status-prod-deployed {
     border: 2px solid var(--status-prod-border-deployed);
-    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-start) 150%);
+    background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 150%);
 }
 
 /* 生产部署完成 - 清除状态的伪元素 */
@@ -305,13 +305,25 @@
     transition: opacity 0.2s ease;
 }
 
+/* 应用数量单元格悬停效果 */
+.batch-cell-apps:hover {
+    opacity: 0.8;
+}
+
+.batch-cell-apps:hover .batch-app-count {
+    border-color: #1890ff;
+    color: #1890ff;
+    background-color: #e6f7ff;
+}
+
 /* 应用数量样式 */
 .batch-app-count {
     display: inline-block;
     padding: 2px 8px;
     border: 1px solid #d9d9d9;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 12px;
+    transition: all 0.2s ease;
     color: #333;
     background-color: #fafafa;
 }
