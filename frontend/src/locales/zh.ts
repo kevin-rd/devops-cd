@@ -339,7 +339,7 @@ export default {
       batchInfo: '批次信息',
       timeline: '发布流程',
       dependencyGraph: '依赖关系',
-      appDetails: '应用详情',
+      appDetails: '发布详情',
       appCount: '应用数量',
       target: '目标版本',
       updatedAt: '更新时间',

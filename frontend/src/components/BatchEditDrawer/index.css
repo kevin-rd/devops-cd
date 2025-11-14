@@ -1,6 +1,5 @@
 .batch-edit-drawer .ant-drawer-body {
-  padding: 24px;
-  padding-top: 0;
+  padding: 0 24px;
 }
 
 .batch-edit-drawer .ant-drawer-footer {
@@ -47,7 +46,7 @@
   top: 0;
   z-index: 10;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  /*box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);*/
 }
 
 /* 搜索和分页区域 */

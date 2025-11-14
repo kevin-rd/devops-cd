@@ -3,23 +3,25 @@ import {useEffect, useMemo, useState} from 'react'
 import {Button, Card, Checkbox, Empty, Input, message, Modal, Segmented, Select, Space, Spin, Table, Tag,} from 'antd'
 import {
   CheckCircleOutlined,
+  EditOutlined,
   LeftOutlined,
   PlayCircleOutlined,
+  ReloadOutlined,
   SaveOutlined,
   StopOutlined,
   UndoOutlined,
 } from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
-import {useNavigate, useParams} from 'react-router-dom'
+import {useNavigate, useParams, useSearchParams} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import dayjs from 'dayjs'
 import type {ColumnsType} from 'antd/es/table'
 import {batchService} from '@/services/batch'
-import {applicationService} from '@/services/application'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import {useAuthStore} from '@/stores/authStore'
-import type {ApplicationWithBuild, BatchActionRequest, BuildSummary, UpdateReleaseDependenciesRequest,} from '@/types'
+import type {BatchActionRequest, BuildSummary, UpdateReleaseDependenciesRequest,} from '@/types'
 import DependencyGraph from '@/pages/BatchInsights/components/DependencyGraph'
+import AppSelectionTable from '@/components/AppSelectionTable'
 import '@/styles/status-theme.css'
 import './Detail.css'
 import {ReleaseApp} from "@/types/release_app.ts";
@@ -37,6 +39,7 @@ export default function BatchDetail() {
   const {t} = useTranslation()
   const navigate = useNavigate()
   const {id} = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const {user} = useAuthStore()
   const queryClient = useQueryClient()
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
@@ -49,8 +52,11 @@ export default function BatchDetail() {
   const [editingRelease, setEditingRelease] = useState<ReleaseApp | null>(null)
   const [tempDependencySelection, setTempDependencySelection] = useState<number[]>([])
 
-  // 视图模式状态（根据批次状态设置默认值）
-  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list')
+  // 视图模式状态（从 URL 参数读取默认值，如果没有则为 'list'）
+  const tabParam = searchParams.get('tab') as 'list' | 'graph' | null
+  const [viewMode, setViewMode] = useState<'list' | 'graph'>(
+    tabParam === 'graph' || tabParam === 'list' ? tabParam : 'list'
+  )
 
   // 构建修改状态（app_id -> selected_build_id）
   const [buildChanges, setBuildChanges] = useState<Record<number, number>>({})
@@ -68,12 +74,19 @@ export default function BatchDetail() {
 
   const batch = batchData
 
-  // 根据批次状态设置默认视图（仅在首次加载时）
+  // 根据批次状态设置默认视图（仅在首次加载且没有 URL 参数指定时）
   useEffect(() => {
+    // 如果 URL 中有明确指定 tab 参数，则不自动切换
+    if (tabParam) return
+
     if (batch && viewMode === 'list') {
       // status >= 22 表示预发布完成或更晚，默认显示图形视图
       if (batch.status >= 22) {
         setViewMode('graph')
+        // 同步更新 URL 参数
+        const newSearchParams = new URLSearchParams(searchParams)
+        newSearchParams.set('tab', 'graph')
+        navigate(`/batch/${id}/detail?${newSearchParams.toString()}`, {replace: true})
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,15 +100,6 @@ export default function BatchDetail() {
     return map
   }, [batch?.apps])
 
-  // 查询所有应用（用于管理应用，包含构建信息）
-  const {data: allAppsResponse} = useQuery({
-    queryKey: ['applicationsWithBuilds'],
-    queryFn: async () => {
-      const res = await applicationService.searchWithBuilds({page_size: 1000})
-      return res.data
-    },
-    enabled: manageAppsModalVisible, // 只在打开 Modal 时查询
-  })
 
   // 更新批次应用 Mutation
   const updateAppsMutation = useMutation({
@@ -293,6 +297,14 @@ export default function BatchDetail() {
     message.info('已取消所有修改')
   }
 
+  // 打开管理应用 Modal
+  const handleManageApps = () => {
+    // 初始化已选应用 ID
+    const currentAppIds = batch?.apps?.map(app => app.app_id) || []
+    setSelectedAppIds(currentAppIds)
+    setManageAppsModalVisible(true)
+  }
+
   const dependencyOptions = useMemo<DependencyOption[]>(() => {
     if (!batch || !editingRelease) return []
     const defaultSet = new Set(editingRelease.default_depends_on || [])
@@ -454,6 +466,13 @@ export default function BatchDetail() {
       width: 180,
       fixed: 'left',
       ellipsis: true,
+      render: (name: string, record: ReleaseApp) => (
+        <div style={{display: 'flex', alignItems: 'center', overflow: 'hidden'}}>
+          <span style={{color: '#999', fontSize: 12, userSelect: 'none', flexShrink: 0, marginRight: 4}}>#{record.app_id} </span>
+          <span style={{fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',}}>{name}
+          </span>
+        </div>
+      )
     },
     {
       title: t('batch.appType'),
@@ -484,7 +503,7 @@ export default function BatchDetail() {
     {
       title: isBatchCompleted ? t('batch.deployed') : t('batch.pendingDeploy'),
       key: isBatchCompleted ? 'deployed' : 'pending_deploy',
-      width: 200,
+      width: 250,
       render: (_: any, record: ReleaseApp) => {
         // 如果批次未封板且有 recent_builds，显示下拉选择
         if (!isBatchCompleted && batch && batch.status < 10 && record.recent_builds && record.recent_builds.length > 0) {
@@ -500,65 +519,95 @@ export default function BatchDetail() {
           }
 
           return (
-            <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
-              <Select
-                style={{width: 'calc(100% - 22px)', fontSize: 13}}
-                value={currentValue}
-                onChange={(value) => handleBuildChange(record.app_id, value)}
-                size="small"
-                optionLabelProp="label"
-                status={isModified ? 'warning' : undefined}
-                dropdownMatchSelectWidth={false}
-                dropdownStyle={{width: 280}}
-              >
-                {record.recent_builds.map((build: BuildSummary) => {
-                  const isInitial = build.id === initialBuildId
-                  return (
-                    <Select.Option
-                      key={build.id}
-                      value={build.id}
-                      label={formatLabel(build.image_tag)}
-                    >
-                      <div style={{fontSize: 11}}>
-                        <div>
-                          <code style={{fontSize: 12, fontWeight: isInitial ? 600 : 400}}>
-                            {build.image_tag}
-                          </code>
+            <div>
+              <div style={{display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4}}>
+                <Select
+                  style={{width: 'calc(100% - 22px)', fontSize: 13}}
+                  value={currentValue}
+                  onChange={(value) => handleBuildChange(record.app_id, value)}
+                  size="small"
+                  optionLabelProp="label"
+                  status={isModified ? 'warning' : undefined}
+                  dropdownMatchSelectWidth={false}
+                  dropdownStyle={{width: 280}}
+                >
+                  {record.recent_builds.map((build: BuildSummary) => {
+                    const isInitial = build.id === initialBuildId
+                    return (
+                      <Select.Option
+                        key={build.id}
+                        value={build.id}
+                        label={formatLabel(build.image_tag)}
+                      >
+                        <div style={{fontSize: 11}}>
+                          <div>
+                            <code style={{fontSize: 12, fontWeight: isInitial ? 600 : 400}}>
+                              {build.image_tag}
+                            </code>
+                          </div>
+                          <div style={{
+                            color: '#8c8c8c',
+                            fontSize: 11,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            direction: 'rtl',
+                            textAlign: 'left',
+                          }}>
+                            {build.commit_message || ''}
+                          </div>
+                          <div style={{
+                            color: '#8c8c8c',
+                            fontSize: 10,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}>
+                            <span>{dayjs(build.build_created).format('YYYY-MM-DD HH:mm')}</span>
+                            <span style={{marginLeft: 8, flexShrink: 0}}>#{build.id}</span>
+                          </div>
                         </div>
-                        <div style={{
-                          color: '#8c8c8c',
-                          fontSize: 11,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          direction: 'rtl',
-                          textAlign: 'left',
-                        }}>
-                          {build.commit_message || ''}
-                        </div>
-                        <div style={{
-                          color: '#8c8c8c',
-                          fontSize: 10,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}>
-                          <span>{dayjs(build.build_created).format('YYYY-MM-DD HH:mm')}</span>
-                          <span style={{marginLeft: 8, flexShrink: 0}}>#{build.id}</span>
-                        </div>
-                      </div>
-                    </Select.Option>
-                  )
-                })}
-              </Select>
-              {isModified && (
-                <span style={{color: '#faad14', fontSize: 14}}>●</span>
+                      </Select.Option>
+                    )
+                  })}
+                </Select>
+                {isModified && (
+                  <span style={{color: '#faad14', fontSize: 14}}>●</span>
+                )}
+              </div>
+              {record.commit_message && (
+                <div style={{
+                  fontSize: 11,
+                  color: '#8c8c8c',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {record.commit_message}
+                </div>
               )}
             </div>
           )
         }
         // 否则显示普通文本
-        return <code style={{fontSize: 12}}>{record.target_tag || '-'}</code>
+        return (
+          <div>
+            <div style={{marginBottom: 4}}>
+              <code style={{fontSize: 12}}>{record.target_tag || '-'}</code>
+            </div>
+            {record.commit_message && (
+              <div style={{
+                fontSize: 11,
+                color: '#8c8c8c',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {record.commit_message}
+              </div>
+            )}
+          </div>
+        )
       },
     },
     {
@@ -617,16 +666,6 @@ export default function BatchDetail() {
         )
       },
     },
-    {
-      title: t('batch.commitMessage'),
-      dataIndex: 'commit_message',
-      key: 'commit_message',
-      width: 250,
-      ellipsis: true,
-      render: (text: string) => (
-        <span style={{fontSize: 12}}>{text || '-'}</span>
-      ),
-    },
   ]
 
   // 根据批次状态获取对应的CSS类名（用于卡片样式）
@@ -657,38 +696,36 @@ export default function BatchDetail() {
             {/* 视图切换 */}
             <Segmented
               value={viewMode}
-              onChange={(value) => setViewMode(value as 'list' | 'graph')}
+              onChange={(value) => {
+                const newMode = value as 'list' | 'graph'
+                setViewMode(newMode)
+                // 同步更新 URL 参数
+                const newSearchParams = new URLSearchParams(searchParams)
+                newSearchParams.set('tab', newMode)
+                navigate(`/batch/${id}/detail?${newSearchParams.toString()}`, {replace: true})
+              }}
               options={[
                 {label: t('batch.modeAppList'), value: 'list'},
                 {label: t('batch.modeInsights'), value: 'graph'},
               ]}
             />
-            {/* 操作按钮 */}
-            {getAvailableActions().map((action) => (
-              <Button
-                key={action.key}
-                type={action.type}
-                danger={action.danger}
-                icon={action.icon}
-                loading={actionMutation.isPending}
-                onClick={() => {
-                  if (action.action === 'cancel') {
-                    handleCancel()
-                  } else {
-                    handleAction(action.action)
-                  }
-                }}
-              >
-                {action.label}
-              </Button>
-            ))}
+            {/* 刷新按钮 */}
+            <Button
+              icon={<ReloadOutlined/>}
+              onClick={() => {
+                queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
+                message.success('已刷新')
+              }}
+            >
+              刷新
+            </Button>
           </Space>
         </div>
       </div>
 
-      {/* 内容区域 */}
+      {/* 主区域 */}
       <div className="batch-detail-content">
-        {/* 批次信息和时间线 Section */}
+        {/* 上方: 批次信息和时间线 Section */}
         <Card
           className={`batch-detail-section batch-info-section batch-info-fixed-height ${getStatusClassName()}`}
           title={
@@ -701,6 +738,29 @@ export default function BatchDetail() {
                 <div className="release-notes">{batch.release_notes}</div>
               )}
             </div>
+          }
+          extra={
+            <Space size="small">
+              {/* 操作按钮 */}
+              {getAvailableActions().map((action) => (
+                <Button
+                  key={action.key}
+                  type={action.type}
+                  danger={action.danger}
+                  icon={action.icon}
+                  loading={actionMutation.isPending}
+                  onClick={() => {
+                    if (action.action === 'cancel') {
+                      handleCancel()
+                    } else {
+                      handleAction(action.action)
+                    }
+                  }}
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </Space>
           }
         >
           <div className="batch-info-content">
@@ -732,20 +792,32 @@ export default function BatchDetail() {
           </div>
         </Card>
 
-        {/* 应用列表或依赖图 Section */}
+        {/* 下方: 应用列表或依赖图 Section */}
         <Card
           className="batch-detail-section batch-content-card"
           title={(viewMode === 'list' ? t('batch.appList') : t('batchInsights.appDetails')) +
             " (" + (batch.total_apps || batch.apps?.length || 0) + " " + t('batch.apps') + ")"}
           extra={
-            viewMode === 'list' && Object.keys(buildChanges).length > 0 && (
+            viewMode === 'list' && (
               <Space size="small">
-                <Button icon={<UndoOutlined/>} onClick={handleCancelBuildChanges} size="small">
-                  还原
-                </Button>
-                <Button type="primary" icon={<SaveOutlined/>} onClick={handleSaveBuildChanges} size="small">
-                  应用 ({Object.keys(buildChanges).length})
-                </Button>
+                {/* 编辑应用按钮（草稿状态） */}
+                {batch.status < 10 && (
+                  <Button icon={<EditOutlined/>} onClick={handleManageApps} size="small">
+                    编辑应用
+                  </Button>
+                )}
+
+                {/* 构建修改按钮 */}
+                {Object.keys(buildChanges).length > 0 && (
+                  <>
+                    <Button icon={<UndoOutlined/>} onClick={handleCancelBuildChanges} size="small">
+                      还原
+                    </Button>
+                    <Button type="primary" icon={<SaveOutlined/>} onClick={handleSaveBuildChanges} size="small">
+                      应用 ({Object.keys(buildChanges).length})
+                    </Button>
+                  </>
+                )}
               </Space>
             )
           }
@@ -860,8 +932,7 @@ export default function BatchDetail() {
         )}
       </Modal>
 
-      {/* 管理应用 Modal */
-      }
+      {/* 管理应用 Modal */}
       <Modal
         title={t('batch.manageApps')}
         open={manageAppsModalVisible}
@@ -870,57 +941,20 @@ export default function BatchDetail() {
         confirmLoading={updateAppsMutation.isPending}
         okText={t('common.confirm')}
         cancelText={t('common.cancel')}
-        width={700}
+        width={1200}
+        style={{top: 20}}
       >
-        <div style={{marginBottom: 16}}>
-          <div style={{marginBottom: 8, fontWeight: 500}}>
-            {t('batch.selectApps')} ({selectedAppIds.length} {t('batch.selectedApps')})
-          </div>
-          <div style={{maxHeight: 400, overflowY: 'auto'}}>
-            {allAppsResponse?.items?.map((app: ApplicationWithBuild) => (
-              <div
-                key={app.id}
-                style={{
-                  padding: '8px 12px',
-                  marginBottom: 4,
-                  border: '1px solid #f0f0f0',
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Checkbox
-                  checked={selectedAppIds.includes(app.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedAppIds([...selectedAppIds, app.id])
-                    } else {
-                      setSelectedAppIds(selectedAppIds.filter(id => id !== app.id))
-                    }
-                  }}
-                >
-                  <Space>
-                    <span style={{fontWeight: 500}}>{app.name}</span>
-                    <Tag color="blue">{app.app_type}</Tag>
-                    {app.image_tag && (
-                      <Tag color="green">{app.image_tag}</Tag>
-                    )}
-                  </Space>
-                </Checkbox>
-                <div style={{fontSize: 11, color: '#8c8c8c', textAlign: 'right'}}>
-                  <div>{app.repo_name}</div>
-                  {app.commit_message && (
-                    <div style={{marginTop: 2}}>
-                      {app.commit_message.substring(0, 30)}
-                      {app.commit_message.length > 30 && '...'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <AppSelectionTable
+          selection={{
+            selectedIds: selectedAppIds,
+            existingIds: batch?.apps?.map(app => app.app_id) || [],
+            mode: 'edit',
+          }}
+          onSelectionChange={(selectedIds) => {
+            setSelectedAppIds(selectedIds)
+          }}
+          showReleaseNotes={false}
+        />
       </Modal>
     </div>
   )

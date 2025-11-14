@@ -336,3 +336,19 @@
     min-height: 400px;
   }
 }
+
+/* 管理应用Modal样式 */
+.batch-detail-page .ant-modal .ant-table-wrapper {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.batch-detail-page .ant-modal .ant-table {
+  font-size: 13px;
+}
+
+.batch-detail-page .ant-modal .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}

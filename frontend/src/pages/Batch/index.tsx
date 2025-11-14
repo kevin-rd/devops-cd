@@ -448,7 +448,8 @@ export default function BatchList() {
 
     return (
       <Space size="small" wrap>
-        {(record.status === 0 || record.approval_status === 'pending') && (
+        {/*编辑按钮*/}
+        {(record.status === 0) && (
           <Button
             size="small"
             icon={<EditOutlined/>}
@@ -464,10 +465,12 @@ export default function BatchList() {
           </Button>
         )}
 
+        {/*封板按钮*/}
         {record.status === 0 && (
           <Button
             size="small"
             icon={<CheckCircleOutlined/>}
+            type="primary"
             onClick={(e) => {
               e.stopPropagation()
               handleAction(record.id, 'seal')
@@ -477,10 +480,12 @@ export default function BatchList() {
           </Button>
         )}
 
-        {record.status === 10 && (
+        {/*开始Pre发布按钮*/}
+        {(record.status === 10 && record.approval_status === 'approved') && (
           <Button
             size="small"
             icon={<PlayCircleOutlined/>}
+            type="primary"
             onClick={(e) => {
               e.stopPropagation()
               handleAction(record.id, 'start_pre_deploy')
@@ -489,10 +494,12 @@ export default function BatchList() {
             {t('batch.startPreDeploy')}
           </Button>
         )}
+        {/*开始Prod发布按钮*/}
         {record.status === 22 && (
           <Button
             size="small"
             icon={<PlayCircleOutlined/>}
+            danger
             onClick={(e) => {
               e.stopPropagation()
               handleAction(record.id, 'start_prod_deploy')
@@ -628,7 +635,8 @@ export default function BatchList() {
         ellipsis: true,
         render: (name: string, record: ReleaseApp) => (
           <div>
-            <div style={{fontWeight: 500, fontSize: 13}}>{name}</div>
+            <span style={{color: '#999', fontSize: 12}}>#{record.app_id} </span>
+            <span style={{fontWeight: 500, fontSize: 13}}>{name}</span>
             {record.release_notes && (
               <div style={{fontSize: 12, color: '#8c8c8c', marginTop: 2}}>
                 {record.release_notes}
@@ -903,14 +911,11 @@ export default function BatchList() {
 
     return (
       <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
-        <div className="batch-card-main" onClick={() => handleCardToggle(record)}>
+        <div className="batch-card-main" onClick={() => navigate(`/batch/${record.id}/detail`)}>
           {record.release_notes ? (
-            <Tooltip
-              title={record.release_notes}
-              overlayInnerStyle={{fontSize: '12px', padding: '6px 10px'}}
-            >
-              {batchNumberContent}
-            </Tooltip>
+            <Tooltip title={record.release_notes}
+                     overlayInnerStyle={{fontSize: '12px', padding: '6px 10px'}}>
+              {batchNumberContent}</Tooltip>
           ) : (
             batchNumberContent
           )}
@@ -929,7 +934,7 @@ export default function BatchList() {
             <span className="batch-app-count" style={{cursor: 'pointer'}}
                   onClick={(e) => {
                     e.stopPropagation()
-                    navigate(`/batch/${record.id}/detail`)
+                    handleCardToggle(record)
                   }}>{record.app_count || 0} {t('batch.apps')}
             </span>
           </div>
@@ -966,7 +971,8 @@ export default function BatchList() {
             // 阻止触发卡片的展开/收起
             e.stopPropagation()
             // 跳转到洞察页面
-            navigate(`/batch/${record.id}/insights`)
+            // navigate(`/batch/${record.id}/insights`)
+            navigate(`/batch/${record.id}/detail?tab=graph`)
           }}
           style={{cursor: 'pointer'}}
         >

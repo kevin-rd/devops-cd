@@ -1,0 +1,77 @@
+/* 应用选择表格组件样式 */
+.app-selection-table {
+  width: 100%;
+}
+
+/* 固定顶部区域样式 */
+.app-selection-table .sticky-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  padding-bottom: 12px;
+  margin-bottom: 10px;
+  /*box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);*/
+}
+
+/* 搜索和分页区域 */
+.app-selection-table .search-pagination-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* 分页组件靠右对齐 */
+.app-selection-table .search-pagination-wrapper > div:last-child {
+  justify-content: flex-end !important;
+}
+
+/* 表格样式优化 */
+.app-selection-table .ant-table-wrapper {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.app-selection-table .ant-table {
+  font-size: 13px;
+}
+
+.app-selection-table .ant-table-thead th.ant-table-cell {
+  padding: 12px 10px;
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.app-selection-table .ant-table-tbody td.ant-table-cell {
+  padding: 6px 10px;
+}
+
+/* 缩小展开列宽度 */
+.app-selection-table .ant-table-expand-icon-col {
+  width: 30px !important;
+}
+
+.app-selection-table .ant-alert {
+  border-radius: 6px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1100px) {
+  /* 当宽度小于 1100px 时，分页组件换行 */
+  .app-selection-table .search-pagination-wrapper {
+    gap: 12px;
+  }
+
+  /* 隐藏弹性空间 */
+  .app-selection-table .search-pagination-wrapper > div[style*="flex: 1"] {
+    display: none;
+  }
+
+  .app-selection-table .search-pagination-wrapper > div:last-child {
+    width: 100%;
+    justify-content: flex-end !important;
+  }
+}
+
