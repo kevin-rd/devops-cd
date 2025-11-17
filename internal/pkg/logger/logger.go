@@ -146,6 +146,18 @@ func Close() error {
 	return nil
 }
 
+func Sugar() *zap.SugaredLogger {
+	return log.Sugar()
+}
+
+func With(fields ...zap.Field) *zap.Logger {
+	return log.With(fields...)
+}
+
+func SugarWith(fields ...zap.Field) *zap.SugaredLogger {
+	return log.With(fields...).Sugar()
+}
+
 // Debug 输出Debug日志
 func Debug(msg string, fields ...zap.Field) {
 	log.Debug(msg, fields...)

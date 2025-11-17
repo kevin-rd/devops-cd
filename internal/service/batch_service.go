@@ -96,10 +96,10 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 		return nil, &AppConflictError{Conflicts: conflicts, AppMap: appMap}
 	}
 
-	// 6. 获取每个应用的最新成功构建（可能部分应用没有构建）
-	buildMap, err := s.batchRepo.GetLatestSuccessBuilds(appIDs)
+	// 6. 获取每个应用在上次部署后的最新成功构建（可能部分应用没有构建）
+	buildMap, err := s.batchRepo.GetLatestBuildsAfterDeployment(appIDs)
 	if err != nil {
-		return nil, fmt.Errorf("查询最新构建失败: %w", err)
+		return nil, fmt.Errorf("查询部署后最新构建失败: %w", err)
 	}
 
 	// 注意：不再强制要求所有应用都有构建，允许无构建的应用加入批次
@@ -233,10 +233,10 @@ func (s *BatchService) UpdateBatch(req *UpdateBatchRequest) (*model.Batch, map[s
 				return &AppConflictError{Conflicts: conflicts, AppMap: appMap}
 			}
 
-			// 获取最新构建（可能部分应用没有构建）
-			buildMap, err := s.batchRepo.GetLatestSuccessBuilds(addAppIDs)
+			// 获取上次部署后的最新构建（可能部分应用没有构建）
+			buildMap, err := s.batchRepo.GetLatestBuildsAfterDeployment(addAppIDs)
 			if err != nil {
-				return fmt.Errorf("查询最新构建失败: %w", err)
+				return fmt.Errorf("查询部署后最新构建失败: %w", err)
 			}
 
 			// 注意：不再强制要求所有应用都有构建，允许无构建的应用加入批次
@@ -300,81 +300,6 @@ func (s *BatchService) UpdateBatch(req *UpdateBatchRequest) (*model.Batch, map[s
 		zap.Any("updated_fields", updatedFields))
 
 	return batch, updatedFields, nil
-}
-
-// UpdateBuilds 更新批次应用的构建版本
-func (s *BatchService) UpdateBuilds(req *dto.UpdateBuildsRequest) error {
-	// 1. 获取批次
-	batch, err := s.batchRepo.GetByID(req.BatchID)
-	if err != nil {
-		return fmt.Errorf("批次不存在: %w", err)
-	}
-
-	// 2. 检查批次状态（只能修改草稿状态的批次）
-	if batch.Status >= constants.BatchStatusSealed {
-		return fmt.Errorf("只能修改草稿状态的批次")
-	}
-
-	// 3. 验证所有的app_id和build_id
-	if len(req.BuildChanges) == 0 {
-		return fmt.Errorf("没有需要更新的构建")
-	}
-
-	// 4. 使用事务更新
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		for appID, buildID := range req.BuildChanges {
-			// 4.1 检查release_app是否存在
-			var releaseApp model.ReleaseApp
-			if err := tx.Where("batch_id = ? AND app_id = ?", req.BatchID, appID).First(&releaseApp).Error; err != nil {
-				if err == gorm.ErrRecordNotFound {
-					return fmt.Errorf("应用 %d 不在批次中", appID)
-				}
-				return fmt.Errorf("查询应用失败: %w", err)
-			}
-
-			// 4.2 检查build是否存在且属于该应用
-			var build model.Build
-			if err := tx.Where("id = ? AND app_id = ?", buildID, appID).First(&build).Error; err != nil {
-				if err == gorm.ErrRecordNotFound {
-					return fmt.Errorf("构建 %d 不存在或不属于应用 %d", buildID, appID)
-				}
-				return fmt.Errorf("查询构建失败: %w", err)
-			}
-
-			// 4.3 检查构建状态（只能选择成功的构建）
-			if build.BuildStatus != "success" {
-				return fmt.Errorf("构建 %d 状态为 %s，只能选择成功的构建", buildID, build.BuildStatus)
-			}
-
-			// 4.4 更新release_app的build_id和target_tag
-			if err := tx.Model(&releaseApp).Updates(map[string]interface{}{
-				"build_id":   buildID,
-				"target_tag": build.ImageTag,
-			}).Error; err != nil {
-				return fmt.Errorf("更新应用构建失败: %w", err)
-			}
-
-			logger.Info("更新应用构建成功",
-				zap.Int64("batch_id", req.BatchID),
-				zap.Int64("app_id", appID),
-				zap.Int64("build_id", buildID),
-				zap.String("image_tag", build.ImageTag),
-				zap.String("operator", req.Operator))
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	logger.Info("批量更新应用构建成功",
-		zap.Int64("batch_id", req.BatchID),
-		zap.Int("update_count", len(req.BuildChanges)),
-		zap.String("operator", req.Operator))
-
-	return nil
 }
 
 // UpdateReleaseDependencies 更新批次应用的临时依赖配置

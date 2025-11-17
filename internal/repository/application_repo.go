@@ -193,15 +193,42 @@ func (r *applicationRepository) FindByIDs(ids []int64) ([]*model.Application, er
 }
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询 app、repo、commit、tag 等字段）
+// 对于有 deployed_tag 的应用，返回部署后的最新构建；否则返回最新构建
 func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword string, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error) {
 	var apps []*model.ApplicationWithBuild
 	var total int64
 
-	// 子查询：获取每个应用的最新成功构建 ID
-	latestBuildSubQuery := r.db.Model(&model.Build{}).
-		Select("app_id, MAX(id) as latest_build_id").
-		Where("build_status = ?", "success").
-		Group("app_id")
+	// 子查询：获取每个应用"上次部署后"的最新成功构建 ID
+	// 逻辑：
+	// 1. 如果应用有 deployed_tag，获取该 tag 对应的构建时间
+	// 2. 查找该时间之后的最新成功构建
+	// 3. 如果没有 deployed_tag 或之后没有新构建，返回最新成功构建
+	latestBuildSubQuery := r.db.Raw(`
+		SELECT 
+			b1.app_id,
+			b1.id as latest_build_id
+		FROM builds b1
+		WHERE b1.build_status = 'success'
+		AND b1.id = (
+			SELECT b2.id
+			FROM builds b2
+			LEFT JOIN applications a ON b2.app_id = a.id
+			LEFT JOIN builds deployed_build ON a.deployed_tag = deployed_build.image_tag AND deployed_build.app_id = a.id
+			WHERE b2.app_id = b1.app_id
+			AND b2.build_status = 'success'
+			AND (
+				-- 情况1：有 deployed_tag，返回该时间之后的最新构建
+				(a.deployed_tag IS NOT NULL 
+				 AND deployed_build.id IS NOT NULL 
+				 AND b2.build_created > deployed_build.build_created)
+				OR
+				-- 情况2：没有 deployed_tag 或 deployed_tag 之后没有新构建，返回最新构建
+				(a.deployed_tag IS NULL OR deployed_build.id IS NULL)
+			)
+			ORDER BY b2.build_created DESC
+			LIMIT 1
+		)
+	`)
 
 	// 构建基础查询
 	baseQuery := r.db.Model(&model.ApplicationWithBuild{}).
@@ -244,14 +271,11 @@ func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword str
 		baseQuery = baseQuery.Where(`(
 			applications.name LIKE ? OR
 			applications.display_name LIKE ? OR
-			applications.description LIKE ? OR
 			applications.project LIKE ? OR
 			repositories.name LIKE ? OR
-			repositories.project LIKE ? OR
 			latest_builds.commit_sha LIKE ? OR
 			latest_builds.commit_message LIKE ? OR
 			latest_builds.image_tag LIKE ? OR
-			applications.deployed_tag LIKE ?
 		)`,
 			keywordPattern, keywordPattern, keywordPattern, keywordPattern,
 			keywordPattern, keywordPattern,

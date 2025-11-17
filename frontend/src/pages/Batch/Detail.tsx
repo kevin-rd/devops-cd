@@ -115,8 +115,7 @@ export default function BatchDetail() {
       queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
       setManageAppsModalVisible(false)
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || t('common.error'))
+    onError: () => {
     },
   })
   const updateDependenciesMutation = useMutation({
@@ -134,8 +133,7 @@ export default function BatchDetail() {
       setEditingRelease(null)
       setTempDependencySelection([])
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || t('common.error'))
+    onError: () => {
     },
   })
 
@@ -158,9 +156,8 @@ export default function BatchDetail() {
       setCancelModalVisible(false)
       setCancelReason('')
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || t('common.error'))
-    },
+    // 移除 onError 中的 message.error，避免与拦截器重复显示
+    // 拦截器已经统一处理了错误提示
   })
 
   // 处理操作
@@ -492,6 +489,7 @@ export default function BatchDetail() {
       render: (text: string) => text || '-'
     },
     {
+      // 当前生产版本
       title: isBatchCompleted ? t('batch.oldVersion') : t('batch.currentVersion'),
       key: isBatchCompleted ? 'old_version' : 'current_version',
       width: 140,
@@ -501,6 +499,7 @@ export default function BatchDetail() {
       ),
     },
     {
+      // 待部署
       title: isBatchCompleted ? t('batch.deployed') : t('batch.pendingDeploy'),
       key: isBatchCompleted ? 'deployed' : 'pending_deploy',
       width: 250,
@@ -517,6 +516,10 @@ export default function BatchDetail() {
             if (text.length <= maxLen) return text
             return '...' + text.slice(-(maxLen - 3))
           }
+
+          // 获取当前选中的构建的 commit message
+          const selectedBuild = record.recent_builds.find((b: BuildSummary) => b.id === currentValue)
+          const displayCommitMessage = selectedBuild?.commit_message || record.commit_message
 
           return (
             <div>
@@ -571,11 +574,32 @@ export default function BatchDetail() {
                     )
                   })}
                 </Select>
-                {isModified && (
-                  <span style={{color: '#faad14', fontSize: 14}}>●</span>
+                {isModified ? (
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<UndoOutlined />}
+                    style={{
+                      padding: '0 4px',
+                      minWidth: '22px',
+                      height: '22px',
+                      color: '#faad14',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // 还原单个应用的修改
+                      setBuildChanges(prev => {
+                        const newChanges = {...prev}
+                        delete newChanges[record.app_id]
+                        return newChanges
+                      })
+                    }}
+                  />
+                ) : (
+                  <span style={{width: 22, height: 22, display: 'inline-block'}} />
                 )}
               </div>
-              {record.commit_message && (
+              {displayCommitMessage && (
                 <div style={{
                   fontSize: 11,
                   color: '#8c8c8c',
@@ -583,7 +607,7 @@ export default function BatchDetail() {
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}>
-                  {record.commit_message}
+                  {displayCommitMessage}
                 </div>
               )}
             </div>
@@ -686,6 +710,7 @@ export default function BatchDetail() {
 
   return (
     <div className="batch-detail-container">
+
       {/* 头部区域 */}
       <div className="batch-detail-header">
         <Button icon={<LeftOutlined/>} onClick={() => navigate('/batch')} type="link">
@@ -800,23 +825,33 @@ export default function BatchDetail() {
           extra={
             viewMode === 'list' && (
               <Space size="small">
-                {/* 编辑应用按钮（草稿状态） */}
-                {batch.status < 10 && (
-                  <Button icon={<EditOutlined/>} onClick={handleManageApps} size="small">
-                    编辑应用
-                  </Button>
-                )}
-
-                {/* 构建修改按钮 */}
-                {Object.keys(buildChanges).length > 0 && (
+                {Object.keys(buildChanges).length > 0 ? (
+                  /* 有构建修改时，只显示还原和应用按钮 */
                   <>
                     <Button icon={<UndoOutlined/>} onClick={handleCancelBuildChanges} size="small">
-                      还原
+                      还原全部
                     </Button>
                     <Button type="primary" icon={<SaveOutlined/>} onClick={handleSaveBuildChanges} size="small">
-                      应用 ({Object.keys(buildChanges).length})
+                      应用全部 ({Object.keys(buildChanges).length})
                     </Button>
                   </>
+                ) : (
+                  /* 没有构建修改时，显示编辑应用和封板按钮（草稿状态） */
+                  batch.status < 10 && (
+                    <>
+                      <Button icon={<EditOutlined/>} onClick={handleManageApps} size="small">
+                        添加应用
+                      </Button>
+                      <Button 
+                        type="primary" 
+                        icon={<CheckCircleOutlined/>} 
+                        onClick={() => handleAction('seal')} 
+                        size="small"
+                      >
+                        {t('batch.seal')}
+                      </Button>
+                    </>
+                  )
                 )}
               </Space>
             )

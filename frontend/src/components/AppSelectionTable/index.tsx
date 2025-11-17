@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react'
-import {Alert, Button, Checkbox, Input, Select, Space, Table, Tag} from 'antd'
+import {Alert, Button, Checkbox, Empty, Input, Select, Space, Spin, Table, Tag} from 'antd'
 import {LeftOutlined, RightOutlined} from '@ant-design/icons'
 import {useTranslation} from 'react-i18next'
 import {useQuery} from '@tanstack/react-query'
@@ -14,6 +14,14 @@ export interface AppSelectionItem extends ApplicationWithBuild {
   selected: boolean
   inBatch: boolean
   releaseNotes: string
+}
+
+// 应用基本信息（用于 summary 显示）
+interface AppBasicInfo {
+  id: number
+  name: string
+  app_type?: string
+  inBatch?: boolean
 }
 
 export interface AppSelectionTableProps {
@@ -38,6 +46,17 @@ export default function AppSelectionTable(
 
   const [releaseNotesMap, setReleaseNotesMap] = useState<Record<number, string>>({})
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
+  
+  // 存储所有已选/已存在应用的基本信息（不依赖当前分页）
+  const [appsInfoMap, setAppsInfoMap] = useState<Record<number, AppBasicInfo>>({})
+  
+  // 控制已选应用列表的展开/折叠
+  const [selectedAppsExpanded, setSelectedAppsExpanded] = useState(false)
+  // 控制已移除应用列表的展开/折叠
+  const [removedAppsExpanded, setRemovedAppsExpanded] = useState(false)
+  
+  // 限制显示的应用数量
+  const MAX_DISPLAY_COUNT = 6
 
   // 内部查询状态
   const [queryData, setQueryData] = useState({
@@ -68,12 +87,35 @@ export default function AppSelectionTable(
       }, signal)
       return res.data
     },
-    staleTime: 30 * 1000,
-    gcTime: 60 * 1000,
+    staleTime: 10 * 1000,
+    gcTime: 30 * 1000,
   })
 
   const list = useMemo(() => appsResponse?.items || [], [appsResponse?.items])
   const total = appsResponse?.total || 0
+
+  // 当列表数据变化时，更新 appsInfoMap（补充新出现的应用信息）
+  useEffect(() => {
+    setAppsInfoMap((prevInfoMap) => {
+      const newInfoMap = { ...prevInfoMap }
+      let hasUpdate = false
+      
+      list.forEach((app) => {
+        // 如果应用被选中或在批次中，且信息尚未存储，则存储其基本信息
+        if ((selectedIds.includes(app.id) || existingIds.includes(app.id)) && !newInfoMap[app.id]) {
+          newInfoMap[app.id] = {
+            id: app.id,
+            name: app.name,
+            app_type: app.app_type,
+            inBatch: existingIds.includes(app.id),
+          }
+          hasUpdate = true
+        }
+      })
+      
+      return hasUpdate ? newInfoMap : prevInfoMap
+    })
+  }, [list, selectedIds, existingIds])
 
   // 合并属性
   const mergedList: AppSelectionItem[] = useMemo(
@@ -87,17 +129,23 @@ export default function AppSelectionTable(
     [list, selectedIds, existingIds, releaseNotesMap],
   )
 
-  const selectedApps = mergedList.filter((x) => x.selected)
+  // 从 appsInfoMap 获取已选应用（不依赖当前分页）
+  const selectedApps = useMemo(() => {
+    return selectedIds.map((id) => {
+      const info = appsInfoMap[id]
+      return info || { id, name: `应用 ${id}`, inBatch: existingIds.includes(id) }
+    })
+  }, [selectedIds, appsInfoMap, existingIds])
 
-  // 获取已移除应用的完整信息（从当前列表中查找）
+  // 获取已移除应用的完整信息（从 appsInfoMap 获取）
   const removedApps = useMemo(() => {
     if (mode !== 'edit') return []
     const removedAppIds = existingIds.filter((id) => !selectedIds.includes(id))
     return removedAppIds.map((appId) => {
-      const app = mergedList.find((x) => x.id === appId)
-      return app || {id: appId, name: `应用 ${appId}`}
+      const info = appsInfoMap[appId]
+      return info || { id: appId, name: `应用 ${appId}` }
     })
-  }, [mode, existingIds, selectedIds, mergedList])
+  }, [mode, existingIds, selectedIds, appsInfoMap])
 
   // 统计信息
   const selectedCount = selectedApps.length
@@ -105,15 +153,38 @@ export default function AppSelectionTable(
   const removedCount = removedApps.length
 
   const toggleSelect = (id: number) => {
-    const next = selectedIds.includes(id)
+    const isCurrentlySelected = selectedIds.includes(id)
+    const next = isCurrentlySelected
       ? selectedIds.filter((x) => x !== id)
       : [...selectedIds, id]
+    
+    // 如果是新选中，需要存储应用信息
+    if (!isCurrentlySelected) {
+      const app = mergedList.find((x) => x.id === id)
+      if (app) {
+        setAppsInfoMap((prevInfoMap) => {
+          if (!prevInfoMap[id]) {
+            return {
+              ...prevInfoMap,
+              [id]: {
+                id: app.id,
+                name: app.name,
+                app_type: app.app_type,
+                inBatch: existingIds.includes(app.id),
+              },
+            }
+          }
+          return prevInfoMap
+        })
+      }
+    }
+    
     onSelectionChange(next, {releaseNotes: releaseNotesMap})
   }
 
 
   // 取消选择某个应用（从Tag上）
-  const handleDeselectApp = (app: AppSelectionItem) => {
+  const handleDeselectApp = (app: AppBasicInfo) => {
     const newSelectedIds = selectedIds.filter((id) => id !== app.id)
     onSelectionChange(newSelectedIds, {releaseNotes: releaseNotesMap})
   }
@@ -121,6 +192,26 @@ export default function AppSelectionTable(
   // 重新选择某个已移除的应用
   const handleReselectApp = (appId: number) => {
     const newSelectedIds = [...selectedIds, appId]
+    
+    // 尝试从当前列表中获取应用信息并存储
+    const app = mergedList.find((x) => x.id === appId)
+    if (app) {
+      setAppsInfoMap((prevInfoMap) => {
+        if (!prevInfoMap[appId]) {
+          return {
+            ...prevInfoMap,
+            [appId]: {
+              id: app.id,
+              name: app.name,
+              app_type: app.app_type,
+              inBatch: existingIds.includes(app.id),
+            },
+          }
+        }
+        return prevInfoMap
+      })
+    }
+    
     onSelectionChange(newSelectedIds, {releaseNotes: releaseNotesMap})
   }
 
@@ -142,9 +233,37 @@ export default function AppSelectionTable(
             !mergedList.every((x) => x.selected)
           }
           onChange={(e) => {
-            const ids = e.target.checked
-              ? Array.from(new Set([...selectedIds, ...mergedList.map((x) => x.id)]))
-              : selectedIds.filter((id) => !mergedList.some((x) => x.id === id))
+            const isChecked = e.target.checked
+            let ids: number[]
+            
+            if (isChecked) {
+              // 全选当前页
+              ids = Array.from(new Set([...selectedIds, ...mergedList.map((x) => x.id)]))
+              
+              // 更新 appsInfoMap：添加当前页新选中的应用信息
+              setAppsInfoMap((prevInfoMap) => {
+                const newInfoMap = { ...prevInfoMap }
+                let hasUpdate = false
+                
+                mergedList.forEach((app) => {
+                  if (!newInfoMap[app.id]) {
+                    newInfoMap[app.id] = {
+                      id: app.id,
+                      name: app.name,
+                      app_type: app.app_type,
+                      inBatch: existingIds.includes(app.id),
+                    }
+                    hasUpdate = true
+                  }
+                })
+                
+                return hasUpdate ? newInfoMap : prevInfoMap
+              })
+            } else {
+              // 取消当前页的所有选择
+              ids = selectedIds.filter((id) => !mergedList.some((x) => x.id === id))
+            }
+            
             onSelectionChange(ids, {releaseNotes: releaseNotesMap})
           }}
         />
@@ -159,7 +278,7 @@ export default function AppSelectionTable(
       dataIndex: 'name',
       width: 200,
       render: (text, rec) => (
-        <Space onClick={() => toggleSelect(rec.id)} style={{cursor: 'pointer'}}>
+        <Space>
           <span style={{color: '#999', fontSize: 12}}>#{rec.id} </span>
           <span>{text}</span>
           {mode === 'edit' && rec.inBatch && <Tag color="blue">原有</Tag>}
@@ -234,55 +353,81 @@ export default function AppSelectionTable(
                 )}
               </div>
 
-              {/* 已选应用列表 */}
-              {selectedCount > 0 && (
-                <div style={{marginBottom: mode === 'edit' && removedCount > 0 ? 12 : 0}}>
-                  {mode === 'edit' && (
-                    <div style={{fontSize: 12, color: '#8c8c8c', marginBottom: 4}}>
-                      已选应用：
+              {/* 已选应用列表（保留占位） */}
+              <div style={{marginBottom: mode === 'edit' ? 12 : 0, minHeight: 45}}>
+                {selectedCount > 0 && (
+                  <>
+                    {mode === 'edit' && (
+                      <div style={{fontSize: 12, color: '#8c8c8c', marginBottom: 4}}>
+                        已选应用：
+                      </div>
+                    )}
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center'}}>
+                      {(selectedAppsExpanded ? selectedApps : selectedApps.slice(0, MAX_DISPLAY_COUNT)).map((app) => (
+                        <Tag
+                          key={app.id}
+                          color={mode === 'edit' && !app.inBatch ? 'green' : 'blue'}
+                          closable
+                          onClose={(e) => {
+                            e.preventDefault()
+                            handleDeselectApp(app)
+                          }}
+                        >
+                          <span style={{color: "#999", fontSize: 11}}>#{app.id} </span>
+                          <span>{app.name} {mode === 'edit' && !app.inBatch && ''}</span>
+                        </Tag>
+                      ))}
+                      {selectedCount > MAX_DISPLAY_COUNT && (
+                        <Button
+                          type="link"
+                          size="small"
+                          style={{padding: 0, height: 'auto', fontSize: 12}}
+                          onClick={() => setSelectedAppsExpanded(!selectedAppsExpanded)}
+                        >
+                          {selectedAppsExpanded ? '收起' : `+${selectedCount - MAX_DISPLAY_COUNT} 更多`}
+                        </Button>
+                      )}
                     </div>
-                  )}
-                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
-                    {selectedApps.map((app) => (
-                      <Tag
-                        key={app.id}
-                        color={mode === 'edit' && !app.inBatch ? 'green' : 'blue'}
-                        closable
-                        onClose={(e) => {
-                          e.preventDefault()
-                          handleDeselectApp(app)
-                        }}
-                      >
-                        <span style={{color: "#999", fontSize: 11}}>#{app.id} </span>
-                        <span>{app.name} {mode === 'edit' && !app.inBatch && ''}</span>
-                      </Tag>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  </>
+                )}
+              </div>
 
-              {/* 已移除应用列表（仅编辑模式） */}
-              {mode === 'edit' && removedCount > 0 && (
-                <div>
-                  <div style={{fontSize: 12, color: '#8c8c8c', marginBottom: 4}}>
-                    已移除应用：
-                  </div>
-                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
-                    {removedApps.map((app) => (
-                      <Tag
-                        key={app.id}
-                        color="red"
-                        closable
-                        onClose={(e) => {
-                          e.preventDefault()
-                          handleReselectApp(app.id)
-                        }}
-                      >
-                        <span style={{color: "#999", fontSize: 11}}>#{app.id} </span>
-                        <span>{app.name}</span>
-                      </Tag>
-                    ))}
-                  </div>
+              {/* 已移除应用列表（仅编辑模式，保留占位） */}
+              {mode === 'edit' && (
+                <div style={{minHeight: 45}}>
+                  {removedCount > 0 && (
+                    <>
+                      <div style={{fontSize: 12, color: '#8c8c8c', marginBottom: 4}}>
+                        已移除应用：
+                      </div>
+                      <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center'}}>
+                        {(removedAppsExpanded ? removedApps : removedApps.slice(0, MAX_DISPLAY_COUNT)).map((app) => (
+                          <Tag
+                            key={app.id}
+                            color="red"
+                            closable
+                            onClose={(e) => {
+                              e.preventDefault()
+                              handleReselectApp(app.id)
+                            }}
+                          >
+                            <span style={{color: "#999", fontSize: 11}}>#{app.id} </span>
+                            <span>{app.name}</span>
+                          </Tag>
+                        ))}
+                        {removedCount > MAX_DISPLAY_COUNT && (
+                          <Button
+                            type="link"
+                            size="small"
+                            style={{padding: 0, height: 'auto', fontSize: 12}}
+                            onClick={() => setRemovedAppsExpanded(!removedAppsExpanded)}
+                          >
+                            {removedAppsExpanded ? '收起' : `+${removedCount - MAX_DISPLAY_COUNT} 更多`}
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -352,9 +497,44 @@ export default function AppSelectionTable(
         rowKey="id"
         dataSource={mergedList}
         columns={columns}
-        loading={isLoading}
+        loading={{
+          spinning: isLoading,
+          indicator: <Spin size="large" />,
+          tip: "加载应用列表中...",
+        }}
         pagination={false}
         scroll={{y: 'calc(100vh - 400px)'}}
+        locale={{
+          emptyText: isLoading ? (
+            <div style={{ padding: '60px 0' }}>
+              <Spin size="large" tip="加载应用列表中..." />
+            </div>
+          ) : (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <span style={{ fontSize: 14, color: '#8c8c8c' }}>
+                  {debouncedSearchKeyword ? '未找到匹配的应用' : '暂无可用应用'}
+                </span>
+              }
+            />
+          ),
+        }}
+        onRow={(record) => ({
+          onClick: (e) => {
+            // 避免点击 checkbox、Tag 的关闭按钮等交互元素时触发行选择
+            const target = e.target as HTMLElement
+            if (
+              target.closest('.ant-checkbox') ||
+              target.closest('.ant-tag-close-icon') ||
+              target.closest('.ant-btn')
+            ) {
+              return
+            }
+            toggleSelect(record.id)
+          },
+          style: { cursor: 'pointer' },
+        })}
         expandable={
           showReleaseNotes
             ? {

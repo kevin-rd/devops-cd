@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"devops-cd/internal/pkg/logger"
+	"go.uber.org/zap"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -42,6 +44,45 @@ func (h *ReleaseAppHandler) GetByID(c *gin.Context) {
 	}
 
 	utils.Success(c, resp)
+}
+
+// UpdateBuilds 更新批次发布应用
+// @Summary 更新批次发布应用
+// @Description 批量更新批次中应用的构建版本等信息（仅草稿状态可修改）
+// @Tags 批次管理
+// @Accept json
+// @Produce json
+// @Param request body dto.UpdateBuildsRequest true "更新请求"
+// @Success 200 {object} map[string]interface{} "更新成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 403 {object} map[string]interface{} "批次状态不允许修改"
+// @Failure 500 {object} map[string]interface{} "更新失败"
+// @Router /api/v1/batch/release_app [put]
+func (h *ReleaseAppHandler) UpdateBuilds(c *gin.Context) {
+	var req dto.UpdateBuildsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		return
+	}
+
+	err := h.batchService.UpdateBuilds(&req)
+	if err != nil {
+		logger.Error("更新批次应用构建失败", zap.Int64("batch_id", req.BatchID), zap.Error(err))
+
+		// 根据错误类型返回不同的HTTP状态码
+		if err.Error() == "只能修改草稿状态的批次" {
+			utils.ErrorWithCode(c, http.StatusForbidden, err.Error())
+		} else {
+			utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	utils.Success(c, gin.H{
+		"message":      "批次应用构建更新成功",
+		"batch_id":     req.BatchID,
+		"update_count": len(req.BuildChanges),
+	})
 }
 
 // UpdateDependencies 更新发布应用临时依赖

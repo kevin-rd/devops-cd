@@ -110,10 +110,10 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 			groupBatches := authed.Group("/batches")
 			{
 				// 写操作（POST/PUT）
-				groupBatch.POST("", batchHandler.Create)                  // 创建批次
-				groupBatch.PUT("", batchHandler.Update)                   // 更新批次
-				groupBatch.POST("/delete", batchHandler.Delete)           // 软删除
-				groupBatch.PUT("/release_app", batchHandler.UpdateBuilds) // 更新发布应用（构建版本等）
+				groupBatch.POST("", batchHandler.Create)                       // 创建批次
+				groupBatch.PUT("", batchHandler.Update)                        // 更新批次
+				groupBatch.POST("/delete", batchHandler.Delete)                // 软删除
+				groupBatch.PUT("/release_app", releaseAppHandler.UpdateBuilds) // 更新发布应用（构建版本等）
 
 				// 读操作（GET）
 				groupBatch.GET("", batchHandler.Get)              // 获取详情（query: id）

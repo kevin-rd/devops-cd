@@ -3,9 +3,11 @@ package repository
 import (
 	"time"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
+	"devops-cd/internal/pkg/logger"
 	"devops-cd/pkg/constants"
 )
 
@@ -283,29 +285,70 @@ func (r *BatchRepository) CheckAppConflict(appIDs []int64, excludeBatchID *int64
 
 // ================== Build 相关 ==================
 
-// GetLatestSuccessBuilds 获取应用列表的最新成功构建
-func (r *BatchRepository) GetLatestSuccessBuilds(appIDs []int64) (map[int64]*model.Build, error) {
-	var builds []*model.Build
-
-	// 使用子查询找到每个应用的最新成功构建
-	subQuery := r.db.Model(&model.Build{}).
-		Select("app_id, MAX(created_at) as max_created_at").
-		Where("app_id IN ? AND build_status = ?", appIDs, "success").
-		Group("app_id")
-
-	err := r.db.Table("builds").
-		Joins("JOIN (?) as latest ON builds.app_id = latest.app_id AND builds.created_at = latest.max_created_at", subQuery).
-		Where("builds.app_id IN ?", appIDs).
-		Find(&builds).Error
-
-	if err != nil {
+// GetLatestBuildsAfterDeployment 获取应用列表在上次部署后的最新成功构建
+// 如果应用有 deployed_tag，则获取该 tag 之后的最新构建
+// 如果没有 deployed_tag 或查找失败，则 fallback 到最新成功构建
+func (r *BatchRepository) GetLatestBuildsAfterDeployment(appIDs []int64) (map[int64]*model.Build, error) {
+	// 1. 查询所有应用的信息（包括 deployed_tag）
+	var apps []*model.Application
+	if err := r.db.Where("id IN ?", appIDs).Find(&apps).Error; err != nil {
 		return nil, err
 	}
 
-	// 转换为map
 	buildMap := make(map[int64]*model.Build)
-	for _, build := range builds {
-		buildMap[build.AppID] = build
+
+	// 2. 对每个应用单独处理
+	for _, app := range apps {
+		log := logger.Sugar().With(zap.Int64("app_id", app.ID))
+		var build *model.Build
+
+		// 如果应用有 deployed_tag，尝试获取该 tag 之后的最新构建
+		if app.DeployedTag != nil && *app.DeployedTag != "" {
+			// 2.1 查找 deployed_tag 对应的构建记录
+			deployedBuild, err := r.GetBuildByAppIDAndTag(app.ID, *app.DeployedTag)
+			if err != nil {
+				// 查询失败，记录日志
+				log.Warnf("查询app:%v deployed_tag:%v 对应的构建失败: %v", app.ID, *app.DeployedTag, err)
+				continue
+			} else if deployedBuild != nil {
+				// 2.2 查找该构建之后的最新成功构建
+				var buildsAfter []*model.Build
+				if err := r.db.Where("app_id = ?", app.ID).
+					Where("build_created > ?", deployedBuild.BuildCreated).
+					Where("build_status = ?", "success").
+					Order("build_created DESC").
+					Limit(1).Find(&buildsAfter).Error; err == nil && len(buildsAfter) > 0 {
+					build = buildsAfter[0]
+				} else {
+					// 没有找到部署后的新构建
+					log.Debugf("deployed_tag: %s 之后没有新构建", *app.DeployedTag)
+					continue
+				}
+			} else {
+				// deployed_tag 对应的构建不存在
+				log.Warnf("deployed_tag: %s 对应的构建不存在", *app.DeployedTag)
+				continue
+			}
+		}
+
+		// 3. Fallback：如果还没有找到构建，使用最新成功构建
+		if build == nil {
+			var latestBuilds []*model.Build
+			err := r.db.Where("app_id = ?", app.ID).
+				Where("build_status = ?", "success").
+				Order("build_created DESC").
+				Limit(1).
+				Find(&latestBuilds).Error
+
+			if err == nil && len(latestBuilds) > 0 {
+				build = latestBuilds[0]
+			}
+		}
+
+		// 4. 如果找到构建，添加到结果map中
+		if build != nil {
+			buildMap[app.ID] = build
+		}
 	}
 
 	return buildMap, nil

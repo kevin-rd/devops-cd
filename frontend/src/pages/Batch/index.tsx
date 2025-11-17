@@ -19,7 +19,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   EditOutlined,
-  ExclamationCircleOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -294,8 +293,7 @@ export default function BatchList() {
       // 手动触发重新获取
       refetch()
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || t('common.error'))
+    onError: () => {
     },
   })
 
@@ -759,11 +757,38 @@ export default function BatchList() {
                   </Select>
                 </Tooltip>
                 {isModified ? (
-                  <Tooltip title={record.target_tag + ' -> ' + displayLabel} style={{fontSize: 10}}>
-                    <ExclamationCircleOutlined style={{color: '#faad14', fontSize: 14}}/>
+                  <Tooltip title="还原此应用的修改">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<UndoOutlined />}
+                      style={{
+                        padding: '0 2px',
+                        minWidth: '18px',
+                        height: '18px',
+                        color: '#faad14',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // 还原单个应用的修改
+                        setBuildChanges(prev => {
+                          const newChanges = {...prev}
+                          if (newChanges[batchId]) {
+                            const batchChanges = {...newChanges[batchId]}
+                            delete batchChanges[record.app_id]
+                            if (Object.keys(batchChanges).length === 0) {
+                              delete newChanges[batchId]
+                            } else {
+                              newChanges[batchId] = batchChanges
+                            }
+                          }
+                          return newChanges
+                        })
+                      }}
+                    />
                   </Tooltip>
                 ) : (
-                  <span style={{width: 14, height: 14}}/>
+                  <span style={{width: 18, height: 18, display: 'inline-block'}}/>
                 )}
               </div>
             )
@@ -782,12 +807,25 @@ export default function BatchList() {
       },
       {
         title: t('batch.commitMessage'),
-        dataIndex: 'commit_message',
         key: 'commit_message',
         ellipsis: true,
-        render: (text: string) => (
-          <span style={{fontSize: 13}}>{text || '-'}</span>
-        ),
+        render: (_: any, record: ReleaseApp) => {
+          // 如果用户选择了不同的 build，显示该 build 的 commit message
+          const selectedBuildId = currentBuildChanges[record.app_id] || record.build_id
+          let displayCommitMessage = record.commit_message
+          
+          // 如果有 recent_builds，从中查找对应的 commit message
+          if (record.recent_builds && record.recent_builds.length > 0) {
+            const selectedBuild = record.recent_builds.find((b: BuildSummary) => b.id === selectedBuildId)
+            if (selectedBuild && selectedBuild.commit_message) {
+              displayCommitMessage = selectedBuild.commit_message
+            }
+          }
+          
+          return (
+            <span style={{fontSize: 13}}>{displayCommitMessage || '-'}</span>
+          )
+        },
       },
     ]
 
@@ -823,16 +861,14 @@ export default function BatchList() {
                       icon={<UndoOutlined/>}
                       onClick={handleCancelBuildChanges}
                       size="small"
-                    >
-                      还原
+                    >还原全部
                     </Button>
                     <Button
                       type="primary"
                       icon={<SaveOutlined/>}
                       onClick={handleSaveBuildChanges}
                       size="small"
-                    >
-                      应用 ({Object.keys(currentBuildChanges).length})
+                    >应用全部 ({Object.keys(currentBuildChanges).length})
                     </Button>
                   </>
                 )}
