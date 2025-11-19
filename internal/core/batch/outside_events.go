@@ -31,7 +31,7 @@ func (sm *StateMachine) ProcessStateChange(batchID int64, event string, operator
 	}
 
 	// 事务更新
-	return sm.ChangeStatus(context.TODO(), &model.Batch{ID: batchID}, e.To, TransitionSourceOutside,
+	return sm.ChangeStatus(context.TODO(), &model.Batch{BaseModel: model.BaseModel{ID: batchID}}, e.To, TransitionSourceOutside,
 		WithOperator(operator),
 		WithReason(reason),
 	)

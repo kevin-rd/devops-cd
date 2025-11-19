@@ -44,11 +44,11 @@ type GetApplicationBuildsRequest struct {
 type ApplicationResponse struct {
 	ID               int64   `json:"id"`
 	Name             string  `json:"name"`
-	Project          string  `json:"project"`
+	Namespace        string  `json:"namespace"`
 	DisplayName      *string `json:"display_name"`
 	Description      *string `json:"description"`
 	RepoID           int64   `json:"repo_id"`
-	RepoName         *string `json:"repo_name,omitempty"` // Repository的project/name
+	RepoName         *string `json:"repo_name,omitempty"` // Repository的namespace/name
 	AppType          string  `json:"app_type"`
 	TeamID           *int64  `json:"team_id"`
 	TeamName         *string `json:"team_name,omitempty"`
@@ -108,11 +108,11 @@ type LatestBuildInfo struct {
 type ApplicationBuildResponse struct {
 	ID           int64   `json:"id"`
 	Name         string  `json:"name"`
-	Project      string  `json:"project"`
+	Namespace    string  `json:"namespace"`
 	DisplayName  *string `json:"display_name"`
 	Description  *string `json:"description"`
 	RepoID       int64   `json:"repo_id"`
-	RepoFullName *string `json:"repo_full_name,omitempty"` // Repository的project/name
+	RepoFullName *string `json:"repo_full_name,omitempty"` // Repository的namespace/name
 	TeamID       *int64  `json:"team_id"`
 	TeamName     *string `json:"team_name,omitempty"`
 

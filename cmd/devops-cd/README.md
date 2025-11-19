@@ -71,7 +71,7 @@ devops-cd/
 mysql -u root -p -e "CREATE DATABASE devops_cd CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # 执行迁移脚本
-mysql -u root -p devops_cd < migrations/001_init_base_schema.sql
+mysql -u root -p devops_cd < migrations/001_init_user_schema.sql
 ```
 
 ### 2. 配置

@@ -52,17 +52,17 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 		return nil, err
 	}
 
-	// 2. 检查应用名称在同一project下是否已存在
-	existing, _ := s.appRepo.FindByProjectAndName(repo.Project, req.Name)
+	// 2. 检查应用名称在同一namespace下是否已存在
+	existing, _ := s.appRepo.FindByNamespaceAndName(repo.Namespace, req.Name)
 	if existing != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-			fmt.Sprintf("应用 %s 在项目 %s 中已存在", req.Name, repo.Project), nil)
+			fmt.Sprintf("应用 %s 在命名空间 %s 中已存在", req.Name, repo.Namespace), nil)
 	}
 
-	// 3. 创建应用（自动继承project）
+	// 3. 创建应用（自动继承namespace）
 	app := &model.Application{
 		Name:        req.Name,
-		Project:     repo.Project, // 继承自repository
+		Namespace:   repo.Namespace, // 继承自repository
 		DisplayName: req.DisplayName,
 		Description: req.Description,
 		RepoID:      req.RepoID,
@@ -129,17 +129,17 @@ func (s *applicationService) Update(id int64, req *dto.UpdateApplicationRequest)
 		return nil, err
 	}
 
-	// 检查名称是否冲突（在同一project下唯一）
+	// 检查名称是否冲突（在同一namespace下唯一）
 	if req.Name != nil && *req.Name != app.Name {
-		existing, _ := s.appRepo.FindByProjectAndName(app.Project, *req.Name)
+		existing, _ := s.appRepo.FindByNamespaceAndName(app.Namespace, *req.Name)
 		if existing != nil {
 			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-				fmt.Sprintf("应用 %s 在项目 %s 中已存在", *req.Name, app.Project), nil)
+				fmt.Sprintf("应用 %s 在命名空间 %s 中已存在", *req.Name, app.Namespace), nil)
 		}
 		app.Name = *req.Name
 	}
 
-	// 注意：不允许修改repo_id和project，保证数据一致性
+	// 注意：不允许修改repo_id和namespace，保证数据一致性
 
 	// 更新字段
 	if req.DisplayName != nil {
@@ -316,7 +316,7 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 	resp := &dto.ApplicationResponse{
 		ID:          app.ID,
 		Name:        app.Name,
-		Project:     app.Project,
+		Namespace:   app.Namespace,
 		DisplayName: app.DisplayName,
 		Description: app.Description,
 		RepoID:      app.RepoID,
@@ -332,7 +332,7 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 
 	// 添加代码库名称
 	if app.Repository != nil {
-		repoName := fmt.Sprintf("%s/%s", app.Repository.Project, app.Repository.Name)
+		repoName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 		resp.RepoName = &repoName
 	}
 
@@ -425,7 +425,7 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 		resp := &dto.ApplicationBuildResponse{
 			ID:          app.ID,
 			Name:        app.Name,
-			Project:     app.Project,
+			Namespace:   app.Namespace,
 			DisplayName: app.DisplayName,
 			Description: app.Description,
 			RepoID:      app.RepoID,
@@ -437,7 +437,7 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 
 		// 添加代码库名称
 		if app.Repository != nil {
-			repoFullName := fmt.Sprintf("%s/%s", app.Repository.Project, app.Repository.Name)
+			repoFullName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 			resp.RepoFullName = &repoFullName
 		}
 

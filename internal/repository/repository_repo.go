@@ -10,8 +10,8 @@ import (
 type RepositoryRepository interface {
 	Create(repo *model.Repository) error
 	FindByID(id int64) (*model.Repository, error)
-	FindByProjectAndName(project, name string) (*model.Repository, error)
-	List(page, pageSize int, project *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error)
+	FindByNamespaceAndName(namespace, name string) (*model.Repository, error)
+	List(page, pageSize int, namespace *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error)
 	Update(repo *model.Repository) error
 	Delete(id int64) error
 	Upsert(repo *model.Repository) error // 新增: 插入或更新
@@ -34,7 +34,7 @@ func (r *repositoryRepository) Create(repo *model.Repository) error {
 
 func (r *repositoryRepository) FindByID(id int64) (*model.Repository, error) {
 	var repo model.Repository
-	err := r.db.Preload("Team").First(&repo, id).Error
+	err := r.db.Preload("Team").Preload("Project").First(&repo, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -44,9 +44,9 @@ func (r *repositoryRepository) FindByID(id int64) (*model.Repository, error) {
 	return &repo, nil
 }
 
-func (r *repositoryRepository) FindByProjectAndName(project, name string) (*model.Repository, error) {
+func (r *repositoryRepository) FindByNamespaceAndName(namespace, name string) (*model.Repository, error) {
 	var repo model.Repository
-	err := r.db.Where("project = ? AND name = ? AND deleted_at IS NULL", project, name).First(&repo).Error
+	err := r.db.Where("namespace = ? AND name = ? AND deleted_at IS NULL", namespace, name).First(&repo).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -56,15 +56,15 @@ func (r *repositoryRepository) FindByProjectAndName(project, name string) (*mode
 	return &repo, nil
 }
 
-func (r *repositoryRepository) List(page, pageSize int, project *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error) {
+func (r *repositoryRepository) List(page, pageSize int, namespace *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error) {
 	var repos []*model.Repository
 	var total int64
 
-	query := r.db.Model(&model.Repository{}).Preload("Team")
+	query := r.db.Model(&model.Repository{}).Preload("Team").Preload("Project")
 
 	// 过滤条件
-	if project != nil {
-		query = query.Where("project = ?", *project)
+	if namespace != nil {
+		query = query.Where("namespace = ?", *namespace)
 	}
 	if teamID != nil {
 		query = query.Where("team_id = ?", *teamID)
@@ -73,7 +73,7 @@ func (r *repositoryRepository) List(page, pageSize int, project *string, teamID 
 		query = query.Where("git_type = ?", *gitType)
 	}
 	if keyword != "" {
-		query = query.Where("project LIKE ? OR name LIKE ? OR description LIKE ?",
+		query = query.Where("namespace LIKE ? OR name LIKE ? OR description LIKE ?",
 			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 	}
 	if status != nil {
@@ -108,10 +108,10 @@ func (r *repositoryRepository) Delete(id int64) error {
 	return nil
 }
 
-// Upsert 插入或更新代码库（基于project+name唯一索引）
+// Upsert 插入或更新代码库（基于namespace+name唯一索引）
 func (r *repositoryRepository) Upsert(repo *model.Repository) error {
 	// 先尝试查找现有记录
-	existing, err := r.FindByProjectAndName(repo.Project, repo.Name)
+	existing, err := r.FindByNamespaceAndName(repo.Namespace, repo.Name)
 
 	if err != nil && err != pkgErrors.ErrRecordNotFound {
 		return err

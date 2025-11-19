@@ -43,10 +43,12 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	repositoryRepo := repository.NewRepositoryRepository(db)
 	applicationRepo := repository.NewApplicationRepository(db)
 	buildRepo := repository.NewBuildRepository(db)
+	projectRepo := repository.NewProjectRepository(db)
 
 	// 初始化Service
 	ldapService := service.NewLDAPService(&cfg.Auth.LDAP)
 	authService := service.NewAuthService(&cfg.Auth, userRepo, ldapService)
+	projectService := service.NewProjectService(projectRepo)
 	repositoryService := service.NewRepositoryService(repositoryRepo, applicationRepo)
 	applicationService := service.NewApplicationService(applicationRepo, repositoryRepo, db)
 	batchService := service.NewBatchService(db)
@@ -54,6 +56,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 
 	// 初始化Handler
 	authHandler := handler.NewAuthHandler(authService)
+	projectHandler := handler.NewProjectHandler(projectService)
 	repositoryHandler := handler.NewRepositoryHandler(repositoryService)
 	applicationHandler := handler.NewApplicationHandler(applicationService)
 	batchHandler := handler.NewBatchHandler(coreEngine, batchService)
@@ -77,6 +80,18 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 			// 认证信息
 			authed.GET("/auth/me", authHandler.GetMe)
 			authed.GET("/auth/verify", authHandler.Verify)
+
+			// 项目管理
+			groupProject := authed.Group("/project")
+			groupProjects := authed.Group("/projects")
+			{
+				groupProject.POST("", projectHandler.Create)        // 创建项目
+				groupProjects.GET("", projectHandler.List)          // 列表查询
+				groupProjects.GET("/all", projectHandler.ListAll)   // 获取所有项目（用于下拉选择）
+				groupProject.GET("/detail", projectHandler.GetByID) // 获取详情
+				groupProject.PUT("", projectHandler.Update)         // 更新项目
+				groupProject.DELETE("/:id", projectHandler.Delete)  // 删除项目
+			}
 
 			// 代码库管理
 			groupRepository := authed.Group("/repository")

@@ -6,7 +6,7 @@ import (
 
 // Batch 发布批次
 type Batch struct {
-	ID           int64   `gorm:"primaryKey" json:"id"`
+	BaseModel
 	BatchNumber  string  `gorm:"uniqueIndex;size:200;not null" json:"batch_number"` // 用户填写的批次编号/标题
 	Initiator    string  `gorm:"size:50" json:"initiator"`
 	ReleaseNotes *string `gorm:"type:text" json:"release_notes"` // 批次级发布说明
@@ -36,10 +36,6 @@ type Batch struct {
 	CancelledAt     *time.Time `json:"cancelled_at"`                     // 取消时间
 	CancelledBy     *string    `gorm:"size:50" json:"cancelled_by"`      // 取消人
 	CancelReason    *string    `gorm:"type:text" json:"cancel_reason"`   // 取消原因
-
-	// 系统字段
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // TableName 指定表名

@@ -7,16 +7,18 @@ import (
 // Repository 代码库模型
 type Repository struct {
 	BaseStatus
-	Project     string  `gorm:"size:100;not null;index:idx_project_name" json:"project"`
-	Name        string  `gorm:"size:100;not null;uniqueIndex:idx_project_name" json:"name"`
+	Namespace   string  `gorm:"column:namespace;size:100;not null;index:idx_namespace_name" json:"namespace"`
+	Name        string  `gorm:"size:100;not null;uniqueIndex:idx_namespace_name" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
 	GitURL      string  `gorm:"size:500;not null" json:"git_url"`
 	GitType     string  `gorm:"size:20;not null;index" json:"git_type"`
 	Language    *string `gorm:"size:50" json:"language"`
 	TeamID      *int64  `gorm:"index" json:"team_id"`
+	ProjectID   *int64  `gorm:"index" json:"project_id"`
 
 	// Relations
-	Team *Team `gorm:"foreignKey:TeamID" json:"team,omitempty"`
+	Team    *Team    `gorm:"foreignKey:TeamID" json:"team,omitempty"`
+	Project *Project `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
 }
 
 func (Repository) TableName() string {
@@ -26,8 +28,8 @@ func (Repository) TableName() string {
 // Application 应用模型
 type Application struct {
 	BaseStatus
-	Name             string    `gorm:"size:100;not null;uniqueIndex:uk_project_app_name" json:"name"`
-	Project          string    `gorm:"size:100;not null;uniqueIndex:uk_project_app_name;index" json:"project"`
+	Name             string    `gorm:"size:100;not null;uniqueIndex:uk_namespace_app_name" json:"name"`
+	Namespace        string    `gorm:"column:namespace;size:100;not null;uniqueIndex:uk_namespace_app_name;index" json:"namespace"`
 	DisplayName      *string   `gorm:"size:100" json:"display_name"`
 	Description      *string   `gorm:"type:text" json:"description"`
 	RepoID           int64     `gorm:"column:repo_id;not null;index" json:"repo_id"`

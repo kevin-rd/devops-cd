@@ -64,7 +64,7 @@ func (s *buildService) ProcessNotify(req *dto.BuildNotifyRequest) error {
 	}
 
 	// 2. 查询仓库
-	repo, err := s.repoRepo.FindByProjectAndName(project, name)
+	repo, err := s.repoRepo.FindByNamespaceAndName(project, name)
 	if err != nil {
 		if err == pkgErrors.ErrRecordNotFound {
 			return pkgErrors.Wrap(pkgErrors.CodeNotFound, fmt.Sprintf("代码库不存在: %s", req.Repo), nil)
@@ -281,7 +281,7 @@ func (s *buildService) toResponse(build *model.Build) *dto.BuildResponse {
 
 	// 关联的仓库名称
 	if build.Repository != nil {
-		fullName := fmt.Sprintf("%s/%s", build.Repository.Project, build.Repository.Name)
+		fullName := fmt.Sprintf("%s/%s", build.Repository.Namespace, build.Repository.Name)
 		resp.RepoName = &fullName
 	}
 

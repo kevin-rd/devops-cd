@@ -272,11 +272,12 @@ func (r *BatchRepository) CheckAppConflict(appIDs []int64, excludeBatchID *int64
 	conflicts := make(map[int64]*model.Batch)
 	for _, r := range results {
 		if _, exists := conflicts[r.AppID]; !exists {
-			conflicts[r.AppID] = &model.Batch{
-				ID:          r.BatchID,
+			b := &model.Batch{
 				BatchNumber: r.BatchNumber,
 				Status:      r.Status,
 			}
+			b.ID = r.BatchID
+			conflicts[r.AppID] = b
 		}
 	}
 

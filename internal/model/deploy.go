@@ -63,6 +63,7 @@ func (Environment) TableName() string {
 // AppEnvConfig 应用环境配置模型
 type AppEnvConfig struct {
 	BaseStatus
+
 	AppID         int64   `gorm:"column:app_id;not null;uniqueIndex:idx_app_env" json:"app_id"`
 	EnvironmentID int64   `gorm:"not null;uniqueIndex:idx_app_env" json:"environment_id"`
 	ConfigData    *string `gorm:"type:text" json:"config_data"`

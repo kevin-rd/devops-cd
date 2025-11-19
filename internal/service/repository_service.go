@@ -32,22 +32,23 @@ func NewRepositoryService(repo repository.RepositoryRepository, appRepo reposito
 }
 
 func (s *repositoryService) Create(req *dto.CreateRepositoryRequest) (*dto.RepositoryResponse, error) {
-	// 检查项目名+仓库名是否已存在
-	existing, _ := s.repo.FindByProjectAndName(req.Project, req.Name)
+	// 检查命名空间+仓库名是否已存在
+	existing, _ := s.repo.FindByNamespaceAndName(req.Namespace, req.Name)
 	if existing != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-			fmt.Sprintf("代码库 %s/%s 已存在", req.Project, req.Name), nil)
+			fmt.Sprintf("代码库 %s/%s 已存在", req.Namespace, req.Name), nil)
 	}
 
 	// 创建模型
 	repo := &model.Repository{
-		Project:     req.Project,
+		Namespace:   req.Namespace,
 		Name:        req.Name,
 		Description: req.Description,
 		GitURL:      req.GitURL,
 		GitType:     req.GitType,
 		Language:    req.Language,
 		TeamID:      req.TeamID,
+		ProjectID:   req.ProjectID,
 		BaseStatus: model.BaseStatus{
 			Status: constants.StatusEnabled,
 		},
@@ -82,7 +83,7 @@ func (s *repositoryService) List(query *dto.RepositoryListQuery) ([]*dto.Reposit
 	repos, total, err := s.repo.List(
 		query.GetPage(),
 		query.GetPageSize(),
-		query.Project,
+		query.Namespace,
 		query.TeamID,
 		query.GitType,
 		query.Keyword,
@@ -122,27 +123,27 @@ func (s *repositoryService) Update(id int64, req *dto.UpdateRepositoryRequest) (
 		return nil, err
 	}
 
-	// 检查项目名+仓库名是否冲突
-	if (req.Project != nil && *req.Project != repo.Project) || (req.Name != nil && *req.Name != repo.Name) {
-		checkProject := repo.Project
+	// 检查命名空间+仓库名是否冲突
+	if (req.Namespace != nil && *req.Namespace != repo.Namespace) || (req.Name != nil && *req.Name != repo.Name) {
+		checkNamespace := repo.Namespace
 		checkName := repo.Name
-		if req.Project != nil {
-			checkProject = *req.Project
+		if req.Namespace != nil {
+			checkNamespace = *req.Namespace
 		}
 		if req.Name != nil {
 			checkName = *req.Name
 		}
 
-		existing, _ := s.repo.FindByProjectAndName(checkProject, checkName)
+		existing, _ := s.repo.FindByNamespaceAndName(checkNamespace, checkName)
 		if existing != nil && existing.ID != id {
 			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-				fmt.Sprintf("代码库 %s/%s 已存在", checkProject, checkName), nil)
+				fmt.Sprintf("代码库 %s/%s 已存在", checkNamespace, checkName), nil)
 		}
 	}
 
 	// 更新字段
-	if req.Project != nil {
-		repo.Project = *req.Project
+	if req.Namespace != nil {
+		repo.Namespace = *req.Namespace
 	}
 	if req.Name != nil {
 		repo.Name = *req.Name
@@ -161,6 +162,9 @@ func (s *repositoryService) Update(id int64, req *dto.UpdateRepositoryRequest) (
 	}
 	if req.TeamID != nil {
 		repo.TeamID = req.TeamID
+	}
+	if req.ProjectID != nil {
+		repo.ProjectID = req.ProjectID
 	}
 	if req.Status != nil {
 		repo.Status = *req.Status
@@ -189,14 +193,15 @@ func (s *repositoryService) Delete(id int64) error {
 func (s *repositoryService) toResponse(repo *model.Repository, apps []*model.Application) *dto.RepositoryResponse {
 	resp := &dto.RepositoryResponse{
 		ID:          repo.ID,
-		Project:     repo.Project,
+		Namespace:   repo.Namespace,
 		Name:        repo.Name,
-		FullName:    fmt.Sprintf("%s/%s", repo.Project, repo.Name),
+		FullName:    fmt.Sprintf("%s/%s", repo.Namespace, repo.Name),
 		Description: repo.Description,
 		GitURL:      repo.GitURL,
 		GitType:     repo.GitType,
 		Language:    repo.Language,
 		TeamID:      repo.TeamID,
+		ProjectID:   repo.ProjectID,
 		Status:      repo.Status,
 		CreatedAt:   repo.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   repo.UpdatedAt.Format(time.RFC3339),
@@ -205,6 +210,15 @@ func (s *repositoryService) toResponse(repo *model.Repository, apps []*model.App
 	// 添加团队名称
 	if repo.Team != nil {
 		resp.TeamName = &repo.Team.Name
+	}
+
+	// 添加项目名称（优先使用 DisplayName，否则使用 Name）
+	if repo.Project != nil {
+		if repo.Project.DisplayName != nil && *repo.Project.DisplayName != "" {
+			resp.ProjectName = repo.Project.DisplayName
+		} else {
+			resp.ProjectName = &repo.Project.Name
+		}
 	}
 
 	// 添加应用列表
@@ -223,7 +237,7 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 	appResp := &dto.ApplicationResponse{
 		ID:          app.ID,
 		Name:        app.Name,
-		Project:     app.Project,
+		Namespace:   app.Namespace,
 		DisplayName: app.DisplayName,
 		Description: app.Description,
 		RepoID:      app.RepoID,
@@ -237,7 +251,7 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 
 	// 添加代码库名称
 	if app.Repository != nil {
-		repoName := fmt.Sprintf("%s/%s", app.Repository.Project, app.Repository.Name)
+		repoName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 		appResp.RepoName = &repoName
 	}
 

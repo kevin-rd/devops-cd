@@ -15,7 +15,7 @@ type ApplicationRepository interface {
 	Create(app *model.Application) error
 	FindByID(id int64) (*model.Application, error)
 	FindByName(name string) (*model.Application, error)
-	FindByProjectAndName(project, name string) (*model.Application, error)
+	FindByNamespaceAndName(namespace, name string) (*model.Application, error)
 	FindByRepoIDAndName(repoID int64, name string) (*model.Application, error)
 	List(page, pageSize int, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error)
 	ListByRepoID(repoID int64) ([]*model.Application, error)
@@ -66,9 +66,9 @@ func (r *applicationRepository) FindByName(name string) (*model.Application, err
 	return &app, nil
 }
 
-func (r *applicationRepository) FindByProjectAndName(project, name string) (*model.Application, error) {
+func (r *applicationRepository) FindByNamespaceAndName(namespace, name string) (*model.Application, error) {
 	var app model.Application
-	err := r.db.Where("project = ? AND name = ? AND deleted_at IS NULL", project, name).First(&app).Error
+	err := r.db.Where("namespace = ? AND name = ? AND deleted_at IS NULL", namespace, name).First(&app).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -172,7 +172,7 @@ func (r *applicationRepository) UpdateDefaultDependencies(appID int64, deps []in
 
 func (r *applicationRepository) ListAllWithDependencies() ([]*model.Application, error) {
 	var apps []*model.Application
-	if err := r.db.Select("id", "name", "project", "app_type", "default_depends_on").
+	if err := r.db.Select("id", "name", "namespace", "app_type", "default_depends_on").
 		Where("deleted_at IS NULL").
 		Find(&apps).Error; err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询应用依赖信息失败", err)
@@ -271,16 +271,14 @@ func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword str
 		baseQuery = baseQuery.Where(`(
 			applications.name LIKE ? OR
 			applications.display_name LIKE ? OR
-			applications.project LIKE ? OR
+			applications.namespace LIKE ? OR
 			repositories.name LIKE ? OR
 			latest_builds.commit_sha LIKE ? OR
 			latest_builds.commit_message LIKE ? OR
-			latest_builds.image_tag LIKE ? OR
+			latest_builds.image_tag LIKE ?
 		)`,
 			keywordPattern, keywordPattern, keywordPattern, keywordPattern,
-			keywordPattern, keywordPattern,
-			keywordPattern, keywordPattern,
-			keywordPattern, keywordPattern,
+			keywordPattern, keywordPattern, keywordPattern,
 		)
 	}
 

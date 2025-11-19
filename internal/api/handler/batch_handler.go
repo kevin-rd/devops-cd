@@ -181,7 +181,7 @@ func (h *BatchHandler) Create(c *gin.Context) {
 				appProject := ""
 				if app != nil {
 					appName = app.Name
-					appProject = app.Project
+					appProject = app.Namespace
 				}
 
 				statusName := getStatusName(conflictBatch.Status)
@@ -267,7 +267,7 @@ func (h *BatchHandler) Update(c *gin.Context) {
 				appProject := ""
 				if app != nil {
 					appName = app.Name
-					appProject = app.Project
+					appProject = app.Namespace
 				}
 
 				statusName := getStatusName(conflictBatch.Status)

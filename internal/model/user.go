@@ -29,3 +29,16 @@ type Team struct {
 func (Team) TableName() string {
 	return "teams"
 }
+
+// Project 项目模型
+type Project struct {
+	BaseModelWithSoftDelete
+	Name        string  `gorm:"size:100;not null;uniqueIndex" json:"name"`
+	DisplayName *string `gorm:"size:100" json:"display_name"`
+	Description *string `gorm:"type:text" json:"description"`
+	OwnerName   *string `gorm:"size:100" json:"owner_name"`
+}
+
+func (Project) TableName() string {
+	return "projects"
+}

@@ -159,7 +159,7 @@ func (s *RepoSyncService) fetchRepositories(gitClient *git.Client, source *confi
 func (s *RepoSyncService) syncRepository(repoInfo *api.RepositoryInfo, source *config.RepoSourceConfig) error {
 	// 转换为数据库模型
 	repo := &model.Repository{
-		Project:     repoInfo.Owner,
+		Namespace:   repoInfo.Owner,
 		Name:        repoInfo.Name,
 		Description: &repoInfo.Description,
 		GitURL:      repoInfo.CloneURL,

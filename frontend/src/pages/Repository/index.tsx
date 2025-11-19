@@ -29,8 +29,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { repositoryService } from '@/services/repository'
 import { applicationService } from '@/services/application'
+import { projectService } from '@/services/project'
 import BuildHistoryDrawer from '@/components/BuildHistoryDrawer'
 import type { Repository, Application } from '@/types'
+import type { ProjectSimple } from '@/services/project'
 import './index.css'
 
 const RepositoryPage: React.FC = () => {
@@ -83,6 +85,18 @@ const RepositoryPage: React.FC = () => {
   })
 
   const appTypes = appTypesResponse?.types ?? []
+
+  // 查询所有项目（用于下拉选择）
+  const { data: projectsResponse } = useQuery({
+    queryKey: ['projects_all'],
+    queryFn: async () => {
+      const res = await projectService.getAll()
+      return res.data
+    },
+    staleTime: 60000,  // 1分钟缓存
+  })
+
+  const projects = projectsResponse || []
 
   // 根据 app_type 值获取类型配置
   const getAppTypeConfig = (appType: string) => {
@@ -210,32 +224,35 @@ const RepositoryPage: React.FC = () => {
       title: t('repository.name'),
       dataIndex: 'name',
       key: 'name',
-      width: 300,
-      render: (text, record) => (
-        <Space>
-          <FolderOutlined style={{ color: '#1890ff' }} />
-          <span className="repo-name">{text}</span>
-          {record.git_url && (
-            <Tooltip title={record.git_url}>
-              <a
-                href={record.git_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <LinkOutlined style={{ fontSize: 13, color: '#1890ff' }} />
-              </a>
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: t('repository.project'),
-      dataIndex: 'project',
-      key: 'project',
-      width: 150,
-      render: (text) => text && <Tag color="blue">{text}</Tag>,
+      width: 450,
+      render: (text, record) => {
+        const appCount = record.applications?.length || 0
+        const fullName = `${record.namespace}/${record.name}`
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Space>
+              <FolderOutlined style={{ color: '#1890ff' }} />
+              <span className="repo-name">{fullName}</span>
+              {record.git_url && (
+                <Tooltip title={record.git_url}>
+                  <a
+                    href={record.git_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <LinkOutlined style={{ fontSize: 13, color: '#1890ff' }} />
+                  </a>
+                </Tooltip>
+              )}
+            </Space>
+            <span className="app-count" style={{ marginLeft: 16, whiteSpace: 'nowrap' }}>
+              <AppstoreOutlined style={{ fontSize: 12, marginRight: 4 }} />
+              {appCount} 个应用
+            </span>
+          </div>
+        )
+      },
     },
     {
       title: t('repository.gitType'),
@@ -245,18 +262,18 @@ const RepositoryPage: React.FC = () => {
       render: (text) => <Tag color="cyan">{text}</Tag>,
     },
     {
-      title: t('application.list'),
-      key: 'app_count',
+      title: t('repository.project'),
+      dataIndex: 'project_name',
+      key: 'project_name',
       width: 150,
-      render: (_, record) => {
-        const appCount = record.applications?.length || 0
-        return (
-          <span className="app-count">
-            <AppstoreOutlined style={{ fontSize: 12, marginRight: 4 }} />
-            {appCount} 个应用
-          </span>
-        )
-      },
+      render: (text) => text ? <Tag color="purple">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
+    },
+    {
+      title: t('repository.team'),
+      dataIndex: 'team_name',
+      key: 'team_name',
+      width: 150,
+      render: (text) => text ? <Tag color="green">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
     },
     {
       title: t('common.action'),
@@ -480,61 +497,86 @@ const RepositoryPage: React.FC = () => {
         width={600}
       >
         <Form form={repoForm} layout="vertical">
-          <Form.Item
-            name="name"
-            label={t('repository.name')}
-            rules={[{ required: true }]}
-          >
-            <Input placeholder="my-repo" />
-          </Form.Item>
+          {/* 编辑模式下显示代码库标识 */}
+          {editingRepo && (
+            <div style={{ 
+              marginBottom: 24, 
+              padding: '12px 16px', 
+              background: '#f5f5f5', 
+              borderRadius: 4,
+              border: '1px solid #d9d9d9'
+            }}>
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <div style={{ fontSize: 12, color: '#999' }}>代码库</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>
+                  <FolderOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                  {editingRepo.namespace}/{editingRepo.name}
+                </div>
+                {editingRepo.git_url && (
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    {editingRepo.git_url}
+                  </div>
+                )}
+              </Space>
+            </div>
+          )}
 
-          <Form.Item
-            name="project"
-            label={t('repository.project')}
-            rules={[{ required: true }]}
-          >
-            <Input placeholder="my-project" />
-          </Form.Item>
+          {/* 创建模式下显示所有字段 */}
+          {!editingRepo && (
+            <>
+              <Form.Item
+                name="name"
+                label={t('repository.name')}
+                rules={[{ required: true }]}
+              >
+                <Input placeholder="my-repo" />
+              </Form.Item>
 
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} />
-          </Form.Item>
+              <Form.Item name="description" label={t('common.description')}>
+                <Input.TextArea rows={3} />
+              </Form.Item>
 
-          <Form.Item
-            name="git_url"
-            label={t('repository.gitUrl')}
-            rules={[{ required: true }]}
-          >
-            <Input placeholder="https://gitea.company.com/team/project.git" />
-          </Form.Item>
+              <Form.Item
+                name="git_url"
+                label={t('repository.gitUrl')}
+                rules={[{ required: true }]}
+              >
+                <Input placeholder="https://gitea.company.com/namespace/repo.git" />
+              </Form.Item>
 
-          <Form.Item
-            name="git_type"
-            label={t('repository.gitType')}
-            rules={[{ required: true }]}
-            initialValue="gitea"
-          >
-            <Select>
-              <Select.Option value="gitea">Gitea</Select.Option>
-              <Select.Option value="gitlab">GitLab</Select.Option>
-              <Select.Option value="github">GitHub</Select.Option>
+              <Form.Item
+                name="git_type"
+                label={t('repository.gitType')}
+                rules={[{ required: true }]}
+                initialValue="gitea"
+              >
+                <Select>
+                  <Select.Option value="gitea">Gitea</Select.Option>
+                  <Select.Option value="gitlab">GitLab</Select.Option>
+                  <Select.Option value="github">GitHub</Select.Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item name="git_token" label={t('repository.gitToken')}>
+                <Input.Password placeholder="Optional" />
+              </Form.Item>
+            </>
+          )}
+
+          <Form.Item name="project_id" label={t('repository.project')} rules={[{ required: true }]}>
+            <Select placeholder={t('repository.selectProject')} allowClear>
+              {projects.map((project: ProjectSimple) => (
+                <Select.Option key={project.id} value={project.id}>
+                  {project.display_name || project.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 
-          <Form.Item name="git_token" label={t('repository.gitToken')}>
-            <Input.Password placeholder="Optional" />
-          </Form.Item>
-
-          <Form.Item
-            name="default_branch"
-            label={t('repository.defaultBranch')}
-            initialValue="main"
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item name="language" label={t('repository.language')}>
-            <Input placeholder="Go, Java, Python, etc." />
+          <Form.Item name="team_id" label={t('repository.team')}>
+            <Select placeholder={t('repository.selectTeam')} allowClear>
+              {/* TODO: 需要添加 team 数据源，目前暂时留空 */}
+            </Select>
           </Form.Item>
         </Form>
       </Modal>

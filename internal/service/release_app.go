@@ -46,7 +46,7 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		releaseResp.AppName = release.Application.Name
 		releaseResp.AppDisplayName = release.Application.DisplayName
 		releaseResp.AppType = release.Application.AppType
-		releaseResp.AppProject = release.Application.Project
+		releaseResp.AppProject = release.Application.Namespace
 		releaseResp.TeamID = release.Application.TeamID
 		releaseResp.DeployedTag = release.Application.DeployedTag // 当前部署的标签
 		releaseResp.DefaultDependsOn = release.Application.DefaultDependsOn
@@ -55,7 +55,7 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		if release.Application.Repository != nil {
 			releaseResp.RepoID = release.Application.RepoID
 			releaseResp.RepoName = release.Application.Repository.Name
-			releaseResp.RepoFullName = release.Application.Repository.Project + "/" + release.Application.Repository.Name
+			releaseResp.RepoFullName = release.Application.Repository.Namespace + "/" + release.Application.Repository.Name
 		}
 
 		// 1.3 填充团队信息

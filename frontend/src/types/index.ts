@@ -43,14 +43,17 @@ export interface UserInfo {
 export interface Repository {
   id: number
   name: string
-  project: string
+  namespace: string
+  full_name: string  // namespace/name
   description: string
   git_url: string
   git_type: string
   default_branch: string
   language: string
-  team_id: number
-  team_name: string
+  team_id?: number
+  team_name?: string
+  project_id?: number
+  project_name?: string
   status: number
   created_at: string
   updated_at: string
@@ -59,7 +62,7 @@ export interface Repository {
 
 export interface CreateRepositoryRequest {
   name: string
-  project: string
+  namespace: string
   description?: string
   git_url: string
   git_type: string
@@ -67,6 +70,7 @@ export interface CreateRepositoryRequest {
   default_branch?: string
   language?: string
   team_id?: number
+  project_id?: number
 }
 
 export interface UpdateRepositoryRequest extends Partial<CreateRepositoryRequest> {
@@ -80,7 +84,7 @@ export interface Application {
   description: string
   repo_id: number
   repo_name: string
-  project: string
+  namespace: string
   app_type: string
   team_id: number
   team_name: string
@@ -95,7 +99,7 @@ export interface CreateApplicationRequest {
   display_name?: string
   description?: string
   repo_id: number
-  project: string
+  namespace: string
   app_type: string
   team_id?: number
 }
@@ -109,7 +113,7 @@ export interface RepositoryQueryParams extends PaginationParams {
   git_type?: string
   team_id?: number
   status?: number
-  project?: string
+  namespace?: string
   keyword?: string
   with_applications?: boolean  // 新增：是否包含应用列表
 }
@@ -117,7 +121,7 @@ export interface RepositoryQueryParams extends PaginationParams {
 export interface ApplicationQueryParams extends PaginationParams {
   name?: string
   repo_id?: number
-  project?: string
+  namespace?: string
   app_type?: string
   team_id?: number
   status?: number
@@ -127,7 +131,7 @@ export interface ApplicationQueryParams extends PaginationParams {
 // Application with latest build info (flattened structure)
 export interface ApplicationWithBuild extends Application {
   deployed_tag?: string | null
-  repo_full_name?: string  // Repository的project/name
+  repo_full_name?: string  // Repository的namespace/name
   build_id?: number
   build_number?: number
   image_tag?: string
