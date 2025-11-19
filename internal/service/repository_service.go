@@ -212,13 +212,9 @@ func (s *repositoryService) toResponse(repo *model.Repository, apps []*model.App
 		resp.TeamName = &repo.Team.Name
 	}
 
-	// 添加项目名称（优先使用 DisplayName，否则使用 Name）
+	// 添加项目名称
 	if repo.Project != nil {
-		if repo.Project.DisplayName != nil && *repo.Project.DisplayName != "" {
-			resp.ProjectName = repo.Project.DisplayName
-		} else {
-			resp.ProjectName = &repo.Project.Name
-		}
+		resp.ProjectName = &repo.Project.Name
 	}
 
 	// 添加应用列表

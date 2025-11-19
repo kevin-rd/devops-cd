@@ -18,6 +18,16 @@ export interface PaginatedResponse<T> {
   page_size: number
 }
 
+// 后端实际返回的分页响应结构（data 是数组，total 在顶层）
+export interface BackendPaginatedResponse<T> {
+  code: number
+  message: string
+  data: T[]
+  total: number
+  page: number
+  size: number
+}
+
 // Auth Types
 export interface LoginRequest {
   username: string

@@ -20,12 +20,14 @@ type ProjectService interface {
 }
 
 type projectService struct {
-	repo repository.ProjectRepository
+	repo     repository.ProjectRepository
+	teamRepo repository.TeamRepository
 }
 
-func NewProjectService(repo repository.ProjectRepository) ProjectService {
+func NewProjectService(repo repository.ProjectRepository, teamRepo repository.TeamRepository) ProjectService {
 	return &projectService{
-		repo: repo,
+		repo:     repo,
+		teamRepo: teamRepo,
 	}
 }
 
@@ -40,13 +42,24 @@ func (s *projectService) Create(req *dto.CreateProjectRequest) (*dto.ProjectResp
 	// 创建项目
 	project := &model.Project{
 		Name:        req.Name,
-		DisplayName: req.DisplayName,
 		Description: req.Description,
 		OwnerName:   req.OwnerName,
 	}
 
 	if err := s.repo.Create(project); err != nil {
 		return nil, err
+	}
+
+	if s.shouldCreateDefaultTeam(req) {
+		team := &model.Team{
+			Name:      project.Name,
+			ProjectID: project.ID,
+		}
+		if err := s.teamRepo.Create(team); err != nil {
+			// 回滚项目创建
+			_ = s.repo.Delete(project.ID)
+			return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "创建默认团队失败", err)
+		}
 	}
 
 	return s.toResponse(project), nil
@@ -71,8 +84,29 @@ func (s *projectService) List(query *dto.ProjectListQuery) ([]*dto.ProjectRespon
 	}
 
 	responses := make([]*dto.ProjectResponse, len(projects))
+
+	var teamMap map[int64][]*dto.TeamResponse
+	if query.WithTeams && len(projects) > 0 {
+		projectIDs := make([]int64, len(projects))
+		for i, project := range projects {
+			projectIDs[i] = project.ID
+		}
+		teams, err := s.teamRepo.ListByProjectIDs(projectIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		teamMap = make(map[int64][]*dto.TeamResponse)
+		for _, team := range teams {
+			teamMap[team.ProjectID] = append(teamMap[team.ProjectID], s.toTeamResponse(team))
+		}
+	}
+
 	for i, project := range projects {
-		responses[i] = s.toResponse(project)
+		resp := s.toResponse(project)
+		if teamMap != nil {
+			resp.Teams = teamMap[project.ID]
+		}
+		responses[i] = resp
 	}
 
 	return responses, total, nil
@@ -87,9 +121,8 @@ func (s *projectService) ListAll() ([]*dto.ProjectSimpleResponse, error) {
 	responses := make([]*dto.ProjectSimpleResponse, len(projects))
 	for i, project := range projects {
 		responses[i] = &dto.ProjectSimpleResponse{
-			ID:          project.ID,
-			Name:        project.Name,
-			DisplayName: project.DisplayName,
+			ID:   project.ID,
+			Name: project.Name,
 		}
 	}
 
@@ -114,9 +147,6 @@ func (s *projectService) Update(id int64, req *dto.UpdateProjectRequest) (*dto.P
 	}
 
 	// 更新字段
-	if req.DisplayName != nil {
-		project.DisplayName = req.DisplayName
-	}
 	if req.Description != nil {
 		project.Description = req.Description
 	}
@@ -150,10 +180,28 @@ func (s *projectService) toResponse(project *model.Project) *dto.ProjectResponse
 	return &dto.ProjectResponse{
 		ID:          project.ID,
 		Name:        project.Name,
-		DisplayName: project.DisplayName,
 		Description: project.Description,
 		OwnerName:   project.OwnerName,
 		CreatedAt:   project.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   project.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+func (s *projectService) toTeamResponse(team *model.Team) *dto.TeamResponse {
+	return &dto.TeamResponse{
+		ID:          team.ID,
+		Name:        team.Name,
+		ProjectID:   team.ProjectID,
+		Description: team.Description,
+		LeaderName:  team.LeaderName,
+		CreatedAt:   team.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   team.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func (s *projectService) shouldCreateDefaultTeam(req *dto.CreateProjectRequest) bool {
+	if req.CreateDefaultTeam == nil {
+		return true
+	}
+	return *req.CreateDefaultTeam
 }

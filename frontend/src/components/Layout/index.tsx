@@ -8,6 +8,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   RocketOutlined,
+  ProjectOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -43,6 +44,11 @@ const MainLayout: React.FC = () => {
       key: '/repository',
       icon: <FolderOutlined />,
       label: t('menu.repository'),
+    },
+    {
+      key: '/project',
+      icon: <ProjectOutlined />,
+      label: t('menu.project'),
     },
     {
       key: '/batch',

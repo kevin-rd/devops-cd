@@ -70,13 +70,14 @@ func (h *ProjectHandler) GetByID(c *gin.Context) {
 }
 
 // List 获取项目列表
-// @Summary 获取项目列表
+// @Summary 获取项目列表（无分页参数时返回所有项目，有分页参数时返回分页数据）
 // @Tags Project
 // @Accept json
 // @Produce json
 // @Param page query int false "页码"
 // @Param page_size query int false "每页数量"
 // @Param keyword query string false "关键字搜索"
+// @Success 200 {object} utils.Response{data=[]dto.ProjectSimpleResponse}
 // @Success 200 {object} utils.Response{data=dto.PaginatedResponse}
 // @Router /api/v1/projects [get]
 func (h *ProjectHandler) List(c *gin.Context) {
@@ -86,6 +87,18 @@ func (h *ProjectHandler) List(c *gin.Context) {
 		return
 	}
 
+	// 如果没有分页参数，返回所有项目简化列表（用于下拉选择）
+	if query.Page == 0 && query.PageSize == 0 {
+		projects, err := h.projectService.ListAll()
+		if err != nil {
+			utils.Error(c, err)
+			return
+		}
+		utils.Success(c, projects)
+		return
+	}
+
+	// 有分页参数，返回分页数据
 	projects, total, err := h.projectService.List(&query)
 	if err != nil {
 		utils.Error(c, err)

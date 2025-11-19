@@ -1,0 +1,31 @@
+.project-page {
+  padding: 24px;
+}
+
+.project-name {
+  font-weight: 500;
+  color: #1890ff;
+}
+
+.project-page .ant-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.project-page .ant-table-wrapper {
+  margin-top: 16px;
+}
+
+.project-team-table {
+  padding: 16px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.project-team-table__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+

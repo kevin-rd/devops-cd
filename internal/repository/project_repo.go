@@ -64,8 +64,8 @@ func (r *projectRepository) List(page, pageSize int, keyword string) ([]*model.P
 
 	// 关键字搜索
 	if keyword != "" {
-		query = query.Where("name LIKE ? OR display_name LIKE ? OR description LIKE ?",
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+		query = query.Where("name LIKE ? OR description LIKE ?",
+			"%"+keyword+"%", "%"+keyword+"%")
 	}
 
 	// 统计总数

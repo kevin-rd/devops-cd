@@ -30,10 +30,28 @@ import { useTranslation } from 'react-i18next'
 import { repositoryService } from '@/services/repository'
 import { applicationService } from '@/services/application'
 import { projectService } from '@/services/project'
+import { teamService } from '@/services/team'
 import BuildHistoryDrawer from '@/components/BuildHistoryDrawer'
-import type { Repository, Application } from '@/types'
+import type {
+  Repository,
+  Application,
+  ApiResponse,
+  CreateRepositoryRequest,
+  CreateApplicationRequest,
+} from '@/types'
 import type { ProjectSimple } from '@/services/project'
+import type { TeamSimple } from '@/services/team'
 import './index.css'
+
+interface AppTypeOption {
+  value: string
+  label: string
+  color: string
+  description?: string
+}
+
+type RepositoryFormValues = Partial<CreateRepositoryRequest>
+type ApplicationFormValues = Partial<CreateApplicationRequest>
 
 const RepositoryPage: React.FC = () => {
   const { t } = useTranslation()
@@ -45,7 +63,6 @@ const RepositoryPage: React.FC = () => {
   const [appModalVisible, setAppModalVisible] = useState(false)
   const [editingRepo, setEditingRepo] = useState<Repository | null>(null)
   const [editingApp, setEditingApp] = useState<Application | null>(null)
-  const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null)
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
   
   // 分页状态
@@ -84,19 +101,31 @@ const RepositoryPage: React.FC = () => {
     gcTime: Infinity,  // 永久缓存（garbage collection time）
   })
 
-  const appTypes = appTypesResponse?.types ?? []
+  const appTypes: AppTypeOption[] = appTypesResponse?.types ?? []
 
   // 查询所有项目（用于下拉选择）
-  const { data: projectsResponse } = useQuery({
+  const { data: projectsResponse } = useQuery<ApiResponse<ProjectSimple[]>>({
     queryKey: ['projects_all'],
     queryFn: async () => {
       const res = await projectService.getAll()
-      return res.data
+      return res as unknown as ApiResponse<ProjectSimple[]>
     },
     staleTime: 60000,  // 1分钟缓存
   })
 
-  const projects = projectsResponse || []
+  const projects: ProjectSimple[] = projectsResponse?.data || []
+
+  // 查询所有团队（用于下拉选择）
+  const { data: teamsResponse } = useQuery<ApiResponse<TeamSimple[]>>({
+    queryKey: ['teams_all'],
+    queryFn: async () => {
+      const res = await teamService.getList()
+      return res as unknown as ApiResponse<TeamSimple[]>
+    },
+    staleTime: 60000,  // 1分钟缓存
+  })
+
+  const teams: TeamSimple[] = teamsResponse?.data || []
 
   // 根据 app_type 值获取类型配置
   const getAppTypeConfig = (appType: string) => {
@@ -105,12 +134,11 @@ const RepositoryPage: React.FC = () => {
 
   // 创建/更新代码库
   const repoMutation = useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: RepositoryFormValues) => {
       if (editingRepo) {
         return await repositoryService.update(editingRepo.id, values)
-      } else {
-        return await repositoryService.create(values)
       }
+      return await repositoryService.create(values as CreateRepositoryRequest)
     },
     onSuccess: () => {
       message.success(
@@ -134,12 +162,11 @@ const RepositoryPage: React.FC = () => {
 
   // 创建/更新应用
   const appMutation = useMutation({
-    mutationFn: async (values: any) => {
+    mutationFn: async (values: ApplicationFormValues) => {
       if (editingApp) {
         return await applicationService.update(editingApp.id, values)
-      } else {
-        return await applicationService.create(values)
       }
+      return await applicationService.create(values as CreateApplicationRequest)
     },
     onSuccess: () => {
       message.success(
@@ -176,8 +203,6 @@ const RepositoryPage: React.FC = () => {
 
   const handleCreateApp = (repoId: number) => {
     setEditingApp(null)
-    setSelectedRepoId(repoId)
-    
     // 找到当前 repo
     const currentRepo = repoData.find(repo => repo.id === repoId)
     
@@ -194,7 +219,6 @@ const RepositoryPage: React.FC = () => {
 
   const handleEditApp = (app: Application) => {
     setEditingApp(app)
-    setSelectedRepoId(app.repo_id)
     appForm.setFieldsValue(app)
     setAppModalVisible(true)
   }
@@ -225,7 +249,7 @@ const RepositoryPage: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 450,
-      render: (text, record) => {
+      render: (_, record) => {
         const appCount = record.applications?.length || 0
         const fullName = `${record.namespace}/${record.name}`
         return (
@@ -567,7 +591,7 @@ const RepositoryPage: React.FC = () => {
             <Select placeholder={t('repository.selectProject')} allowClear>
               {projects.map((project: ProjectSimple) => (
                 <Select.Option key={project.id} value={project.id}>
-                  {project.display_name || project.name}
+                  {project.name}
                 </Select.Option>
               ))}
             </Select>
@@ -575,7 +599,11 @@ const RepositoryPage: React.FC = () => {
 
           <Form.Item name="team_id" label={t('repository.team')}>
             <Select placeholder={t('repository.selectTeam')} allowClear>
-              {/* TODO: 需要添加 team 数据源，目前暂时留空 */}
+              {teams.map((team: TeamSimple) => (
+                <Select.Option key={team.id} value={team.id}>
+                  {team.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
         </Form>
@@ -589,7 +617,6 @@ const RepositoryPage: React.FC = () => {
         onCancel={() => {
           setAppModalVisible(false)
           setEditingApp(null)
-          setSelectedRepoId(null)
           appForm.resetFields()
         }}
         confirmLoading={appMutation.isPending}
@@ -632,7 +659,7 @@ const RepositoryPage: React.FC = () => {
             rules={[{ required: true }]}
           >
             <Select placeholder={t('application.appType')}>
-              {appTypes.map((type: any) => (
+              {appTypes.map((type: AppTypeOption) => (
                 <Select.Option key={type.value} value={type.value}>
                   <Space>
                     <span style={{ color: type.color }}>●</span>

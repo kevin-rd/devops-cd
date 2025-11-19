@@ -4,6 +4,7 @@ import MainLayout from '@/components/Layout'
 import PrivateRoute from '@/components/PrivateRoute'
 import Login from '@/pages/Login'
 import RepositoryPage from '@/pages/Repository'
+import ProjectPage from '@/pages/Project'
 import BatchList from '@/pages/Batch'
 import BatchDetail from '@/pages/Batch/Detail'
 import BatchInsights from '@/pages/BatchInsights'
@@ -19,6 +20,7 @@ const AppRoutes: React.FC = () => {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Navigate to="/repository" replace />} />
             <Route path="/repository" element={<RepositoryPage />} />
+            <Route path="/project" element={<ProjectPage />} />
             <Route path="/batch" element={<BatchList />} />
             <Route path="/batch/:id/detail" element={<BatchDetail />} />
             <Route path="/batch/insights" element={<BatchInsightsRedirect />} />

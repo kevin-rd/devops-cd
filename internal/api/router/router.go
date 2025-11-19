@@ -44,11 +44,15 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	applicationRepo := repository.NewApplicationRepository(db)
 	buildRepo := repository.NewBuildRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
+	teamRepo := repository.NewTeamRepository(db)
+	teamMemberRepo := repository.NewTeamMemberRepository(db)
 
 	// 初始化Service
 	ldapService := service.NewLDAPService(&cfg.Auth.LDAP)
 	authService := service.NewAuthService(&cfg.Auth, userRepo, ldapService)
-	projectService := service.NewProjectService(projectRepo)
+	projectService := service.NewProjectService(projectRepo, teamRepo)
+	teamService := service.NewTeamService(teamRepo, projectRepo)
+	teamMemberService := service.NewTeamMemberService(teamMemberRepo, teamRepo, userRepo)
 	repositoryService := service.NewRepositoryService(repositoryRepo, applicationRepo)
 	applicationService := service.NewApplicationService(applicationRepo, repositoryRepo, db)
 	batchService := service.NewBatchService(db)
@@ -57,6 +61,8 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	// 初始化Handler
 	authHandler := handler.NewAuthHandler(authService)
 	projectHandler := handler.NewProjectHandler(projectService)
+	teamHandler := handler.NewTeamHandler(teamService)
+	teamMemberHandler := handler.NewTeamMemberHandler(teamMemberService)
 	repositoryHandler := handler.NewRepositoryHandler(repositoryService)
 	applicationHandler := handler.NewApplicationHandler(applicationService)
 	batchHandler := handler.NewBatchHandler(coreEngine, batchService)
@@ -86,11 +92,29 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 			groupProjects := authed.Group("/projects")
 			{
 				groupProject.POST("", projectHandler.Create)        // 创建项目
-				groupProjects.GET("", projectHandler.List)          // 列表查询
-				groupProjects.GET("/all", projectHandler.ListAll)   // 获取所有项目（用于下拉选择）
+				groupProjects.GET("", projectHandler.List)          // 列表查询（无参数返回全部，有分页参数返回分页数据）
 				groupProject.GET("/detail", projectHandler.GetByID) // 获取详情
 				groupProject.PUT("", projectHandler.Update)         // 更新项目
 				groupProject.DELETE("/:id", projectHandler.Delete)  // 删除项目
+			}
+
+			// 团队管理
+			groupTeam := authed.Group("/team")
+			groupTeams := authed.Group("/teams")
+			{
+				groupTeam.POST("", teamHandler.Create)       // 创建团队
+				groupTeams.GET("", teamHandler.List)         // 列表查询（返回所有团队）
+				groupTeam.GET("", teamHandler.GetByID)       // 获取详情
+				groupTeam.PUT("", teamHandler.Update)        // 更新团队
+				groupTeam.DELETE("/:id", teamHandler.Delete) // 删除团队
+			}
+
+			teamMemberGroup := authed.Group("/team_members")
+			{
+				teamMemberGroup.POST("", teamMemberHandler.AddMember)          // 添加成员
+				teamMemberGroup.GET("", teamMemberHandler.ListMembers)         // 成员列表
+				teamMemberGroup.PUT("/:id/role", teamMemberHandler.UpdateRole) // 更新角色
+				teamMemberGroup.DELETE("/:id", teamMemberHandler.DeleteMember) // 移除成员
 			}
 
 			// 代码库管理
