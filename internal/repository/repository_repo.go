@@ -14,6 +14,7 @@ type RepositoryRepository interface {
 	List(page, pageSize int, project *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error)
 	Update(repo *model.Repository) error
 	Delete(id int64) error
+	Upsert(repo *model.Repository) error // 新增: 插入或更新
 }
 
 type repositoryRepository struct {
@@ -103,6 +104,35 @@ func (r *repositoryRepository) Update(repo *model.Repository) error {
 func (r *repositoryRepository) Delete(id int64) error {
 	if err := r.db.Delete(&model.Repository{}, id).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除代码库失败", err)
+	}
+	return nil
+}
+
+// Upsert 插入或更新代码库（基于project+name唯一索引）
+func (r *repositoryRepository) Upsert(repo *model.Repository) error {
+	// 先尝试查找现有记录
+	existing, err := r.FindByProjectAndName(repo.Project, repo.Name)
+
+	if err != nil && err != pkgErrors.ErrRecordNotFound {
+		return err
+	}
+
+	if existing != nil {
+		// 更新现有记录
+		repo.ID = existing.ID
+		// 保留某些字段不被覆盖（如果需要）
+		// 例如：team_id 可能是手动设置的，不应该被自动同步覆盖
+		if repo.TeamID == nil {
+			repo.TeamID = existing.TeamID
+		}
+		err = r.db.Updates(&repo).Error
+	} else {
+		// 插入新记录
+		err = r.db.Create(&repo).Error
+	}
+
+	if err != nil {
+		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "插入或更新代码库失败", err)
 	}
 	return nil
 }

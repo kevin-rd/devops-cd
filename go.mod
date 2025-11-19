@@ -7,6 +7,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.6
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/samber/lo v1.52.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.11.1
@@ -15,6 +16,8 @@ require (
 	github.com/swaggo/swag v1.16.4
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.31.0
+	golang.org/x/net v0.33.0
+	gorm.io/datatypes v1.2.7
 	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.30.0
 )
@@ -75,7 +78,6 @@ require (
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
 	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
@@ -83,5 +85,4 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/datatypes v1.2.7 // indirect
 )

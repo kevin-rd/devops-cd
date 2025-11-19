@@ -107,3 +107,19 @@ core:
     base_url: "http://k8s-deploy-service:8080"  # K8s部署服务地址
     api_key: ""                                  # API密钥
 
+# 代码库同步配置
+repo:
+  # 秒 分 时 日 月 周
+  cron: "30 18 15 * * *"
+  sources:
+    # 示例1: Gitea - 同步多个命名空间
+    - name: "main-gitea"
+      enabled: true
+      platform: "gitea"       # 平台类型: gitea/gitlab/github
+      base_url: "https://git.company.com/"
+      token: "your-gitea-token-here"
+      sync_mode: "namespaces"
+      namespaces:
+        - "backend-team"
+        - "frontend-team"
+        - "devops-team"

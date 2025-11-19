@@ -18,6 +18,7 @@ type Config struct {
 	Log      LogConfig      `mapstructure:"log"`
 	Git      GitConfig      `mapstructure:"git"`
 	Core     CoreConfig     `mapstructure:"core"`
+	Repo     RepoConfig     `mapstructure:"repo"`
 	DB       interface{}    // 数据库连接,运行时注入
 }
 
@@ -152,6 +153,23 @@ type NotificationConfig struct {
 type K8sConfig struct {
 	BaseURL string `mapstructure:"base_url"` // 部署服务地址
 	APIKey  string `mapstructure:"api_key"`  // API密钥
+}
+
+// RepoConfig 代码库同步配置
+type RepoConfig struct {
+	Cron    string             `mapstructure:"cron"` // Cron表达式，定义同步执行时间
+	Sources []RepoSourceConfig `mapstructure:"sources"`
+}
+
+// RepoSourceConfig 代码库源配置
+type RepoSourceConfig struct {
+	Name       string   `mapstructure:"name"`       // 源名称
+	Platform   string   `mapstructure:"platform"`   // 平台类型: gitea/gitlab/github
+	BaseURL    string   `mapstructure:"base_url"`   // 平台地址
+	Token      string   `mapstructure:"token"`      // 访问令牌
+	SyncMode   string   `mapstructure:"sync_mode"`  // 同步模式: namespaces/all/user
+	Namespaces []string `mapstructure:"namespaces"` // 命名空间列表(sync_mode=namespaces时使用)
+	Enabled    bool     `mapstructure:"enabled"`    // 是否启用
 }
 
 // Load 加载配置

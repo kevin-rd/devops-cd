@@ -17,6 +17,7 @@ import (
 	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/pkg/database"
 	"devops-cd/internal/pkg/logger"
+	"devops-cd/internal/scheduler"
 
 	_ "devops-cd/docs" // Swagger docs
 )
@@ -123,6 +124,12 @@ func main() {
 	coreEngine.Start(scanInterval)
 	logger.Info("Core引擎启动成功", zap.Duration("scan_interval", scanInterval))
 
+	// 初始化并启动定时任务调度器
+	taskScheduler := scheduler.NewScheduler(database.GetDB(), logger.Log, cfg)
+	if err := taskScheduler.Start(cfg); err != nil {
+		logger.Warn("定时任务调度器启动失败", zap.Error(err))
+	}
+
 	// 设置路由
 	r := router.Setup(cfg, coreEngine)
 
@@ -150,6 +157,10 @@ func main() {
 	<-quit
 
 	logger.Info("服务正在关闭...")
+
+	// 关闭定时任务调度器
+	taskScheduler.Stop()
+	logger.Info("定时任务调度器已停止")
 
 	// 关闭Core引擎
 	coreEngine.Stop()

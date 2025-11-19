@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 
 # 构建
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o base-service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o build/devops-cd ./cmd/devops-cd
 
 FROM alpine:latest
 
@@ -20,12 +20,12 @@ RUN apk --no-cache add ca-certificates tzdata
 ENV TZ=Asia/Shanghai
 
 # 复制二进制文件和配置
-COPY --from=builder /build/base-service .
+COPY --from=builder /build/devops-cd .
 COPY --from=builder /build/configs ./configs
 
 # 暴露端口
 EXPOSE 8080
 
 # 运行
-CMD ["./base-service"]
+CMD ["./devops-cd"]
 
