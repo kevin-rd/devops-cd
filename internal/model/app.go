@@ -28,18 +28,21 @@ func (Repository) TableName() string {
 // Application 应用模型
 type Application struct {
 	BaseStatus
-	Name             string    `gorm:"size:100;not null;uniqueIndex:uk_namespace_app_name" json:"name"`
-	Namespace        string    `gorm:"column:namespace;size:100;not null;uniqueIndex:uk_namespace_app_name;index" json:"namespace"`
+
+	RepoID    int64  `gorm:"column:repo_id;not null;index" json:"repo_id"`
+	ProjectID int64  `gorm:"column:project_id;not null;uniqueIndex:uk_project_app_name;index" json:"project_id"`
+	TeamID    *int64 `gorm:"index" json:"team_id"`
+
+	Name             string    `gorm:"size:100;not null;uniqueIndex:uk_project_app_name" json:"name"`
 	DisplayName      *string   `gorm:"size:100" json:"display_name"`
 	Description      *string   `gorm:"type:text" json:"description"`
-	RepoID           int64     `gorm:"column:repo_id;not null;index" json:"repo_id"`
 	AppType          string    `gorm:"size:50;not null;index" json:"app_type"`
-	TeamID           *int64    `gorm:"index" json:"team_id"`
 	DeployedTag      *string   `gorm:"column:deployed_tag;size:100" json:"deployed_tag"`              // 当前部署的镜像标签
 	DefaultDependsOn Int64List `gorm:"column:default_depends_on;type:json" json:"default_depends_on"` // DefaultDependsOn 配置级依赖（JSON 数组，记录应用 ID）
 
 	// Relations
 	Repository *Repository `gorm:"foreignKey:RepoID" json:"repository,omitempty"`
+	Project    *Project    `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
 	Team       *Team       `gorm:"foreignKey:TeamID" json:"team,omitempty"`
 }
 

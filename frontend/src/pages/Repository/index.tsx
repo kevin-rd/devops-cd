@@ -1,46 +1,40 @@
-import React, { useState } from 'react'
+import React, {useState} from 'react'
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Modal,
+  Card,
   Form,
   Input,
-  Select,
   message,
-  Popconfirm,
-  Tooltip,
-  Tag,
+  Modal,
   Pagination,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
 } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import type {ColumnsType} from 'antd/es/table'
 import {
-  FolderOutlined,
   AppstoreOutlined,
-  PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
-  ReloadOutlined,
-  LinkOutlined,
+  EditOutlined,
+  FolderOutlined,
   HistoryOutlined,
+  LinkOutlined,
+  PlusOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-import { repositoryService } from '@/services/repository'
-import { applicationService } from '@/services/application'
-import { projectService } from '@/services/project'
-import { teamService } from '@/services/team'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {useTranslation} from 'react-i18next'
+import {repositoryService} from '@/services/repository'
+import {applicationService} from '@/services/application'
+import type {ProjectSimple} from '@/services/project'
+import {projectService} from '@/services/project'
+import type {TeamSimple} from '@/services/team'
+import {teamService} from '@/services/team'
 import BuildHistoryDrawer from '@/components/BuildHistoryDrawer'
-import type {
-  Repository,
-  Application,
-  ApiResponse,
-  CreateRepositoryRequest,
-  CreateApplicationRequest,
-} from '@/types'
-import type { ProjectSimple } from '@/services/project'
-import type { TeamSimple } from '@/services/team'
+import type {ApiResponse, Application, CreateApplicationRequest, CreateRepositoryRequest, Repository,} from '@/types'
 import './index.css'
 
 interface AppTypeOption {
@@ -54,7 +48,7 @@ type RepositoryFormValues = Partial<CreateRepositoryRequest>
 type ApplicationFormValues = Partial<CreateApplicationRequest>
 
 const RepositoryPage: React.FC = () => {
-  const { t } = useTranslation()
+  const {t} = useTranslation()
   const queryClient = useQueryClient()
   const [repoForm] = Form.useForm()
   const [appForm] = Form.useForm()
@@ -64,10 +58,10 @@ const RepositoryPage: React.FC = () => {
   const [editingRepo, setEditingRepo] = useState<Repository | null>(null)
   const [editingApp, setEditingApp] = useState<Application | null>(null)
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
-  
+
   // 模态框中选择的项目ID（用于联动团队列表）
   const [modalProjectId, setModalProjectId] = useState<number | undefined>()
-  
+
   // 分页状态
   const [repoPage, setRepoPage] = useState(1)
   const [repoPageSize, setRepoPageSize] = useState(10)
@@ -76,7 +70,7 @@ const RepositoryPage: React.FC = () => {
   const [keyword, setKeyword] = useState('')
   const [projectId, setProjectId] = useState<number | undefined>()
   const [teamId, setTeamId] = useState<number | undefined>()
-  
+
   // 特殊值：-1 表示"无归属"
   const NO_RELATION = -1
 
@@ -86,13 +80,13 @@ const RepositoryPage: React.FC = () => {
   const [selectedAppName, setSelectedAppName] = useState('')
 
   // 查询代码库列表（包含应用）
-  const { data: repoResponse, isLoading: repoLoading } = useQuery({
+  const {data: repoResponse, isLoading: repoLoading} = useQuery({
     queryKey: ['repositories', repoPage, repoPageSize, keyword, projectId, teamId],
     queryFn: async () => {
       // 处理特殊值：-1 表示查询无归属的，转换为 0 或不传
       const actualProjectId = projectId === NO_RELATION ? 0 : projectId
       const actualTeamId = teamId === NO_RELATION ? 0 : teamId
-      
+
       const res = await repositoryService.getList({
         page: repoPage,
         page_size: repoPageSize,
@@ -109,7 +103,7 @@ const RepositoryPage: React.FC = () => {
   const repoTotal = repoResponse?.total || 0
 
   // 查询应用类型列表（永久缓存，页面加载时获取一次）
-  const { data: appTypesResponse } = useQuery({
+  const {data: appTypesResponse} = useQuery({
     queryKey: ['applicationTypes'],
     queryFn: async () => {
       const res = await applicationService.getTypes()
@@ -122,7 +116,7 @@ const RepositoryPage: React.FC = () => {
   const appTypes: AppTypeOption[] = appTypesResponse?.types ?? []
 
   // 查询所有项目（用于下拉选择）
-  const { data: projectsResponse } = useQuery<ApiResponse<ProjectSimple[]>>({
+  const {data: projectsResponse} = useQuery<ApiResponse<ProjectSimple[]>>({
     queryKey: ['projects_all'],
     queryFn: async () => {
       const res = await projectService.getAll()
@@ -134,7 +128,7 @@ const RepositoryPage: React.FC = () => {
   const projects: ProjectSimple[] = projectsResponse?.data || []
 
   // 查询所有团队（用于下拉选择）
-  const { data: teamsResponse } = useQuery<ApiResponse<TeamSimple[]>>({
+  const {data: teamsResponse} = useQuery<ApiResponse<TeamSimple[]>>({
     queryKey: ['teams_all'],
     queryFn: async () => {
       const res = await teamService.getList()
@@ -151,7 +145,7 @@ const RepositoryPage: React.FC = () => {
     : teams
 
   // 根据模态框中选择的项目过滤团队列表（用于模态框）
-  const modalFilteredTeams = modalProjectId 
+  const modalFilteredTeams = modalProjectId
     ? teams.filter(team => team.project_id === modalProjectId)
     : teams
 
@@ -175,7 +169,7 @@ const RepositoryPage: React.FC = () => {
       setRepoModalVisible(false)
       repoForm.resetFields()
       setEditingRepo(null)
-      queryClient.invalidateQueries({ queryKey: ['repositories'] })
+      queryClient.invalidateQueries({queryKey: ['repositories']})
     },
   })
 
@@ -184,7 +178,7 @@ const RepositoryPage: React.FC = () => {
     mutationFn: (id: number) => repositoryService.delete(id),
     onSuccess: () => {
       message.success(t('repository.deleteSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['repositories'] })
+      queryClient.invalidateQueries({queryKey: ['repositories']})
     },
   })
 
@@ -203,7 +197,7 @@ const RepositoryPage: React.FC = () => {
       setAppModalVisible(false)
       appForm.resetFields()
       setEditingApp(null)
-      queryClient.invalidateQueries({ queryKey: ['repositories'] })
+      queryClient.invalidateQueries({queryKey: ['repositories']})
     },
   })
 
@@ -212,7 +206,7 @@ const RepositoryPage: React.FC = () => {
     mutationFn: (id: number) => applicationService.delete(id),
     onSuccess: () => {
       message.success(t('application.deleteSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({queryKey: ['applications']})
     },
   })
 
@@ -227,7 +221,17 @@ const RepositoryPage: React.FC = () => {
   const handleEditRepo = (repo: Repository) => {
     setEditingRepo(repo)
     repoForm.setFieldsValue(repo)
-    setModalProjectId(repo.project_id || undefined)  // 设置模态框项目选择
+    const projectId = repo.project_id || undefined
+    setModalProjectId(projectId)  // 设置模态框项目选择
+
+    // 如果项目下只有一个团队，自动选择它
+    if (projectId) {
+      const projectTeams = teams.filter(team => team.project_id === projectId)
+      if (projectTeams.length === 1) {
+        repoForm.setFieldValue('team_id', projectTeams[0].id)
+      }
+    }
+
     setRepoModalVisible(true)
   }
 
@@ -235,12 +239,12 @@ const RepositoryPage: React.FC = () => {
     setEditingApp(null)
     // 找到当前 repo
     const currentRepo = repoData.find(repo => repo.id === repoId)
-    
+
     // 检查该 repo 是否已有应用
     const hasApps = (currentRepo?.applications?.length || 0) > 0
-    
+
     appForm.resetFields()
-    appForm.setFieldsValue({ 
+    appForm.setFieldsValue({
       repo_id: repoId,
       name: hasApps ? '' : currentRepo?.name,  // 如果没有应用，默认使用 repo 名称
     })
@@ -296,10 +300,11 @@ const RepositoryPage: React.FC = () => {
         const appCount = record.applications?.length || 0
         const fullName = `${record.namespace}/${record.name}`
         return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
             <Space>
-              <FolderOutlined style={{ color: '#1890ff' }} />
-              <span className="repo-name">{fullName}</span>
+              <FolderOutlined style={{color: '#1890ff'}}/>
+              <span style={{color: '#999', fontSize: 12, userSelect: 'none'}}>#{record.id} </span>
+              <span className="repo-name" style={{userSelect: 'text'}}>{fullName}</span>
               {record.git_url && (
                 <Tooltip title={record.git_url}>
                   <a
@@ -308,39 +313,40 @@ const RepositoryPage: React.FC = () => {
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <LinkOutlined style={{ fontSize: 13, color: '#1890ff' }} />
+                    <LinkOutlined style={{fontSize: 13, color: '#1890ff'}}/>
                   </a>
                 </Tooltip>
               )}
             </Space>
-            <span className="app-count" style={{ marginLeft: 16, whiteSpace: 'nowrap' }}>
-              <AppstoreOutlined style={{ fontSize: 12, marginRight: 4 }} />
+            <span className="app-count" style={{marginLeft: 16, whiteSpace: 'nowrap'}}>
+              <AppstoreOutlined style={{fontSize: 12, marginRight: 4}}/>
               {appCount} 个应用
             </span>
           </div>
         )
       },
     },
+    // {
+    //   title: t('repository.gitType'),
+    //   dataIndex: 'git_type',
+    //   key: 'git_type',
+    //   width: 120,
+    //   render: (text) => <Tag color="cyan">{text}</Tag>,
+    // },
     {
-      title: t('repository.gitType'),
-      dataIndex: 'git_type',
-      key: 'git_type',
-      width: 120,
-      render: (text) => <Tag color="cyan">{text}</Tag>,
-    },
-    {
-      title: t('repository.project'),
-      dataIndex: 'project_name',
-      key: 'project_name',
-      width: 150,
-      render: (text) => text ? <Tag color="purple">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
-    },
-    {
-      title: t('repository.team'),
-      dataIndex: 'team_name',
-      key: 'team_name',
-      width: 150,
-      render: (text) => text ? <Tag color="green">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
+      title: t('repository.projectAndTeam'),
+      key: 'project_name-team_name',
+      width: 100,
+      render: (_, record) =>
+        record.project_name ? (
+          <Tag>
+            <span>{record.project_name}</span>
+            <span> / </span>
+            <span>{record.team_name}</span>
+          </Tag>
+        ) : (
+          <span style={{color: '#999'}}>-</span>
+        )
     },
     {
       title: t('common.action'),
@@ -352,7 +358,7 @@ const RepositoryPage: React.FC = () => {
             <Button
               type="text"
               size="small"
-              icon={<PlusOutlined />}
+              icon={<PlusOutlined/>}
               onClick={() => handleCreateApp(record.id)}
             />
           </Tooltip>
@@ -360,7 +366,7 @@ const RepositoryPage: React.FC = () => {
             <Button
               type="text"
               size="small"
-              icon={<EditOutlined />}
+              icon={<EditOutlined/>}
               onClick={() => handleEditRepo(record)}
             />
           </Tooltip>
@@ -372,7 +378,7 @@ const RepositoryPage: React.FC = () => {
               type="text"
               size="small"
               danger
-              icon={<DeleteOutlined />}
+              icon={<DeleteOutlined/>}
             />
           </Popconfirm>
         </Space>
@@ -387,10 +393,11 @@ const RepositoryPage: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 300,
-      render: (text) => (
-        <Space style={{ paddingLeft: 24 }}>
-          <AppstoreOutlined style={{ color: '#52c41a' }} />
-          <span>{text}</span>
+      render: (text, record) => (
+        <Space style={{paddingLeft: 24}}>
+          <AppstoreOutlined style={{color: '#52c41a'}}/>
+          <span style={{color: '#999', fontSize: 12, userSelect: 'none'}}>#{record.id} </span>
+          <span style={{userSelect: 'text'}}>{text}</span>
         </Space>
       ),
     },
@@ -437,7 +444,7 @@ const RepositoryPage: React.FC = () => {
             <Button
               type="text"
               size="small"
-              icon={<HistoryOutlined />}
+              icon={<HistoryOutlined/>}
               onClick={(e) => {
                 e.stopPropagation()
                 handleViewBuilds(record)
@@ -448,7 +455,7 @@ const RepositoryPage: React.FC = () => {
             <Button
               type="text"
               size="small"
-              icon={<EditOutlined />}
+              icon={<EditOutlined/>}
               onClick={() => handleEditApp(record)}
             />
           </Tooltip>
@@ -460,7 +467,7 @@ const RepositoryPage: React.FC = () => {
               type="text"
               size="small"
               danger
-              icon={<DeleteOutlined />}
+              icon={<DeleteOutlined/>}
             />
           </Popconfirm>
         </Space>
@@ -473,24 +480,24 @@ const RepositoryPage: React.FC = () => {
       <Card
         title={
           <Space>
-            <FolderOutlined />
+            <FolderOutlined/>
             <span>{t('repository.title')}</span>
           </Space>
         }
         extra={
           <Space>
             <Button
-              icon={<ReloadOutlined />}
+              icon={<ReloadOutlined/>}
               onClick={() => {
-      queryClient.invalidateQueries({ queryKey: ['repositories'] })
-      queryClient.invalidateQueries({ queryKey: ['applications'] })  // 保留以刷新其他可能的应用查询
+                queryClient.invalidateQueries({queryKey: ['repositories']})
+                queryClient.invalidateQueries({queryKey: ['applications']})  // 保留以刷新其他可能的应用查询
               }}
             >
               {t('common.refresh')}
             </Button>
             <Button
               type="primary"
-              icon={<PlusOutlined />}
+              icon={<PlusOutlined/>}
               onClick={handleCreateRepo}
             >
               {t('repository.create')}
@@ -499,7 +506,7 @@ const RepositoryPage: React.FC = () => {
         }
       >
         {/* 筛选器 */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{marginBottom: 16}}>
           <Space size="middle" wrap>
             <Input.Search
               placeholder={t('repository.keywordPlaceholder')}
@@ -509,7 +516,7 @@ const RepositoryPage: React.FC = () => {
                 handleFilterChange()
               }}
               onSearch={handleFilterChange}
-              style={{ width: 280 }}
+              style={{width: 280}}
               allowClear
             />
             <Select
@@ -524,7 +531,7 @@ const RepositoryPage: React.FC = () => {
                 }
                 handleFilterChange()
               }}
-              style={{ width: 200 }}
+              style={{width: 200}}
               allowClear
             >
               <Select.Option value={undefined}>{t('repository.allProjects')}</Select.Option>
@@ -542,7 +549,7 @@ const RepositoryPage: React.FC = () => {
                 setTeamId(value)
                 handleFilterChange()
               }}
-              style={{ width: 200 }}
+              style={{width: 200}}
               allowClear
               disabled={projectId === NO_RELATION || (!projectId && projectId !== 0)}
             >
@@ -587,12 +594,12 @@ const RepositoryPage: React.FC = () => {
             },
           }}
           onRow={() => ({
-            style: { cursor: 'pointer' },
+            style: {cursor: 'pointer'},
           })}
         />
 
         {repoTotal > repoPageSize && (
-          <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <div style={{marginTop: 16, textAlign: 'right'}}>
             <Pagination
               current={repoPage}
               pageSize={repoPageSize}
@@ -626,21 +633,21 @@ const RepositoryPage: React.FC = () => {
         <Form form={repoForm} layout="vertical">
           {/* 编辑模式下显示代码库标识 */}
           {editingRepo && (
-            <div style={{ 
-              marginBottom: 24, 
-              padding: '12px 16px', 
-              background: '#f5f5f5', 
+            <div style={{
+              marginBottom: 24,
+              padding: '12px 16px',
+              background: '#f5f5f5',
               borderRadius: 4,
               border: '1px solid #d9d9d9'
             }}>
-              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                <div style={{ fontSize: 12, color: '#999' }}>代码库</div>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>
-                  <FolderOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+              <Space direction="vertical" size={4} style={{width: '100%'}}>
+                <div style={{fontSize: 12, color: '#999'}}>代码库</div>
+                <div style={{fontSize: 14, fontWeight: 500}}>
+                  <FolderOutlined style={{marginRight: 8, color: '#1890ff'}}/>
                   {editingRepo.namespace}/{editingRepo.name}
                 </div>
                 {editingRepo.git_url && (
-                  <div style={{ fontSize: 12, color: '#666' }}>
+                  <div style={{fontSize: 12, color: '#666'}}>
                     {editingRepo.git_url}
                   </div>
                 )}
@@ -654,27 +661,27 @@ const RepositoryPage: React.FC = () => {
               <Form.Item
                 name="name"
                 label={t('repository.name')}
-                rules={[{ required: true }]}
+                rules={[{required: true}]}
               >
-                <Input placeholder="my-repo" />
+                <Input placeholder="my-repo"/>
               </Form.Item>
 
               <Form.Item name="description" label={t('common.description')}>
-                <Input.TextArea rows={3} />
+                <Input.TextArea rows={3}/>
               </Form.Item>
 
               <Form.Item
                 name="git_url"
                 label={t('repository.gitUrl')}
-                rules={[{ required: true }]}
+                rules={[{required: true}]}
               >
-                <Input placeholder="https://gitea.company.com/namespace/repo.git" />
+                <Input placeholder="https://gitea.company.com/namespace/repo.git"/>
               </Form.Item>
 
               <Form.Item
                 name="git_type"
                 label={t('repository.gitType')}
-                rules={[{ required: true }]}
+                rules={[{required: true}]}
                 initialValue="gitea"
               >
                 <Select>
@@ -685,19 +692,32 @@ const RepositoryPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item name="git_token" label={t('repository.gitToken')}>
-                <Input.Password placeholder="Optional" />
+                <Input.Password placeholder="Optional"/>
               </Form.Item>
             </>
           )}
 
-          <Form.Item name="project_id" label={t('repository.project')} rules={[{ required: true }]}>
-            <Select 
-              placeholder={t('repository.selectProject')} 
+          <Form.Item name="project_id" label={t('repository.project')} rules={[{required: true}]}>
+            <Select
+              placeholder={t('repository.selectProject')}
               allowClear
               onChange={(value) => {
                 setModalProjectId(value)
-                // 当项目改变时，清空团队选择
-                repoForm.setFieldValue('team_id', undefined)
+
+                // 当项目改变时，检查该项目下的团队数量
+                if (value) {
+                  const projectTeams = teams.filter(team => team.project_id === value)
+                  if (projectTeams.length === 1) {
+                    // 如果只有一个团队，自动选择它
+                    repoForm.setFieldValue('team_id', projectTeams[0].id)
+                  } else {
+                    // 如果有多个团队或没有团队，清空选择
+                    repoForm.setFieldValue('team_id', undefined)
+                  }
+                } else {
+                  // 如果清空项目选择，也清空团队选择
+                  repoForm.setFieldValue('team_id', undefined)
+                }
               }}
             >
               {projects.map((project: ProjectSimple) => (
@@ -709,8 +729,8 @@ const RepositoryPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="team_id" label={t('repository.team')}>
-            <Select 
-              placeholder={t('repository.selectTeam')} 
+            <Select
+              placeholder={t('repository.selectTeam')}
               allowClear
               disabled={!modalProjectId}
             >
@@ -741,7 +761,7 @@ const RepositoryPage: React.FC = () => {
           <Form.Item
             name="repo_id"
             label={t('application.repository')}
-            rules={[{ required: true }]}
+            rules={[{required: true}]}
           >
             <Select disabled>
               {repoData?.map((repo) => (
@@ -755,32 +775,32 @@ const RepositoryPage: React.FC = () => {
           <Form.Item
             name="name"
             label={t('application.name')}
-            rules={[{ required: true }]}
+            rules={[{required: true}]}
           >
-            <Input placeholder="my-service" />
+            <Input placeholder="my-service"/>
           </Form.Item>
 
           <Form.Item name="display_name" label={t('application.displayName')}>
-            <Input placeholder="My Service" />
+            <Input placeholder="My Service"/>
           </Form.Item>
 
           <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} />
+            <Input.TextArea rows={3}/>
           </Form.Item>
 
           <Form.Item
             name="app_type"
             label={t('application.appType')}
-            rules={[{ required: true }]}
+            rules={[{required: true}]}
           >
             <Select placeholder={t('application.appType')}>
               {appTypes.map((type: AppTypeOption) => (
                 <Select.Option key={type.value} value={type.value}>
                   <Space>
-                    <span style={{ color: type.color }}>●</span>
+                    <span style={{color: type.color}}>●</span>
                     <span>{type.label}</span>
                     {type.description && (
-                      <span style={{ color: '#999', fontSize: '12px' }}>
+                      <span style={{color: '#999', fontSize: '12px'}}>
                         ({type.description})
                       </span>
                     )}

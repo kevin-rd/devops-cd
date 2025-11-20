@@ -181,7 +181,10 @@ func (h *BatchHandler) Create(c *gin.Context) {
 				appProject := ""
 				if app != nil {
 					appName = app.Name
-					appProject = app.Namespace
+					// 从 Repository 获取 namespace 作为 project
+					if app.Repository != nil {
+						appProject = app.Repository.Namespace
+					}
 				}
 
 				statusName := getStatusName(conflictBatch.Status)
@@ -267,7 +270,10 @@ func (h *BatchHandler) Update(c *gin.Context) {
 				appProject := ""
 				if app != nil {
 					appName = app.Name
-					appProject = app.Namespace
+					// 从 Repository 获取 namespace 作为 project
+					if app.Repository != nil {
+						appProject = app.Repository.Namespace
+					}
 				}
 
 				statusName := getStatusName(conflictBatch.Status)

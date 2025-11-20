@@ -229,9 +229,9 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 	appResp := &dto.ApplicationResponse{
 		ID:          app.ID,
 		Name:        app.Name,
-		Namespace:   app.Namespace,
 		DisplayName: app.DisplayName,
 		Description: app.Description,
+		ProjectID:   app.ProjectID,
 		RepoID:      app.RepoID,
 		AppType:     app.AppType,
 		TeamID:      app.TeamID,
@@ -241,8 +241,14 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 		UpdatedAt:   app.UpdatedAt.Format(time.RFC3339),
 	}
 
-	// 添加代码库名称
+	// 添加项目名称
+	if app.Project != nil {
+		appResp.ProjectName = &app.Project.Name
+	}
+
+	// 添加代码库信息（namespace 和名称）
 	if app.Repository != nil {
+		appResp.Namespace = app.Repository.Namespace // 从 Repository 获取 namespace
 		repoName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 		appResp.RepoName = &repoName
 	}

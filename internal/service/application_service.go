@@ -52,17 +52,22 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 		return nil, err
 	}
 
-	// 2. 检查应用名称在同一namespace下是否已存在
-	existing, _ := s.appRepo.FindByNamespaceAndName(repo.Namespace, req.Name)
-	if existing != nil {
-		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-			fmt.Sprintf("应用 %s 在命名空间 %s 中已存在", req.Name, repo.Namespace), nil)
+	// 2. 检查代码库是否关联了项目
+	if repo.ProjectID == nil {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "代码库未关联项目", nil)
 	}
 
-	// 3. 创建应用（自动继承namespace）
+	// 3. 检查应用名称在同一项目下是否已存在
+	existing, _ := s.appRepo.FindByProjectIDAndName(*repo.ProjectID, req.Name)
+	if existing != nil {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
+			fmt.Sprintf("应用 %s 在该项目中已存在", req.Name), nil)
+	}
+
+	// 4. 创建应用（自动继承 project_id）
 	app := &model.Application{
 		Name:        req.Name,
-		Namespace:   repo.Namespace, // 继承自repository
+		ProjectID:   *repo.ProjectID, // 继承自 repository
 		DisplayName: req.DisplayName,
 		Description: req.Description,
 		RepoID:      req.RepoID,
@@ -104,6 +109,7 @@ func (s *applicationService) List(query *dto.ApplicationListQuery) ([]*dto.Appli
 	apps, total, err := s.appRepo.List(
 		query.GetPage(),
 		query.GetPageSize(),
+		query.ProjectID,
 		query.RepoID,
 		query.TeamID,
 		query.AppType,
@@ -129,17 +135,17 @@ func (s *applicationService) Update(id int64, req *dto.UpdateApplicationRequest)
 		return nil, err
 	}
 
-	// 检查名称是否冲突（在同一namespace下唯一）
+	// 检查名称是否冲突（在同一项目下唯一）
 	if req.Name != nil && *req.Name != app.Name {
-		existing, _ := s.appRepo.FindByNamespaceAndName(app.Namespace, *req.Name)
+		existing, _ := s.appRepo.FindByProjectIDAndName(app.ProjectID, *req.Name)
 		if existing != nil {
 			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
-				fmt.Sprintf("应用 %s 在命名空间 %s 中已存在", *req.Name, app.Namespace), nil)
+				fmt.Sprintf("应用 %s 在该项目中已存在", *req.Name), nil)
 		}
 		app.Name = *req.Name
 	}
 
-	// 注意：不允许修改repo_id和namespace，保证数据一致性
+	// 注意：不允许修改 repo_id 和 project_id，保证数据一致性
 
 	// 更新字段
 	if req.DisplayName != nil {
@@ -316,9 +322,9 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 	resp := &dto.ApplicationResponse{
 		ID:          app.ID,
 		Name:        app.Name,
-		Namespace:   app.Namespace,
 		DisplayName: app.DisplayName,
 		Description: app.Description,
+		ProjectID:   app.ProjectID,
 		RepoID:      app.RepoID,
 		AppType:     app.AppType,
 		TeamID:      app.TeamID,
@@ -330,8 +336,14 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 
 	resp.DefaultDependsOn = app.DefaultDependsOn
 
-	// 添加代码库名称
+	// 添加项目名称
+	if app.Project != nil {
+		resp.ProjectName = &app.Project.Name
+	}
+
+	// 添加代码库信息（namespace 和名称）
 	if app.Repository != nil {
+		resp.Namespace = app.Repository.Namespace // 从 Repository 获取 namespace
 		repoName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 		resp.RepoName = &repoName
 	}
@@ -406,6 +418,7 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 		query.GetPage(),
 		query.GetPageSize(),
 		query.Keyword,
+		query.ProjectID,
 		query.RepoID,
 		query.TeamID,
 		query.AppType,
@@ -425,9 +438,9 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 		resp := &dto.ApplicationBuildResponse{
 			ID:          app.ID,
 			Name:        app.Name,
-			Namespace:   app.Namespace,
 			DisplayName: app.DisplayName,
 			Description: app.Description,
+			ProjectID:   app.ProjectID,
 			RepoID:      app.RepoID,
 			AppType:     app.AppType,
 			TeamID:      app.TeamID,
@@ -435,8 +448,14 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 			Status:      app.Status,
 		}
 
-		// 添加代码库名称
+		// 添加项目名称
+		if app.Project != nil {
+			resp.ProjectName = &app.Project.Name
+		}
+
+		// 添加代码库信息（namespace 和名称）
 		if app.Repository != nil {
+			resp.Namespace = app.Repository.Namespace // 从 Repository 获取 namespace
 			repoFullName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 			resp.RepoFullName = &repoFullName
 		}

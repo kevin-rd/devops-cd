@@ -293,6 +293,22 @@ export default function AppSelectionTable(
       render: (type: string) => <Tag color="blue">{type}</Tag>,
     },
     {
+      title: t('application.project'),
+      dataIndex: 'project_name',
+      key: 'project_name',
+      width: 120,
+      ellipsis: true,
+      render: (text: string) => text || '-',
+    },
+    {
+      title: t('application.team'),
+      dataIndex: 'team_name',
+      key: 'team_name',
+      width: 120,
+      ellipsis: true,
+      render: (text: string) => text || '-',
+    },
+    {
       title: t('application.repository'),
       dataIndex: 'repo_full_name',
       key: 'repo_full_name',

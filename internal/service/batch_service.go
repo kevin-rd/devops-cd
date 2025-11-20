@@ -561,7 +561,7 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			releaseResp.AppName = release.Application.Name
 			releaseResp.AppDisplayName = release.Application.DisplayName
 			releaseResp.AppType = release.Application.AppType
-			releaseResp.AppProject = release.Application.Namespace
+			//releaseResp.AppProject = release.Application.Namespace
 			releaseResp.TeamID = release.Application.TeamID
 			releaseResp.DeployedTag = release.Application.DeployedTag // 当前部署的标签
 			releaseResp.DefaultDependsOn = release.Application.DefaultDependsOn

@@ -7,19 +7,19 @@
 -- 1. 代码库表 (repositories)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `repositories` (
-    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
-    `project` VARCHAR(63) NOT NULL COMMENT 'user/org 如(my_org)', --- todo: rename to namespace
-    `name` VARCHAR(63) NOT NULL COMMENT '仓库名称(如: my_repo)',
-    `description` TEXT DEFAULT NULL COMMENT '代码库描述',
-    `git_url` VARCHAR(255) NOT NULL COMMENT 'Git仓库地址',
-    `git_type` VARCHAR(63) NOT NULL COMMENT 'Git类型(gitlab/github/gitea等)',
-    `language` VARCHAR(255) DEFAULT NULL COMMENT '主要编程语言',
-    `team_id` BIGINT DEFAULT NULL COMMENT '所属团队ID',
-    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用)',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
-    UNIQUE INDEX `idx_project_name` (`project`, `name`)
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
+  `project` VARCHAR(63) NOT NULL COMMENT 'user/org 如(my_org)', --- todo: rename to namespace
+  `name` VARCHAR(63) NOT NULL COMMENT '仓库名称(如: my_repo)',
+  `description` TEXT DEFAULT NULL COMMENT '代码库描述',
+  `git_url` VARCHAR(255) NOT NULL COMMENT 'Git仓库地址',
+  `git_type` VARCHAR(63) NOT NULL COMMENT 'Git类型(gitlab/github/gitea等)',
+  `language` VARCHAR(255) DEFAULT NULL COMMENT '主要编程语言',
+  `team_id` BIGINT DEFAULT NULL COMMENT '所属团队ID',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用)',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
+  UNIQUE INDEX `idx_project_name` (`project`, `name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='代码库表';
 
 -- =====================================================

@@ -92,6 +92,8 @@ export interface Application {
   name: string
   display_name: string
   description: string
+  project_id: number
+  project_name: string
   repo_id: number
   repo_name: string
   namespace: string
@@ -109,7 +111,6 @@ export interface CreateApplicationRequest {
   display_name?: string
   description?: string
   repo_id: number
-  namespace: string
   app_type: string
   team_id?: number
 }
@@ -131,6 +132,7 @@ export interface RepositoryQueryParams extends PaginationParams {
 
 export interface ApplicationQueryParams extends PaginationParams {
   name?: string
+  project_id?: number
   repo_id?: number
   namespace?: string
   app_type?: string

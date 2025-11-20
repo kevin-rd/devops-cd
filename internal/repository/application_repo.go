@@ -15,11 +15,11 @@ type ApplicationRepository interface {
 	Create(app *model.Application) error
 	FindByID(id int64) (*model.Application, error)
 	FindByName(name string) (*model.Application, error)
-	FindByNamespaceAndName(namespace, name string) (*model.Application, error)
+	FindByProjectIDAndName(projectID int64, name string) (*model.Application, error)
 	FindByRepoIDAndName(repoID int64, name string) (*model.Application, error)
-	List(page, pageSize int, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error)
+	List(page, pageSize int, projectID *int64, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error)
 	ListByRepoID(repoID int64) ([]*model.Application, error)
-	SearchWithBuilds(page, pageSize int, keyword string, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error)
+	SearchWithBuilds(page, pageSize int, keyword string, projectID *int64, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error)
 	Update(app *model.Application) error
 	Delete(id int64) error
 	UpdateDefaultDependencies(appID int64, deps []int64) error
@@ -44,7 +44,7 @@ func (r *applicationRepository) Create(app *model.Application) error {
 
 func (r *applicationRepository) FindByID(id int64) (*model.Application, error) {
 	var app model.Application
-	err := r.db.Preload("Repository").Preload("Team").First(&app, id).Error
+	err := r.db.Preload("Project").Preload("Repository").Preload("Team").First(&app, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -66,9 +66,9 @@ func (r *applicationRepository) FindByName(name string) (*model.Application, err
 	return &app, nil
 }
 
-func (r *applicationRepository) FindByNamespaceAndName(namespace, name string) (*model.Application, error) {
+func (r *applicationRepository) FindByProjectIDAndName(projectID int64, name string) (*model.Application, error) {
 	var app model.Application
-	err := r.db.Where("namespace = ? AND name = ? AND deleted_at IS NULL", namespace, name).First(&app).Error
+	err := r.db.Where("project_id = ? AND name = ? AND deleted_at IS NULL", projectID, name).First(&app).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -90,13 +90,16 @@ func (r *applicationRepository) FindByRepoIDAndName(repoID int64, name string) (
 	return &app, nil
 }
 
-func (r *applicationRepository) List(page, pageSize int, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error) {
+func (r *applicationRepository) List(page, pageSize int, projectID *int64, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error) {
 	var apps []*model.Application
 	var total int64
 
-	query := r.db.Model(&model.Application{}).Preload("Repository").Preload("Team")
+	query := r.db.Model(&model.Application{}).Preload("Project").Preload("Repository").Preload("Team")
 
 	// 过滤条件
+	if projectID != nil {
+		query = query.Where("project_id = ?", *projectID)
+	}
 	if repoID != nil {
 		query = query.Where("repo_id = ?", *repoID)
 	}
@@ -131,6 +134,7 @@ func (r *applicationRepository) List(page, pageSize int, repoID *int64, teamID *
 func (r *applicationRepository) ListByRepoID(repoID int64) ([]*model.Application, error) {
 	var apps []*model.Application
 	err := r.db.Where("repo_id = ? AND deleted_at IS NULL", repoID).
+		Preload("Project").
 		Preload("Repository").
 		Preload("Team").
 		Order("created_at DESC").
@@ -172,7 +176,7 @@ func (r *applicationRepository) UpdateDefaultDependencies(appID int64, deps []in
 
 func (r *applicationRepository) ListAllWithDependencies() ([]*model.Application, error) {
 	var apps []*model.Application
-	if err := r.db.Select("id", "name", "namespace", "app_type", "default_depends_on").
+	if err := r.db.Select("id", "name", "project_id", "app_type", "default_depends_on").
 		Where("deleted_at IS NULL").
 		Find(&apps).Error; err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询应用依赖信息失败", err)
@@ -194,7 +198,7 @@ func (r *applicationRepository) FindByIDs(ids []int64) ([]*model.Application, er
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询 app、repo、commit、tag 等字段）
 // 对于有 deployed_tag 的应用，返回部署后的最新构建；否则返回最新构建
-func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword string, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error) {
+func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword string, projectID *int64, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error) {
 	var apps []*model.ApplicationWithBuild
 	var total int64
 
@@ -246,11 +250,15 @@ func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword str
 		Joins("LEFT JOIN repositories ON applications.repo_id = repositories.id").
 		Joins("LEFT JOIN (?) AS latest_build_ids ON applications.id = latest_build_ids.app_id", latestBuildSubQuery).
 		Joins("LEFT JOIN builds latest_builds ON latest_build_ids.latest_build_id = latest_builds.id").
+		Preload("Project").
 		Preload("Repository").
 		Preload("Team").
 		Where("applications.deleted_at IS NULL")
 
 	// 过滤条件
+	if projectID != nil {
+		baseQuery = baseQuery.Where("applications.project_id = ?", *projectID)
+	}
 	if repoID != nil {
 		baseQuery = baseQuery.Where("applications.repo_id = ?", *repoID)
 	}
@@ -271,13 +279,12 @@ func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword str
 		baseQuery = baseQuery.Where(`(
 			applications.name LIKE ? OR
 			applications.display_name LIKE ? OR
-			applications.namespace LIKE ? OR
 			repositories.name LIKE ? OR
 			latest_builds.commit_sha LIKE ? OR
 			latest_builds.commit_message LIKE ? OR
 			latest_builds.image_tag LIKE ?
 		)`,
-			keywordPattern, keywordPattern, keywordPattern, keywordPattern,
+			keywordPattern, keywordPattern, keywordPattern,
 			keywordPattern, keywordPattern, keywordPattern,
 		)
 	}
