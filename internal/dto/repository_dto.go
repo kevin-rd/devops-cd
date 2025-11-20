@@ -61,6 +61,7 @@ type RepositoryResponse struct {
 type RepositoryListQuery struct {
 	PageQuery                // 分页参数（page, page_size, keyword, status）
 	Namespace        *string `form:"namespace"`                                              // 可选：按命名空间过滤
+	ProjectID        *int64  `form:"project_id"`                                             // 可选：按项目ID过滤
 	TeamID           *int64  `form:"team_id"`                                                // 可选：按团队ID过滤
 	GitType          *string `form:"git_type" binding:"omitempty,oneof=gitea gitlab github"` // 可选：按Git类型过滤
 	WithApplications *bool   `form:"with_applications"`                                      // 可选：是否包含应用列表，默认false

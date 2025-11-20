@@ -9,6 +9,7 @@ import {
   MenuUnfoldOutlined,
   RocketOutlined,
   ProjectOutlined,
+  ApiOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -44,6 +45,11 @@ const MainLayout: React.FC = () => {
       key: '/repository',
       icon: <FolderOutlined />,
       label: t('menu.repository'),
+    },
+    {
+      key: '/repo-sources',
+      icon: <ApiOutlined />,
+      label: t('menu.repoSources'),
     },
     {
       key: '/project',
@@ -117,11 +123,13 @@ const MainLayout: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={[
-            location.pathname.includes('/insights') 
-              ? '/batch/insights' 
+            location.pathname.includes('/insights')
+              ? '/batch/insights'
               : location.pathname.startsWith('/batch')
               ? '/batch'
-              : location.pathname
+              : location.pathname.startsWith('/repo-sources')
+              ? '/repo-sources'
+              : location.pathname,
           ]}
           items={menuItems}
           onClick={handleMenuClick}

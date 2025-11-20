@@ -153,7 +153,7 @@ func (h TriggerSealTransition) Handle(batch *model.Batch, from, to int8, options
 	// 1. 查询批次中的所有应用
 	var releaseApps []model.ReleaseApp
 	if err := h.sm.db.Where("batch_id = ?", batch.ID).Find(&releaseApps).Error; err != nil {
-		return fmt.Errorf("查询%s失败: %w", model.ReleaseApp.TableName, err)
+		return fmt.Errorf("查询%s失败: %w", model.ReleaseApp{}.TableName(), err)
 	}
 
 	// 2. 检查应用数量（空批次不允许封板）

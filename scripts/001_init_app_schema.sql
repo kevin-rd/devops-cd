@@ -68,8 +68,15 @@ CREATE TABLE IF NOT EXISTS `environments` (
     INDEX `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='环境表';
 
+-- 插入默认环境
+INSERT INTO `environments` (`name`, `display_name`, `description`, `env_type`, `priority`, `require_approval`, `auto_deploy`, `status`)
+VALUES
+    ('pre', '预发布环境', '用于上线前的最终验证', 'pre', 3, TRUE, FALSE, 1),
+    ('prod', '生产环境', '正式生产环境', 'prod', 4, TRUE, FALSE, 1)
+    ON DUPLICATE KEY UPDATE `name` = `name`;
+
 -- =====================================================
--- 5. 表关系说明
+-- 4. 表关系说明
 -- =====================================================
 -- repositories (1) ----< (N) applications: 一个代码库可以有多个应用
 -- applications (N) ----< (N) environments: 应用和环境通过app_env_configs表建立多对多关系

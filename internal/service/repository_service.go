@@ -84,6 +84,7 @@ func (s *repositoryService) List(query *dto.RepositoryListQuery) ([]*dto.Reposit
 		query.GetPage(),
 		query.GetPageSize(),
 		query.Namespace,
+		query.ProjectID,
 		query.TeamID,
 		query.GitType,
 		query.Keyword,
@@ -142,36 +143,31 @@ func (s *repositoryService) Update(id int64, req *dto.UpdateRepositoryRequest) (
 	}
 
 	// 更新字段
+	updates := make(map[string]interface{})
 	if req.Namespace != nil {
-		repo.Namespace = *req.Namespace
+		updates["namespace"] = *req.Namespace
 	}
 	if req.Name != nil {
-		repo.Name = *req.Name
+		updates["name"] = *req.Name
 	}
 	if req.Description != nil {
-		repo.Description = req.Description
+		updates["description"] = req.Description
 	}
 	if req.GitURL != nil {
-		repo.GitURL = *req.GitURL
-	}
-	if req.GitType != nil {
-		repo.GitType = *req.GitType
-	}
-	if req.Language != nil {
-		repo.Language = req.Language
-	}
-	if req.TeamID != nil {
-		repo.TeamID = req.TeamID
+		updates["git_url"] = *req.GitURL
 	}
 	if req.ProjectID != nil {
-		repo.ProjectID = req.ProjectID
+		updates["project_id"] = req.ProjectID
+	}
+	if req.TeamID != nil {
+		updates["team_id"] = req.TeamID
 	}
 	if req.Status != nil {
-		repo.Status = *req.Status
+		updates["status"] = *req.Status
 	}
 
 	// 保存更新
-	if err := s.repo.Update(repo); err != nil {
+	if err := s.repo.Update(id, updates); err != nil {
 		return nil, err
 	}
 

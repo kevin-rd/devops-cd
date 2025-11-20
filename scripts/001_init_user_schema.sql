@@ -60,12 +60,6 @@ INSERT INTO `local_users` (`username`, `password`, `email`, `display_name`, `sta
 VALUES ('admin', '$2a$10$N9qo8u1K5PJXh3x9Y7u6J.eqw6Xb5nBxw5TqKJ1x9Y7u6J.eqw6Xb', 'admin@example.com', '系统管理员', 1)
 ON DUPLICATE KEY UPDATE `username` = `username`;
 
--- 插入默认环境
-INSERT INTO `environments` (`name`, `display_name`, `description`, `env_type`, `priority`, `require_approval`, `auto_deploy`, `status`)
-VALUES
-    ('pre', '预发布环境', '用于上线前的最终验证', 'pre', 3, TRUE, FALSE, 1),
-    ('prod', '生产环境', '正式生产环境', 'prod', 4, TRUE, FALSE, 1)
-ON DUPLICATE KEY UPDATE `name` = `name`;
 
 -- =====================================================
 -- 5. 表关系说明

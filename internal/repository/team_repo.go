@@ -16,6 +16,8 @@ type TeamRepository interface {
 	ListByProjectIDs(projectIDs []int64) ([]*model.Team, error)
 	Update(team *model.Team) error
 	Delete(id int64) error
+	// VerifyTeamBelongsToProject 验证团队是否属于指定项目
+	VerifyTeamBelongsToProject(teamID int64, projectID int64) (bool, error)
 }
 
 type teamRepository struct {
@@ -101,4 +103,16 @@ func (r *teamRepository) Delete(id int64) error {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除团队失败", err)
 	}
 	return nil
+}
+
+// VerifyTeamBelongsToProject 验证团队是否属于指定项目
+func (r *teamRepository) VerifyTeamBelongsToProject(teamID int64, projectID int64) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.Team{}).
+		Where("id = ? AND project_id = ? AND deleted_at IS NULL", teamID, projectID).
+		Count(&count).Error
+	if err != nil {
+		return false, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "验证团队归属失败", err)
+	}
+	return count > 0, nil
 }

@@ -10,11 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // Setup 设置路由
-func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
+func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) *gin.Engine {
 	// 设置Gin模式
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -41,6 +42,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	// 初始化Repository
 	userRepo := repository.NewUserRepository()
 	repositoryRepo := repository.NewRepositoryRepository(db)
+	repoSyncSourceRepo := repository.NewRepoSyncSourceRepository(db)
 	applicationRepo := repository.NewApplicationRepository(db)
 	buildRepo := repository.NewBuildRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
@@ -54,6 +56,8 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	teamService := service.NewTeamService(teamRepo, projectRepo)
 	teamMemberService := service.NewTeamMemberService(teamMemberRepo, teamRepo, userRepo)
 	repositoryService := service.NewRepositoryService(repositoryRepo, applicationRepo)
+	repoSourceService := service.NewRepoSourceService(repoSyncSourceRepo, teamRepo, cfg.Crypto.AESKey)
+	repoSyncService := service.NewRepoSyncService(db, logger, cfg.Crypto.AESKey)
 	applicationService := service.NewApplicationService(applicationRepo, repositoryRepo, db)
 	batchService := service.NewBatchService(db)
 	buildService := service.NewBuildService(db, buildRepo, repositoryRepo, applicationRepo, coreEngine)
@@ -64,6 +68,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 	teamHandler := handler.NewTeamHandler(teamService)
 	teamMemberHandler := handler.NewTeamMemberHandler(teamMemberService)
 	repositoryHandler := handler.NewRepositoryHandler(repositoryService)
+	repoSourceHandler := handler.NewRepoSourceHandler(repoSourceService, repoSyncService)
 	applicationHandler := handler.NewApplicationHandler(applicationService)
 	batchHandler := handler.NewBatchHandler(coreEngine, batchService)
 	buildHandler := handler.NewBuildHandler(buildService, batchService)
@@ -126,6 +131,17 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine) *gin.Engine {
 				groupRepository.GET("", repositoryHandler.GetByID)        // 获取详情（query参数id，包含应用列表）
 				groupRepository.PUT("", repositoryHandler.Update)         // 更新代码库（JSON包含id）
 				groupRepository.POST("/delete", repositoryHandler.Delete) // 删除代码库（软删除，JSON包含id）
+			}
+
+			// 仓库源管理
+			repoSourcesGroup := authed.Group("/repo-sources")
+			{
+				repoSourcesGroup.GET("", repoSourceHandler.List)
+				repoSourcesGroup.POST("", repoSourceHandler.Create)
+				repoSourcesGroup.PUT("", repoSourceHandler.Update)
+				repoSourcesGroup.DELETE("/:id", repoSourceHandler.Delete)
+				repoSourcesGroup.POST("/:id/test", repoSourceHandler.TestConnection)
+				repoSourcesGroup.POST("/:id/sync", repoSourceHandler.SyncNow)
 			}
 
 			// 应用管理

@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS `builds` (
 -- =====================================================
 -- 2. 发布批次表 (batches)
 -- =====================================================
-
 CREATE TABLE IF NOT EXISTS `release_batches` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     
@@ -145,7 +144,7 @@ CREATE TABLE `deployments` (
 
 
 -- =====================================================
--- 4. 表关系说明
+-- 5. 表关系说明
 -- =====================================================
 -- applications (1) ----< (N) builds: 一个应用有多个构建记录
 -- release_batches (1) ----< (N) release_apps: 一个发布批次有多个应用

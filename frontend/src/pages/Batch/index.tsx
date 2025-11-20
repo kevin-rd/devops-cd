@@ -107,7 +107,6 @@ export default function BatchList() {
       const res = await batchService.list(params)
       // 后端返回格式: { code: 200, message: "success", data: [...], total: 2, page: 1, size: 20 }
       // res 本身就是这个对象（经过 axios 拦截器处理）
-      console.log('Batch list response:', res)
 
       // data 是数组，total/page/size 在根级别
       return {

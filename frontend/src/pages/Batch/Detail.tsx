@@ -66,7 +66,6 @@ export default function BatchDetail() {
     queryKey: ['batchDetail', id],
     queryFn: async () => {
       const res = await batchService.get(Number(id), 1, 200) // 获取所有应用
-      console.log('Batch detail response:', res)
       return res.data as Batch
     },
     enabled: !!id,

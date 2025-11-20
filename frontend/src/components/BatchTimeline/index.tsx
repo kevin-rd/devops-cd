@@ -3,7 +3,7 @@ import { LoadingOutlined, CheckCircleOutlined, PlayCircleOutlined } from '@ant-d
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
-import type { Batch } from '@/types'
+import type { Batch } from '@/types/batch.ts'
 import { formatCreatedTime } from '@/utils/time'
 import './index.css'
 

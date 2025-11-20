@@ -133,12 +133,6 @@ request.interceptors.request.use(
     
     // 调试：打印请求信息
     if (config.url?.includes('batch')) {
-      console.log('Batch API Request:', {
-        url: config.url,
-        method: config.method,
-        data: config.data,
-        headers: config.headers,
-      })
     }
     
     return config

@@ -24,7 +24,7 @@ func NewScheduler(db *gorm.DB, logger *zap.Logger, cfg *config.Config) *Schedule
 	return &Scheduler{
 		cron:          c,
 		logger:        logger,
-		repoSyncSvc:   service.NewRepoSyncService(db, logger, &cfg.Repo),
+		repoSyncSvc:   service.NewRepoSyncService(db, logger, cfg.Crypto.AESKey),
 		cronSchedules: make(map[string]cron.EntryID),
 	}
 }

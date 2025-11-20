@@ -131,7 +131,7 @@ func main() {
 	}
 
 	// 设置路由
-	r := router.Setup(cfg, coreEngine)
+	r := router.Setup(cfg, coreEngine, logger.Log)
 
 	// 创建HTTP服务器
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

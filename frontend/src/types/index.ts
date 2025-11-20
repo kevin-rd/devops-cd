@@ -121,6 +121,7 @@ export interface UpdateApplicationRequest extends Partial<CreateApplicationReque
 export interface RepositoryQueryParams extends PaginationParams {
   name?: string
   git_type?: string
+  project_id?: number
   team_id?: number
   status?: number
   namespace?: string

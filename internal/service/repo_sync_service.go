@@ -1,14 +1,13 @@
 package service
 
 import (
-	"devops-cd/internal/pkg/git/api"
 	"fmt"
-	"strings"
 
 	"devops-cd/internal/model"
-	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/pkg/git"
+	"devops-cd/internal/pkg/git/api"
 	"devops-cd/internal/repository"
+	"devops-cd/pkg/utils"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -16,84 +15,79 @@ import (
 
 // RepoSyncService 代码库同步服务
 type RepoSyncService struct {
-	db       *gorm.DB
-	repoRepo repository.RepositoryRepository
-	logger   *zap.Logger
-	config   *config.RepoConfig
+	repoRepo   repository.RepositoryRepository
+	sourceRepo repository.RepoSyncSourceRepository
+	teamRepo   repository.TeamRepository
+	logger     *zap.Logger
+	aesKey     string
 }
 
 // NewRepoSyncService 创建代码库同步服务
-func NewRepoSyncService(db *gorm.DB, logger *zap.Logger, cfg *config.RepoConfig) *RepoSyncService {
+func NewRepoSyncService(db *gorm.DB, logger *zap.Logger, aesKey string) *RepoSyncService {
 	return &RepoSyncService{
-		db:       db,
-		repoRepo: repository.NewRepositoryRepository(db),
-		logger:   logger,
-		config:   cfg,
+		repoRepo:   repository.NewRepositoryRepository(db),
+		sourceRepo: repository.NewRepoSyncSourceRepository(db),
+		teamRepo:   repository.NewTeamRepository(db),
+		logger:     logger,
+		aesKey:     aesKey,
 	}
 }
 
 // SyncAllSources 同步所有启用的代码库源
 func (s *RepoSyncService) SyncAllSources() error {
-	log := s.logger.Sugar()
-	if s.config == nil || len(s.config.Sources) == 0 {
-		s.logger.Info("没有配置代码库同步源，跳过同步")
+	sources, err := s.sourceRepo.ListEnabled()
+	if err != nil {
+		return err
+	}
+
+	if len(sources) == 0 {
+		s.logger.Info("没有启用的仓库源，跳过同步")
 		return nil
 	}
 
-	log.Infof("开始同步代码库 sources_count=%d", len(s.config.Sources))
+	s.logger.Info("开始同步仓库源", zap.Int("source_count", len(sources)))
 
-	totalSuccess := 0
-	totalFailed := 0
+	for _, source := range sources {
+		success, failed, syncErr := s.SyncFromSource(source)
+		status := "success"
+		message := fmt.Sprintf("同步完成: 成功 %d 个, 失败 %d 个", success, failed)
 
-	for _, source := range s.config.Sources {
-		if !source.Enabled {
-			log.Debugf("跳过未启用的同步源 %s", source.Name)
-			continue
+		if syncErr != nil || failed > 0 {
+			status = "failed"
+			if syncErr != nil {
+				message = fmt.Sprintf("同步失败: %v", syncErr)
+			}
 		}
 
-		success, failed, err := s.SyncFromSource(&source)
-		if err != nil {
-			s.logger.Error("同步代码库源失败", zap.String("source", source.Name), zap.Error(err))
-			totalFailed += failed
-			continue
+		if err := s.sourceRepo.UpdateSyncResult(source.ID, status, &message); err != nil {
+			s.logger.Warn("更新同步结果失败", zap.Int64("source_id", source.ID), zap.Error(err))
 		}
-
-		totalSuccess += success
-		totalFailed += failed
-
-		log.Infof("代码库源: %s同步完成: %d 成功, %d 失败", source.Name, success, failed)
 	}
 
-	log.Infof("所有代码库同步完成 %d 成功, %d 失败", totalSuccess, totalFailed)
 	return nil
 }
 
 // SyncFromSource 从单个源同步代码库
-func (s *RepoSyncService) SyncFromSource(source *config.RepoSourceConfig) (int, int, error) {
+func (s *RepoSyncService) SyncFromSource(source *model.RepoSyncSource) (int, int, error) {
 	s.logger.Info("开始同步代码库源",
-		zap.String("source", source.Name),
+		zap.Int64("source_id", source.ID),
 		zap.String("platform", source.Platform),
-		zap.String("sync_mode", source.SyncMode))
+		zap.String("namespace", source.Namespace))
 
-	// 创建 Git 客户端
-	gitClient, err := git.NewClient(source.BaseURL, source.Token, source.Platform)
+	gitClient, err := s.buildGitClient(source)
 	if err != nil {
-		return 0, 0, fmt.Errorf("创建Git客户端失败: %w", err)
+		return 0, 0, fmt.Errorf("创建 Git 客户端失败: %w", err)
 	}
 
-	// 获取仓库列表
-	allRepos, err := s.fetchRepositories(gitClient, source)
+	repos, err := gitClient.ListRepositories(source.Namespace)
 	if err != nil {
 		return 0, 0, fmt.Errorf("获取仓库列表失败: %w", err)
 	}
 
-	s.logger.Info("获取到仓库列表", zap.Int("count", len(allRepos)))
-
-	// 同步到数据库
 	successCount := 0
 	failedCount := 0
 
-	for _, repoInfo := range allRepos {
+	for _, repoInfo := range repos {
 		if err := s.syncRepository(&repoInfo, source); err != nil {
 			s.logger.Error("同步仓库失败", zap.String("repo", repoInfo.FullName), zap.Error(err))
 			failedCount++
@@ -105,59 +99,7 @@ func (s *RepoSyncService) SyncFromSource(source *config.RepoSourceConfig) (int, 
 	return successCount, failedCount, nil
 }
 
-// fetchRepositories 根据同步模式获取仓库列表
-func (s *RepoSyncService) fetchRepositories(gitClient *git.Client, source *config.RepoSourceConfig) ([]api.RepositoryInfo, error) {
-	var allRepos []api.RepositoryInfo
-
-	switch strings.ToLower(source.SyncMode) {
-	case "namespaces":
-		// 同步指定的命名空间列表
-		if len(source.Namespaces) == 0 {
-			return nil, fmt.Errorf("sync_mode=namespaces 时必须指定 namespaces 列表")
-		}
-
-		for _, namespace := range source.Namespaces {
-			repos, err := gitClient.ListRepositories(namespace)
-			if err != nil {
-				s.logger.Error("获取命名空间仓库失败", zap.String("namespace", namespace), zap.Error(err))
-				continue
-			}
-			allRepos = append(allRepos, repos...)
-		}
-
-	case "user":
-		// 同步当前用户的仓库
-		user, err := gitClient.GetCurrentUser()
-		if err != nil {
-			return nil, fmt.Errorf("获取当前用户失败: %w", err)
-		}
-
-		s.logger.Info("获取当前用户", zap.String("username", user.Username), zap.String("email", user.Email))
-
-		repos, err := gitClient.ListRepositories(user.Username)
-		if err != nil {
-			return nil, fmt.Errorf("获取当前用户仓库失败: %w", err)
-		}
-		allRepos = repos
-
-	case "all":
-		// 同步所有可访问的仓库
-		repos, err := gitClient.ListAllAccessibleRepositories()
-		if err != nil {
-			return nil, fmt.Errorf("获取所有可访问仓库失败: %w", err)
-		}
-		allRepos = repos
-
-	default:
-		return nil, fmt.Errorf("不支持的同步模式: %s", source.SyncMode)
-	}
-
-	return allRepos, nil
-}
-
-// syncRepository 同步单个仓库到数据库
-func (s *RepoSyncService) syncRepository(repoInfo *api.RepositoryInfo, source *config.RepoSourceConfig) error {
-	// 转换为数据库模型
+func (s *RepoSyncService) syncRepository(repoInfo *api.RepositoryInfo, source *model.RepoSyncSource) error {
 	repo := &model.Repository{
 		Namespace:   repoInfo.Owner,
 		Name:        repoInfo.Name,
@@ -167,6 +109,91 @@ func (s *RepoSyncService) syncRepository(repoInfo *api.RepositoryInfo, source *c
 		Language:    &repoInfo.Language,
 	}
 
-	// 使用 Upsert 插入或更新
+	// 自动设置默认项目和团队
+	if source.DefaultProjectID != nil && *source.DefaultProjectID > 0 {
+		repo.ProjectID = source.DefaultProjectID
+
+		// 如果设置了默认团队，需要验证团队是否属于该项目
+		if source.DefaultTeamID != nil && *source.DefaultTeamID > 0 {
+			belongs, err := s.teamRepo.VerifyTeamBelongsToProject(*source.DefaultTeamID, *source.DefaultProjectID)
+			if err != nil {
+				s.logger.Warn("验证团队归属失败",
+					zap.Int64("team_id", *source.DefaultTeamID),
+					zap.Int64("project_id", *source.DefaultProjectID),
+					zap.Error(err))
+			} else if !belongs {
+				s.logger.Warn("团队不属于指定项目，跳过团队设置",
+					zap.Int64("team_id", *source.DefaultTeamID),
+					zap.Int64("project_id", *source.DefaultProjectID),
+					zap.String("repo", repoInfo.FullName))
+			} else {
+				// 团队验证通过，设置团队ID
+				repo.TeamID = source.DefaultTeamID
+			}
+		}
+	} else if source.DefaultTeamID != nil && *source.DefaultTeamID > 0 {
+		// 如果只设置了团队没设置项目，记录警告
+		s.logger.Warn("未设置默认项目，跳过团队设置",
+			zap.Int64("source_id", source.ID),
+			zap.String("repo", repoInfo.FullName))
+	}
+
 	return s.repoRepo.Upsert(repo)
+}
+
+// SyncSourceByID 手动同步某个源
+func (s *RepoSyncService) SyncSourceByID(id int64) (int, int, error) {
+	source, err := s.sourceRepo.GetByID(id)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	success, failed, syncErr := s.SyncFromSource(source)
+	status := "success"
+	message := fmt.Sprintf("同步完成: 成功 %d 个, 失败 %d 个", success, failed)
+
+	if syncErr != nil || failed > 0 {
+		status = "failed"
+		if syncErr != nil {
+			message = fmt.Sprintf("同步失败: %v", syncErr)
+		}
+	}
+
+	if err := s.sourceRepo.UpdateSyncResult(source.ID, status, &message); err != nil {
+		s.logger.Warn("更新同步结果失败", zap.Int64("source_id", source.ID), zap.Error(err))
+	}
+
+	return success, failed, syncErr
+}
+
+// TestSourceConnection 测试某个源的连接
+func (s *RepoSyncService) TestSourceConnection(id int64) error {
+	source, err := s.sourceRepo.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	client, err := s.buildGitClient(source)
+	if err != nil {
+		return err
+	}
+
+	if err := client.TestConnection(); err != nil {
+		return fmt.Errorf("连接测试失败: %w", err)
+	}
+
+	if _, err := client.ListRepositories(source.Namespace); err != nil {
+		return fmt.Errorf("命名空间仓库列表获取失败: %w", err)
+	}
+
+	return nil
+}
+
+func (s *RepoSyncService) buildGitClient(source *model.RepoSyncSource) (*git.Client, error) {
+	token, err := utils.DecryptSecret(s.aesKey, source.AuthTokenEnc)
+	if err != nil {
+		return nil, err
+	}
+
+	return git.NewClient(source.BaseURL, token, source.Platform)
 }

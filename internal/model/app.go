@@ -13,8 +13,8 @@ type Repository struct {
 	GitURL      string  `gorm:"size:500;not null" json:"git_url"`
 	GitType     string  `gorm:"size:20;not null;index" json:"git_type"`
 	Language    *string `gorm:"size:50" json:"language"`
-	TeamID      *int64  `gorm:"index" json:"team_id"`
-	ProjectID   *int64  `gorm:"index" json:"project_id"`
+	ProjectID   *int64  `gorm:"column:project_id;index" json:"project_id"`
+	TeamID      *int64  `gorm:"column:team_id" json:"team_id"`
 
 	// Relations
 	Team    *Team    `gorm:"foreignKey:TeamID" json:"team,omitempty"`

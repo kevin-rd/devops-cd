@@ -65,9 +65,20 @@ const RepositoryPage: React.FC = () => {
   const [editingApp, setEditingApp] = useState<Application | null>(null)
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
   
+  // 模态框中选择的项目ID（用于联动团队列表）
+  const [modalProjectId, setModalProjectId] = useState<number | undefined>()
+  
   // 分页状态
   const [repoPage, setRepoPage] = useState(1)
   const [repoPageSize, setRepoPageSize] = useState(10)
+
+  // 筛选状态
+  const [keyword, setKeyword] = useState('')
+  const [projectId, setProjectId] = useState<number | undefined>()
+  const [teamId, setTeamId] = useState<number | undefined>()
+  
+  // 特殊值：-1 表示"无归属"
+  const NO_RELATION = -1
 
   // 构建历史 Drawer 状态
   const [buildDrawerVisible, setBuildDrawerVisible] = useState(false)
@@ -76,11 +87,18 @@ const RepositoryPage: React.FC = () => {
 
   // 查询代码库列表（包含应用）
   const { data: repoResponse, isLoading: repoLoading } = useQuery({
-    queryKey: ['repositories', repoPage, repoPageSize],
+    queryKey: ['repositories', repoPage, repoPageSize, keyword, projectId, teamId],
     queryFn: async () => {
+      // 处理特殊值：-1 表示查询无归属的，转换为 0 或不传
+      const actualProjectId = projectId === NO_RELATION ? 0 : projectId
+      const actualTeamId = teamId === NO_RELATION ? 0 : teamId
+      
       const res = await repositoryService.getList({
         page: repoPage,
         page_size: repoPageSize,
+        keyword: keyword || undefined,
+        project_id: actualProjectId,
+        team_id: actualTeamId,
         with_applications: true,  // 请求包含应用列表
       })
       return res.data
@@ -126,6 +144,16 @@ const RepositoryPage: React.FC = () => {
   })
 
   const teams: TeamSimple[] = teamsResponse?.data || []
+
+  // 根据选择的项目过滤团队列表（用于页面筛选）
+  const filteredTeams = projectId && projectId !== NO_RELATION
+    ? teams.filter(team => team.project_id === projectId)
+    : teams
+
+  // 根据模态框中选择的项目过滤团队列表（用于模态框）
+  const modalFilteredTeams = modalProjectId 
+    ? teams.filter(team => team.project_id === modalProjectId)
+    : teams
 
   // 根据 app_type 值获取类型配置
   const getAppTypeConfig = (appType: string) => {
@@ -192,12 +220,14 @@ const RepositoryPage: React.FC = () => {
   const handleCreateRepo = () => {
     setEditingRepo(null)
     repoForm.resetFields()
+    setModalProjectId(undefined)  // 重置模态框项目选择
     setRepoModalVisible(true)
   }
 
   const handleEditRepo = (repo: Repository) => {
     setEditingRepo(repo)
     repoForm.setFieldsValue(repo)
+    setModalProjectId(repo.project_id || undefined)  // 设置模态框项目选择
     setRepoModalVisible(true)
   }
 
@@ -240,6 +270,19 @@ const RepositoryPage: React.FC = () => {
     setSelectedAppId(app.id)
     setSelectedAppName(app.display_name || app.name)
     setBuildDrawerVisible(true)
+  }
+
+  // 处理筛选重置
+  const handleResetFilters = () => {
+    setKeyword('')
+    setProjectId(undefined)
+    setTeamId(undefined)
+    setRepoPage(1)
+  }
+
+  // 筛选条件变化时重置到第一页
+  const handleFilterChange = () => {
+    setRepoPage(1)
   }
 
   // Repository 表格列定义
@@ -443,7 +486,7 @@ const RepositoryPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })  // 保留以刷新其他可能的应用查询
               }}
             >
-              {t('common.reset')}
+              {t('common.refresh')}
             </Button>
             <Button
               type="primary"
@@ -455,6 +498,65 @@ const RepositoryPage: React.FC = () => {
           </Space>
         }
       >
+        {/* 筛选器 */}
+        <div style={{ marginBottom: 16 }}>
+          <Space size="middle" wrap>
+            <Input.Search
+              placeholder={t('repository.keywordPlaceholder')}
+              value={keyword}
+              onChange={(e) => {
+                setKeyword(e.target.value)
+                handleFilterChange()
+              }}
+              onSearch={handleFilterChange}
+              style={{ width: 280 }}
+              allowClear
+            />
+            <Select
+              placeholder={t('repository.selectProject')}
+              value={projectId}
+              onChange={(value) => {
+                setProjectId(value)
+                // 当项目改变时，清空团队选择（因为团队列表会联动变化）
+                // 如果选择了"无归属"，也清空团队
+                if (value === NO_RELATION) {
+                  setTeamId(undefined)
+                }
+                handleFilterChange()
+              }}
+              style={{ width: 200 }}
+              allowClear
+            >
+              <Select.Option value={undefined}>{t('repository.allProjects')}</Select.Option>
+              <Select.Option value={NO_RELATION}>{t('repository.noProject')}</Select.Option>
+              {projects.map((project: ProjectSimple) => (
+                <Select.Option key={project.id} value={project.id}>
+                  {project.name}
+                </Select.Option>
+              ))}
+            </Select>
+            <Select
+              placeholder={t('repository.selectTeam')}
+              value={teamId}
+              onChange={(value) => {
+                setTeamId(value)
+                handleFilterChange()
+              }}
+              style={{ width: 200 }}
+              allowClear
+              disabled={projectId === NO_RELATION || (!projectId && projectId !== 0)}
+            >
+              <Select.Option value={undefined}>{t('repository.allTeams')}</Select.Option>
+              <Select.Option value={NO_RELATION}>{t('repository.noTeam')}</Select.Option>
+              {filteredTeams.map((team: TeamSimple) => (
+                <Select.Option key={team.id} value={team.id}>
+                  {team.name}
+                </Select.Option>
+              ))}
+            </Select>
+            <Button onClick={handleResetFilters}>{t('common.reset')}</Button>
+          </Space>
+        </div>
         <Table
           columns={repoColumns}
           dataSource={repoData}
@@ -515,6 +617,7 @@ const RepositoryPage: React.FC = () => {
         onCancel={() => {
           setRepoModalVisible(false)
           setEditingRepo(null)
+          setModalProjectId(undefined)  // 重置模态框项目选择
           repoForm.resetFields()
         }}
         confirmLoading={repoMutation.isPending}
@@ -588,7 +691,15 @@ const RepositoryPage: React.FC = () => {
           )}
 
           <Form.Item name="project_id" label={t('repository.project')} rules={[{ required: true }]}>
-            <Select placeholder={t('repository.selectProject')} allowClear>
+            <Select 
+              placeholder={t('repository.selectProject')} 
+              allowClear
+              onChange={(value) => {
+                setModalProjectId(value)
+                // 当项目改变时，清空团队选择
+                repoForm.setFieldValue('team_id', undefined)
+              }}
+            >
               {projects.map((project: ProjectSimple) => (
                 <Select.Option key={project.id} value={project.id}>
                   {project.name}
@@ -598,8 +709,12 @@ const RepositoryPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="team_id" label={t('repository.team')}>
-            <Select placeholder={t('repository.selectTeam')} allowClear>
-              {teams.map((team: TeamSimple) => (
+            <Select 
+              placeholder={t('repository.selectTeam')} 
+              allowClear
+              disabled={!modalProjectId}
+            >
+              {modalFilteredTeams.map((team: TeamSimple) => (
                 <Select.Option key={team.id} value={team.id}>
                   {team.name}
                 </Select.Option>

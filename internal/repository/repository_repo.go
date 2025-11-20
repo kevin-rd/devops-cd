@@ -11,8 +11,8 @@ type RepositoryRepository interface {
 	Create(repo *model.Repository) error
 	FindByID(id int64) (*model.Repository, error)
 	FindByNamespaceAndName(namespace, name string) (*model.Repository, error)
-	List(page, pageSize int, namespace *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error)
-	Update(repo *model.Repository) error
+	List(page, pageSize int, namespace *string, projectID *int64, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error)
+	Update(id int64, repo map[string]interface{}) error
 	Delete(id int64) error
 	Upsert(repo *model.Repository) error // 新增: 插入或更新
 }
@@ -56,7 +56,7 @@ func (r *repositoryRepository) FindByNamespaceAndName(namespace, name string) (*
 	return &repo, nil
 }
 
-func (r *repositoryRepository) List(page, pageSize int, namespace *string, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error) {
+func (r *repositoryRepository) List(page, pageSize int, namespace *string, projectID *int64, teamID *int64, gitType *string, keyword string, status *int8) ([]*model.Repository, int64, error) {
 	var repos []*model.Repository
 	var total int64
 
@@ -66,8 +66,21 @@ func (r *repositoryRepository) List(page, pageSize int, namespace *string, teamI
 	if namespace != nil {
 		query = query.Where("namespace = ?", *namespace)
 	}
+	if projectID != nil {
+		// 特殊值 0 表示查询无归属项目（project_id IS NULL）
+		if *projectID == 0 {
+			query = query.Where("project_id IS NULL")
+		} else {
+			query = query.Where("project_id = ?", *projectID)
+		}
+	}
 	if teamID != nil {
-		query = query.Where("team_id = ?", *teamID)
+		// 特殊值 0 表示查询无归属团队（team_id IS NULL）
+		if *teamID == 0 {
+			query = query.Where("team_id IS NULL")
+		} else {
+			query = query.Where("team_id = ?", *teamID)
+		}
 	}
 	if gitType != nil {
 		query = query.Where("git_type = ?", *gitType)
@@ -94,8 +107,8 @@ func (r *repositoryRepository) List(page, pageSize int, namespace *string, teamI
 	return repos, total, nil
 }
 
-func (r *repositoryRepository) Update(repo *model.Repository) error {
-	if err := r.db.Save(repo).Error; err != nil {
+func (r *repositoryRepository) Update(id int64, repo map[string]interface{}) error {
+	if err := r.db.Model(&model.Repository{}).Where("id = ?", id).UpdateColumns(repo).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新代码库失败", err)
 	}
 	return nil
