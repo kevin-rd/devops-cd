@@ -2,12 +2,14 @@ import React, {useState} from 'react'
 import {
   Button,
   Card,
+  Col,
   Form,
   Input,
   message,
   Modal,
   Pagination,
   Popconfirm,
+  Row,
   Select,
   Space,
   Table,
@@ -61,6 +63,8 @@ const RepositoryPage: React.FC = () => {
 
   // 模态框中选择的项目ID（用于联动团队列表）
   const [modalProjectId, setModalProjectId] = useState<number | undefined>()
+  // 应用模态框中的项目ID（用于过滤团队列表）
+  const [appModalProjectId, setAppModalProjectId] = useState<number | undefined>()
 
   // 分页状态
   const [repoPage, setRepoPage] = useState(1)
@@ -144,9 +148,14 @@ const RepositoryPage: React.FC = () => {
     ? teams.filter(team => team.project_id === projectId)
     : teams
 
-  // 根据模态框中选择的项目过滤团队列表（用于模态框）
+  // 根据模态框中选择的项目过滤团队列表（用于 Repository 模态框）
   const modalFilteredTeams = modalProjectId
     ? teams.filter(team => team.project_id === modalProjectId)
+    : teams
+
+  // 根据应用模态框中选择的项目过滤团队列表（用于 Application 模态框）
+  const appModalFilteredTeams = appModalProjectId
+    ? teams.filter(team => team.project_id === appModalProjectId)
     : teams
 
   // 根据 app_type 值获取类型配置
@@ -243,16 +252,23 @@ const RepositoryPage: React.FC = () => {
     // 检查该 repo 是否已有应用
     const hasApps = (currentRepo?.applications?.length || 0) > 0
 
+    // 设置应用模态框的项目ID（用于过滤团队列表）
+    setAppModalProjectId(currentRepo?.project_id)
+
     appForm.resetFields()
     appForm.setFieldsValue({
       repo_id: repoId,
       name: hasApps ? '' : currentRepo?.name,  // 如果没有应用，默认使用 repo 名称
+      project_id: currentRepo?.project_id,  // 继承 repo 的项目
+      team_id: currentRepo?.team_id,  // 继承 repo 的团队
     })
     setAppModalVisible(true)
   }
 
   const handleEditApp = (app: Application) => {
     setEditingApp(app)
+    // 设置应用模态框的项目ID（用于过滤团队列表）
+    setAppModalProjectId(app.project_id)
     appForm.setFieldsValue(app)
     setAppModalVisible(true)
   }
@@ -338,14 +354,14 @@ const RepositoryPage: React.FC = () => {
       key: 'project_name-team_name',
       width: 100,
       render: (_, record) =>
-        record.project_name ? (
+        record.project_name || record.team_name ? (
           <Tag>
-            <span>{record.project_name}</span>
+            <span>{record.project_name ? record.project_name : '-'}</span>
             <span> / </span>
-            <span>{record.team_name}</span>
+            <span>{record.team_name ? record.team_name : '-'}</span>
           </Tag>
         ) : (
-          <span style={{color: '#999'}}>-</span>
+          <Tag style={{color: '#999'}}>-</Tag>
         )
     },
     {
@@ -402,9 +418,16 @@ const RepositoryPage: React.FC = () => {
       ),
     },
     {
-      title: '',
-      key: 'empty1',
-      width: 150,
+      title: t('application.project'),
+      key: 'project_name-team_name',
+      width: 120,
+      ellipsis: true,
+      render: (_, record) =>
+        <Tag>
+          <span>{record.project_name ? record.project_name : '-'}</span>
+          <span> / </span>
+          <span>{record.team_name ? record.team_name : '-'}</span>
+        </Tag>
     },
     {
       title: t('application.appType'),
@@ -697,50 +720,55 @@ const RepositoryPage: React.FC = () => {
             </>
           )}
 
-          <Form.Item name="project_id" label={t('repository.project')} rules={[{required: true}]}>
-            <Select
-              placeholder={t('repository.selectProject')}
-              allowClear
-              onChange={(value) => {
-                setModalProjectId(value)
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="project_id" label={t('repository.project')} rules={[{required: true}]}>
+                <Select
+                  placeholder={t('repository.selectProject')}
+                  allowClear
+                  onChange={(value) => {
+                    setModalProjectId(value)
 
-                // 当项目改变时，检查该项目下的团队数量
-                if (value) {
-                  const projectTeams = teams.filter(team => team.project_id === value)
-                  if (projectTeams.length === 1) {
-                    // 如果只有一个团队，自动选择它
-                    repoForm.setFieldValue('team_id', projectTeams[0].id)
-                  } else {
-                    // 如果有多个团队或没有团队，清空选择
-                    repoForm.setFieldValue('team_id', undefined)
-                  }
-                } else {
-                  // 如果清空项目选择，也清空团队选择
-                  repoForm.setFieldValue('team_id', undefined)
-                }
-              }}
-            >
-              {projects.map((project: ProjectSimple) => (
-                <Select.Option key={project.id} value={project.id}>
-                  {project.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="team_id" label={t('repository.team')}>
-            <Select
-              placeholder={t('repository.selectTeam')}
-              allowClear
-              disabled={!modalProjectId}
-            >
-              {modalFilteredTeams.map((team: TeamSimple) => (
-                <Select.Option key={team.id} value={team.id}>
-                  {team.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+                    // 当项目改变时，检查该项目下的团队数量
+                    if (value) {
+                      const projectTeams = teams.filter(team => team.project_id === value)
+                      if (projectTeams.length === 1) {
+                        // 如果只有一个团队，自动选择它
+                        repoForm.setFieldValue('team_id', projectTeams[0].id)
+                      } else {
+                        // 如果有多个团队或没有团队，清空选择
+                        repoForm.setFieldValue('team_id', undefined)
+                      }
+                    } else {
+                      // 如果清空项目选择，也清空团队选择
+                      repoForm.setFieldValue('team_id', undefined)
+                    }
+                  }}
+                >
+                  {projects.map((project: ProjectSimple) => (
+                    <Select.Option key={project.id} value={project.id}>
+                      {project.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="team_id" label={t('repository.team')}>
+                <Select
+                  placeholder={t('repository.selectTeam')}
+                  allowClear
+                  disabled={!modalProjectId}
+                >
+                  {modalFilteredTeams.map((team: TeamSimple) => (
+                    <Select.Option key={team.id} value={team.id}>
+                      {team.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -752,6 +780,7 @@ const RepositoryPage: React.FC = () => {
         onCancel={() => {
           setAppModalVisible(false)
           setEditingApp(null)
+          setAppModalProjectId(undefined)
           appForm.resetFields()
         }}
         confirmLoading={appMutation.isPending}
@@ -809,6 +838,50 @@ const RepositoryPage: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="project_id"
+                label={t('application.project')}
+                rules={[{required: true, message: t('repository.selectProject')}]}
+              >
+                <Select
+                  placeholder={t('repository.selectProject')}
+                  allowClear
+                  disabled={editingApp !== null}
+                  onChange={(value) => {
+                    // 当项目改变时，更新应用模态框的项目ID并清空团队选择
+                    setAppModalProjectId(value)
+                    appForm.setFieldValue('team_id', undefined)
+                  }}
+                >
+                  {projects?.map((project: ProjectSimple) => (
+                    <Select.Option key={project.id} value={project.id}>
+                      {project.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="team_id"
+                label={t('application.team')}
+              >
+                <Select
+                  placeholder={t('repository.selectTeam')}
+                  allowClear
+                >
+                  {appModalFilteredTeams?.map((team: TeamSimple) => (
+                    <Select.Option key={team.id} value={team.id}>
+                      {team.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 

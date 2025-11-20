@@ -1,5 +1,21 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {Button, Card, Form, Input, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip,} from 'antd'
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  message,
+  Modal,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Switch,
+  Table,
+  Tag,
+  Tooltip,
+} from 'antd'
 import type {ColumnsType} from 'antd/es/table'
 import {ApiOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SyncOutlined,} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
@@ -10,8 +26,8 @@ import {
   type RepoSource,
   repoSourceService,
 } from '@/services/repoSource'
-import { projectService, type ProjectSimple } from '@/services/project'
-import { teamService, type TeamSimple } from '@/services/team'
+import {projectService, type ProjectSimple} from '@/services/project'
+import {teamService, type TeamSimple} from '@/services/team'
 import './index.css'
 import dayjs from "dayjs";
 
@@ -31,7 +47,7 @@ const RepoSourcesPage: React.FC = () => {
   const [platformFilter, setPlatformFilter] = useState<RepoPlatform | undefined>()
   const [modalVisible, setModalVisible] = useState(false)
   const [editingSource, setEditingSource] = useState<RepoSource | null>(null)
-  
+
   // 模态框中选择的项目ID（用于联动团队列表）
   const [modalProjectId, setModalProjectId] = useState<number | undefined>()
 
@@ -52,7 +68,7 @@ const RepoSourcesPage: React.FC = () => {
   const total = response?.total || 0
 
   // 查询所有项目（用于下拉选择）
-  const { data: projectsResponse } = useQuery<ApiResponse<ProjectSimple[]>>({
+  const {data: projectsResponse} = useQuery<ApiResponse<ProjectSimple[]>>({
     queryKey: ['projects_all'],
     queryFn: async () => {
       const res = await projectService.getAll()
@@ -64,7 +80,7 @@ const RepoSourcesPage: React.FC = () => {
   const projects: ProjectSimple[] = projectsResponse?.data || []
 
   // 查询所有团队（用于下拉选择）
-  const { data: teamsResponse } = useQuery<ApiResponse<TeamSimple[]>>({
+  const {data: teamsResponse} = useQuery<ApiResponse<TeamSimple[]>>({
     queryKey: ['teams_all'],
     queryFn: async () => {
       const res = await teamService.getList()
@@ -76,7 +92,7 @@ const RepoSourcesPage: React.FC = () => {
   const teams: TeamSimple[] = teamsResponse?.data || []
 
   // 根据模态框中选择的项目过滤团队列表
-  const modalFilteredTeams = modalProjectId 
+  const modalFilteredTeams = modalProjectId
     ? teams.filter(team => team.project_id === modalProjectId)
     : teams
 
@@ -203,16 +219,19 @@ const RepoSourcesPage: React.FC = () => {
         ),
       },
       {
-        title: '默认项目',
+        title: '默认项目/Team',
         dataIndex: 'default_project_name',
-        width: 120,
-        render: (text: string) => text ? <Tag color="purple">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
-      },
-      {
-        title: '默认团队',
-        dataIndex: 'default_team_name',
-        width: 120,
-        render: (text: string) => text ? <Tag color="green">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
+        width: 130,
+        render: (_, record) =>
+          record.default_project_name || record.default_team_name ? (
+            <Tag>
+              <span>{record.default_project_name ? record.default_project_name : '-'}</span>
+              <span> / </span>
+              <span>{record.default_team_name ? record.default_team_name : '-'}</span>
+            </Tag>
+          ) : (
+            <Tag style={{color: '#999'}}>-</Tag>
+          )
       },
       {
         title: '启用',
@@ -375,13 +394,22 @@ const RepoSourcesPage: React.FC = () => {
         okText="保存"
       >
         <Form form={form} layout="vertical" preserve={false}>
-          <Form.Item
-            label="平台"
-            name="platform"
-            rules={[{required: true, message: '请选择平台'}]}
-          >
-            <Select options={platformOptions}/>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="平台"
+                name="platform"
+                rules={[{required: true, message: '请选择平台'}]}
+              >
+                <Select options={platformOptions}/>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="启用" name="enabled" valuePropName="checked">
+                <Switch/>
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item
             label="Base URL"
             name="base_url"
@@ -408,47 +436,53 @@ const RepoSourcesPage: React.FC = () => {
           >
             <Input.Password placeholder="请粘贴访问令牌" autoComplete="new-password"/>
           </Form.Item>
-          <Form.Item
-            label="默认项目"
-            name="default_project_id"
-            extra="扫描时自动为新代码库设置此项目"
-          >
-            <Select
-              placeholder="选择默认项目（可选）"
-              allowClear
-              onChange={(value) => {
-                setModalProjectId(value)
-                // 当项目改变时，清空团队选择
-                form.setFieldValue('default_team_id', undefined)
-              }}
-            >
-              {projects.map((project: ProjectSimple) => (
-                <Select.Option key={project.id} value={project.id}>
-                  {project.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            label="默认团队"
-            name="default_team_id"
-            extra="扫描时自动为新代码库设置此团队（需先选择项目）"
-          >
-            <Select
-              placeholder="选择默认团队（可选）"
-              allowClear
-              disabled={!modalProjectId}
-            >
-              {modalFilteredTeams.map((team: TeamSimple) => (
-                <Select.Option key={team.id} value={team.id}>
-                  {team.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item label="启用" name="enabled" valuePropName="checked">
-            <Switch/>
-          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="默认项目"
+                name="default_project_id"
+                extra="扫描时自动为新代码库设置此项目"
+              >
+                <Select
+                  placeholder="选择默认项目（可选）"
+                  allowClear
+                  onChange={(value) => {
+                    setModalProjectId(value)
+                    // 当项目改变时，清空团队选择
+                    form.setFieldValue('default_team_id', undefined)
+                  }}
+                >
+                  {projects.map((project: ProjectSimple) => (
+                    <Select.Option key={project.id} value={project.id}>
+                      {project.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="默认团队"
+                name="default_team_id"
+                extra="扫描时自动为新代码库设置此团队（需先选择项目）"
+              >
+                <Select
+                  placeholder="选择默认团队（可选）"
+                  allowClear
+                  disabled={!modalProjectId}
+                >
+                  {modalFilteredTeams.map((team: TeamSimple) => (
+                    <Select.Option key={team.id} value={team.id}>
+                      {team.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+
           <Form.Item label="连接测试">
             <Button
               icon={<ApiOutlined/>}

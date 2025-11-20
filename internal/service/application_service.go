@@ -52,22 +52,27 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 		return nil, err
 	}
 
-	// 2. 检查代码库是否关联了项目
-	if repo.ProjectID == nil {
-		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "代码库未关联项目", nil)
+	// 2. 确定使用的 project_id（优先使用请求中指定的，否则从 repository 继承）
+	var projectID int64
+	if req.ProjectID != nil {
+		projectID = *req.ProjectID
+	} else if repo.ProjectID != nil {
+		projectID = *repo.ProjectID
+	} else {
+		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "必须指定项目或代码库已关联项目", nil)
 	}
 
 	// 3. 检查应用名称在同一项目下是否已存在
-	existing, _ := s.appRepo.FindByProjectIDAndName(*repo.ProjectID, req.Name)
+	existing, _ := s.appRepo.FindByProjectIDAndName(projectID, req.Name)
 	if existing != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
 			fmt.Sprintf("应用 %s 在该项目中已存在", req.Name), nil)
 	}
 
-	// 4. 创建应用（自动继承 project_id）
+	// 4. 创建应用
 	app := &model.Application{
 		Name:        req.Name,
-		ProjectID:   *repo.ProjectID, // 继承自 repository
+		ProjectID:   projectID,
 		DisplayName: req.DisplayName,
 		Description: req.Description,
 		RepoID:      req.RepoID,
@@ -85,7 +90,13 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 	// 手动设置关联数据以便正确返回
 	app.Repository = repo
 
-	// 如果有TeamID，尝试加载Team信息
+	// 如果有 ProjectID，尝试加载 Project 信息
+	var project model.Project
+	if err := s.db.First(&project, projectID).Error; err == nil {
+		app.Project = &project
+	}
+
+	// 如果有 TeamID，尝试加载 Team 信息
 	if req.TeamID != nil {
 		var team model.Team
 		if err := s.db.First(&team, *req.TeamID).Error; err == nil {

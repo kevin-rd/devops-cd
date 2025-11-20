@@ -7,6 +7,7 @@ type CreateApplicationRequest struct {
 	Name        string  `json:"name" binding:"required,max=100"`
 	DisplayName *string `json:"display_name"`
 	Description *string `json:"description"`
+	ProjectID   *int64  `json:"project_id"` // 可选：如果不指定则从 Repository 继承
 	RepoID      int64   `json:"repo_id" binding:"required"`
 	AppType     string  `json:"app_type" binding:"required,oneof=static node java go py"`
 	TeamID      *int64  `json:"team_id"`
