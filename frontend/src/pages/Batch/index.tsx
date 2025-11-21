@@ -284,13 +284,19 @@ export default function BatchList() {
   // 批次操作 Mutation
   const actionMutation = useMutation({
     mutationFn: (data: BatchActionRequest) => batchService.action(data),
-    onSuccess: () => {
+    onSuccess: (_, req) => {
       message.success(t('batch.actionSuccess'))
       // 使用部分匹配来刷新所有相关查询
       queryClient.invalidateQueries({queryKey: ['batchList']})
       queryClient.invalidateQueries({queryKey: ['batchDetails']})
-      // 手动触发重新获取
-      refetch()
+
+      if (req.action === 'seal') {
+        navigate(`/batch/${req.batch_id}/detail`)
+      } else if (req.action === 'start_pre_deploy' || req.action === 'start_prod_deploy') {
+        navigate(`/batch/${req.batch_id}/detail?tab=graph`)
+      } else {
+        refetch()
+      }
     },
     onError: () => {
     },
@@ -760,7 +766,7 @@ export default function BatchList() {
                     <Button
                       type="text"
                       size="small"
-                      icon={<UndoOutlined />}
+                      icon={<UndoOutlined/>}
                       style={{
                         padding: '0 2px',
                         minWidth: '18px',
@@ -812,7 +818,7 @@ export default function BatchList() {
           // 如果用户选择了不同的 build，显示该 build 的 commit message
           const selectedBuildId = currentBuildChanges[record.app_id] || record.build_id
           let displayCommitMessage = record.commit_message
-          
+
           // 如果有 recent_builds，从中查找对应的 commit message
           if (record.recent_builds && record.recent_builds.length > 0) {
             const selectedBuild = record.recent_builds.find((b: BuildSummary) => b.id === selectedBuildId)
@@ -820,7 +826,7 @@ export default function BatchList() {
               displayCommitMessage = selectedBuild.commit_message
             }
           }
-          
+
           return (
             <span style={{fontSize: 13}}>{displayCommitMessage || '-'}</span>
           )
@@ -1073,7 +1079,7 @@ export default function BatchList() {
               onClick={handleRefresh}
               loading={refreshingDetails || (refreshingList && expandedRowKeys.length === 0)}
             >
-              {t('common.reset')}
+              {t('common.refresh')}
             </Button>
             <Button
               type="primary"

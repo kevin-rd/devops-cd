@@ -70,14 +70,25 @@ func (h *TeamHandler) GetByID(c *gin.Context) {
 }
 
 // List 获取团队列表
-// @Summary 获取团队列表（返回所有团队，用于下拉选择）
+// @Summary 获取团队列表（返回所有团队，可按项目过滤，用于下拉选择）
 // @Tags Team
 // @Accept json
 // @Produce json
+// @Param project_id query int false "项目ID"
 // @Success 200 {object} utils.Response{data=[]dto.TeamSimpleResponse}
 // @Router /api/v1/teams [get]
 func (h *TeamHandler) List(c *gin.Context) {
-	teams, err := h.teamService.ListAll()
+	var projectID *int64
+	if idStr := c.Query("project_id"); idStr != "" {
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+			return
+		}
+		projectID = &id
+	}
+
+	teams, err := h.teamService.List(projectID)
 	if err != nil {
 		utils.Error(c, err)
 		return

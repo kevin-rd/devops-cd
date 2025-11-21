@@ -6,6 +6,7 @@ import {useQuery} from '@tanstack/react-query'
 import type {ColumnsType} from 'antd/es/table'
 import type {ApplicationWithBuild} from '@/types'
 import {applicationService} from '@/services/application'
+import {teamService, TeamSimple} from '@/services/team'
 import './index.css'
 
 const {TextArea} = Input
@@ -30,6 +31,7 @@ export interface AppSelectionTableProps {
     existingIds?: number[]
     mode?: 'create' | 'edit'
   }
+  projectId?: number  // 新增：当前批次的项目ID（用于筛选应用）
   onSelectionChange: (selectedIds: number[], meta?: { releaseNotes: Record<number, string> }) => void
 
   showReleaseNotes?: boolean
@@ -37,6 +39,7 @@ export interface AppSelectionTableProps {
 
 export default function AppSelectionTable(
   {
+    projectId,  // 接收 projectId 参数
     selection,
     onSelectionChange,
     showReleaseNotes = true,
@@ -46,15 +49,15 @@ export default function AppSelectionTable(
 
   const [releaseNotesMap, setReleaseNotesMap] = useState<Record<number, string>>({})
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
-  
+
   // 存储所有已选/已存在应用的基本信息（不依赖当前分页）
   const [appsInfoMap, setAppsInfoMap] = useState<Record<number, AppBasicInfo>>({})
-  
+
   // 控制已选应用列表的展开/折叠
   const [selectedAppsExpanded, setSelectedAppsExpanded] = useState(false)
   // 控制已移除应用列表的展开/折叠
   const [removedAppsExpanded, setRemovedAppsExpanded] = useState(false)
-  
+
   // 限制显示的应用数量
   const MAX_DISPLAY_COUNT = 6
 
@@ -63,6 +66,9 @@ export default function AppSelectionTable(
     page: 1,
     pageSize: 20,
     keyword: '',
+    project_id: projectId,
+    team_ids: [] as number[],  // 新增：多选团队
+    app_types: [] as string[],  // 新增：多选应用类型
   })
 
   // 搜索防抖
@@ -78,28 +84,67 @@ export default function AppSelectionTable(
 
   // 查询应用列表
   const {data: appsResponse, isLoading} = useQuery({
-    queryKey: ['applicationsWithBuilds', debouncedSearchKeyword, queryData.page, queryData.pageSize],
+    queryKey: ['applicationsWithBuilds', debouncedSearchKeyword, queryData.page, queryData.pageSize, projectId, queryData.team_ids, queryData.app_types],
     queryFn: async ({signal}) => {
       const res = await applicationService.searchWithBuilds({
         page: queryData.page,
         page_size: queryData.pageSize,
         keyword: debouncedSearchKeyword || undefined,
+        project_id: projectId,
+        team_ids: queryData.team_ids.length > 0 ? queryData.team_ids : undefined,
+        app_types: queryData.app_types.length > 0 ? queryData.app_types : undefined,
       }, signal)
       return res.data
     },
     staleTime: 10 * 1000,
     gcTime: 30 * 1000,
+    enabled: !!projectId,
   })
 
   const list = useMemo(() => appsResponse?.items || [], [appsResponse?.items])
   const total = appsResponse?.total || 0
 
+  // 加载团队列表（用于筛选）
+  const {data: teamsResponse} = useQuery({
+    queryKey: ['teams', projectId],
+    queryFn: async (): Promise<TeamSimple[]> => {
+      const res = await teamService.getList(projectId)
+      return res.data
+    },
+    staleTime: 5 * 60 * 1000, // 5分钟
+    enabled: !!projectId,
+  })
+
+  // 加载应用类型列表（用于筛选）
+  const {data: appTypesResponse} = useQuery({
+    queryKey: ['appTypes'],
+    queryFn: async () => {
+      const res = await applicationService.getTypes()
+      return res.data?.types || []
+    },
+    staleTime: 5 * 60 * 1000, // 5分钟
+  })
+
+  const teamOptions = useMemo(() => {
+    return teamsResponse?.map(team => ({
+      label: team.name,
+      value: team.id,
+    }))
+  }, [teamsResponse])
+
+  const appTypeOptions = useMemo(() => {
+    return (appTypesResponse || []).map(type => ({
+      label: type.label,
+      value: type.value,
+    }))
+  }, [appTypesResponse])
+
   // 当列表数据变化时，更新 appsInfoMap（补充新出现的应用信息）
   useEffect(() => {
     setAppsInfoMap((prevInfoMap) => {
-      const newInfoMap = { ...prevInfoMap }
+      const newInfoMap = {...prevInfoMap}
       let hasUpdate = false
-      
+
       list.forEach((app) => {
         // 如果应用被选中或在批次中，且信息尚未存储，则存储其基本信息
         if ((selectedIds.includes(app.id) || existingIds.includes(app.id)) && !newInfoMap[app.id]) {
@@ -112,7 +157,7 @@ export default function AppSelectionTable(
           hasUpdate = true
         }
       })
-      
+
       return hasUpdate ? newInfoMap : prevInfoMap
     })
   }, [list, selectedIds, existingIds])
@@ -133,7 +178,7 @@ export default function AppSelectionTable(
   const selectedApps = useMemo(() => {
     return selectedIds.map((id) => {
       const info = appsInfoMap[id]
-      return info || { id, name: `应用 ${id}`, inBatch: existingIds.includes(id) }
+      return info || {id, name: `应用 ${id}`, inBatch: existingIds.includes(id)}
     })
   }, [selectedIds, appsInfoMap, existingIds])
 
@@ -143,7 +188,7 @@ export default function AppSelectionTable(
     const removedAppIds = existingIds.filter((id) => !selectedIds.includes(id))
     return removedAppIds.map((appId) => {
       const info = appsInfoMap[appId]
-      return info || { id: appId, name: `应用 ${appId}` }
+      return info || {id: appId, name: `应用 ${appId}`}
     })
   }, [mode, existingIds, selectedIds, appsInfoMap])
 
@@ -157,7 +202,7 @@ export default function AppSelectionTable(
     const next = isCurrentlySelected
       ? selectedIds.filter((x) => x !== id)
       : [...selectedIds, id]
-    
+
     // 如果是新选中，需要存储应用信息
     if (!isCurrentlySelected) {
       const app = mergedList.find((x) => x.id === id)
@@ -178,7 +223,7 @@ export default function AppSelectionTable(
         })
       }
     }
-    
+
     onSelectionChange(next, {releaseNotes: releaseNotesMap})
   }
 
@@ -192,7 +237,7 @@ export default function AppSelectionTable(
   // 重新选择某个已移除的应用
   const handleReselectApp = (appId: number) => {
     const newSelectedIds = [...selectedIds, appId]
-    
+
     // 尝试从当前列表中获取应用信息并存储
     const app = mergedList.find((x) => x.id === appId)
     if (app) {
@@ -211,7 +256,7 @@ export default function AppSelectionTable(
         return prevInfoMap
       })
     }
-    
+
     onSelectionChange(newSelectedIds, {releaseNotes: releaseNotesMap})
   }
 
@@ -235,16 +280,16 @@ export default function AppSelectionTable(
           onChange={(e) => {
             const isChecked = e.target.checked
             let ids: number[]
-            
+
             if (isChecked) {
               // 全选当前页
               ids = Array.from(new Set([...selectedIds, ...mergedList.map((x) => x.id)]))
-              
+
               // 更新 appsInfoMap：添加当前页新选中的应用信息
               setAppsInfoMap((prevInfoMap) => {
-                const newInfoMap = { ...prevInfoMap }
+                const newInfoMap = {...prevInfoMap}
                 let hasUpdate = false
-                
+
                 mergedList.forEach((app) => {
                   if (!newInfoMap[app.id]) {
                     newInfoMap[app.id] = {
@@ -256,14 +301,14 @@ export default function AppSelectionTable(
                     hasUpdate = true
                   }
                 })
-                
+
                 return hasUpdate ? newInfoMap : prevInfoMap
               })
             } else {
               // 取消当前页的所有选择
               ids = selectedIds.filter((id) => !mergedList.some((x) => x.id === id))
             }
-            
+
             onSelectionChange(ids, {releaseNotes: releaseNotesMap})
           }}
         />
@@ -293,20 +338,20 @@ export default function AppSelectionTable(
       render: (type: string) => <Tag color="blue">{type}</Tag>,
     },
     {
-      title: t('application.project'),
-      dataIndex: 'project_name',
-      key: 'project_name',
+      title: t('application.projectAndTeam'),
+      key: 'project_name-team_name',
       width: 120,
       ellipsis: true,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: t('application.team'),
-      dataIndex: 'team_name',
-      key: 'team_name',
-      width: 120,
-      ellipsis: true,
-      render: (text: string) => text || '-',
+      render: (_, record) =>
+      record.project_name || record.team_name ? (
+        <Tag>
+          <span>{record.project_name ? record.project_name : '-'}</span>
+          <span> / </span>
+          <span>{record.team_name ? record.team_name : '-'}</span>
+        </Tag>
+      ) : (
+        <Tag style={{color: '#999'}}>-</Tag>
+      ),
     },
     {
       title: t('application.repository'),
@@ -453,17 +498,42 @@ export default function AppSelectionTable(
           style={{marginBottom: 12}}
         />
 
-        {/* 搜索框和分页器 */}
-        <div className="search-pagination-wrapper">
+        {/* 筛选器, 搜索框和分页器 */}
+        <Space className="search-pagination-wrapper">
+          {/* 筛选器：团队和应用类型 */}
+          <Select
+            mode="multiple"
+            placeholder="筛选团队"
+            style={{width: 160}}
+            maxTagCount="responsive"
+            value={queryData.team_ids}
+            onChange={(values) => setQueryData({...queryData, team_ids: values, page: 1})}
+            options={teamOptions}
+            allowClear
+          />
+
+          <Select
+            mode="multiple"
+            placeholder="筛选应用类型"
+            style={{width: 160}}
+            maxTagCount="responsive"
+            value={queryData.app_types}
+            onChange={(values) => setQueryData({...queryData, app_types: values, page: 1})}
+            options={appTypeOptions}
+            allowClear
+          />
+
           <Input.Search
             placeholder="搜索应用名称、代码库、Commit、Tag..."
             allowClear
-            style={{width: 400, minWidth: 280}}
+            style={{width: 200, minWidth: 200}}
             value={queryData.keyword}
             onChange={(e) => {
               setQueryData({...queryData, keyword: e.target.value})
             }}
           />
+
+
           <div style={{flex: 1}}/>
           <div style={{display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0}}>
             <span style={{fontSize: 13, color: '#8c8c8c', whiteSpace: 'nowrap'}}>
@@ -505,7 +575,7 @@ export default function AppSelectionTable(
               />
             </Space>
           </div>
-        </div>
+        </Space>
       </div>
 
       {/* 应用表格 */}
@@ -515,21 +585,21 @@ export default function AppSelectionTable(
         columns={columns}
         loading={{
           spinning: isLoading,
-          indicator: <Spin size="large" />,
+          indicator: <Spin size="large"/>,
           tip: "加载应用列表中...",
         }}
         pagination={false}
         scroll={{y: 'calc(100vh - 400px)'}}
         locale={{
           emptyText: isLoading ? (
-            <div style={{ padding: '60px 0' }}>
-              <Spin size="large" tip="加载应用列表中..." />
+            <div style={{padding: '60px 0'}}>
+              <Spin size="large" tip="加载应用列表中..."/>
             </div>
           ) : (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                <span style={{ fontSize: 14, color: '#8c8c8c' }}>
+                <span style={{fontSize: 14, color: '#8c8c8c'}}>
                   {debouncedSearchKeyword ? '未找到匹配的应用' : '暂无可用应用'}
                 </span>
               }
@@ -549,7 +619,7 @@ export default function AppSelectionTable(
             }
             toggleSelect(record.id)
           },
-          style: { cursor: 'pointer' },
+          style: {cursor: 'pointer'},
         })}
         expandable={
           showReleaseNotes

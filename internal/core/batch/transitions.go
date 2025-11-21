@@ -194,7 +194,7 @@ func (h TriggerSealTransition) Handle(batch *model.Batch, from, to int8, options
 
 	// 3. 锁定所有应用记录（防止封板后修改）
 	if err := h.sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).
-		UpdateColumn("status", constants.ReleaseAppStatusTagged).
+		Update("status", constants.ReleaseAppStatusTagged).
 		Update("is_locked", true).Error; err != nil {
 		return fmt.Errorf("锁定应用记录失败: %w", err)
 	}
@@ -244,6 +244,8 @@ func (h TriggerPreDeployTransition) Handle(batch *model.Batch, from, to int8, op
 	if batch.Status < constants.BatchStatusSealed || batch.SealedAt == nil {
 		return fmt.Errorf("预发布失败: 批次未封板")
 	}
+
+	// 3. todo: 所有的app都已经tagged
 
 	return nil
 }

@@ -105,7 +105,7 @@
 
 /* 草稿 - 黄色背景 */
 .batch-card.status-draft {
-    background: linear-gradient(to bottom, var(--status-draft-bg-start) -50%, var(--status-draft-bg-end) 100%);
+    background: linear-gradient(to bottom, var(--status-draft-bg-start) 0%, var(--status-draft-bg-end) 120%);
 }
 
 /* 已封板 - 紫色背景 */

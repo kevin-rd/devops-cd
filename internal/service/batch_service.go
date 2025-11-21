@@ -34,6 +34,7 @@ func NewBatchService(db *gorm.DB) *BatchService {
 // CreateBatchRequest 创建批次请求
 type CreateBatchRequest struct {
 	BatchNumber  string           `json:"batch_number" binding:"required"` // 批次编号/标题，用户填写
+	ProjectID    int64            `json:"project_id" binding:"required"`   // 关联的项目ID
 	Initiator    string           `json:"initiator" binding:"required"`    // 发起人
 	ReleaseNotes *string          `json:"release_notes"`                   // 批次级发布说明（可选）
 	Apps         []CreateBatchApp `json:"apps"`                            // 应用列表（允许为空，封板时校验）
@@ -47,20 +48,36 @@ type CreateBatchApp struct {
 
 // CreateBatch 创建批次
 func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error) {
-	// 1. 检查批次编号是否重复
-	existBatch, err := s.batchRepo.GetByBatchNumber(req.BatchNumber)
-	if err == nil && existBatch != nil {
-		return nil, fmt.Errorf("批次编号 %s 已存在", req.BatchNumber)
+	// 1. 验证项目是否存在
+	var project model.Project
+	if err := s.db.First(&project, req.ProjectID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("项目 ID %d 不存在", req.ProjectID)
+		}
+		return nil, fmt.Errorf("查询项目失败: %w", err)
 	}
 
-	// 2. 如果没有应用，直接创建空批次
+	// 2. 检查批次编号在项目内是否重复
+	var existBatch model.Batch
+	err := s.db.Where("batch_number = ? AND project_id = ?", req.BatchNumber, req.ProjectID).
+		First(&existBatch).Error
+	if err == nil {
+		return nil, fmt.Errorf("批次编号 %s 在该项目下已存在", req.BatchNumber)
+	}
+	if err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("查询批次失败: %w", err)
+	}
+
+	// 3. 如果没有应用，直接创建空批次
 	if len(req.Apps) == 0 {
 		logger.Info("创建空批次（无应用）",
 			zap.String("batch_number", req.BatchNumber),
+			zap.Int64("project_id", req.ProjectID),
 			zap.String("initiator", req.Initiator))
 
 		batch := &model.Batch{
 			BatchNumber:    req.BatchNumber,
+			ProjectID:      req.ProjectID,
 			Initiator:      req.Initiator,
 			ReleaseNotes:   req.ReleaseNotes,
 			Status:         constants.BatchStatusDraft,      // 草稿状态
@@ -72,13 +89,13 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 		return batch, nil
 	}
 
-	// 3. 提取应用ID列表
+	// 4. 提取应用ID列表
 	appIDs := make([]int64, len(req.Apps))
 	for i, app := range req.Apps {
 		appIDs[i] = app.AppID
 	}
 
-	// 4. 检查应用是否存在
+	// 5. 检查应用是否存在
 	appMap, err := s.batchRepo.GetApplicationsByIDs(appIDs)
 	if err != nil {
 		return nil, fmt.Errorf("查询应用失败: %w", err)
@@ -87,7 +104,15 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 		return nil, fmt.Errorf("部分应用不存在")
 	}
 
-	// 5. 检查应用冲突（严格模式）
+	// 6. 验证所有应用都属于指定项目
+	for appID, app := range appMap {
+		if app.ProjectID != req.ProjectID {
+			return nil, fmt.Errorf("应用 %s (ID: %d) 不属于项目 %s (ID: %d)",
+				app.Name, appID, project.Name, req.ProjectID)
+		}
+	}
+
+	// 7. 检查应用冲突（严格模式）
 	conflicts, err := s.batchRepo.CheckAppConflict(appIDs, nil)
 	if err != nil {
 		return nil, fmt.Errorf("检查应用冲突失败: %w", err)
@@ -96,7 +121,7 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 		return nil, &AppConflictError{Conflicts: conflicts, AppMap: appMap}
 	}
 
-	// 6. 获取每个应用在上次部署后的最新成功构建（可能部分应用没有构建）
+	// 8. 获取每个应用在上次部署后的最新成功构建（可能部分应用没有构建）
 	buildMap, err := s.batchRepo.GetLatestBuildsAfterDeployment(appIDs)
 	if err != nil {
 		return nil, fmt.Errorf("查询部署后最新构建失败: %w", err)
@@ -105,12 +130,13 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 	// 注意：不再强制要求所有应用都有构建，允许无构建的应用加入批次
 	// 无构建的应用会在封板时进行校验
 
-	// 7. 使用事务创建批次和应用记录
+	// 9. 使用事务创建批次和应用记录
 	var batch *model.Batch
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		// 创建批次
 		batch = &model.Batch{
 			BatchNumber:    req.BatchNumber,
+			ProjectID:      req.ProjectID,
 			Initiator:      req.Initiator,
 			ReleaseNotes:   req.ReleaseNotes,
 			Status:         constants.BatchStatusDraft,      // 草稿状态
@@ -159,6 +185,7 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 	logger.Info("批次创建成功",
 		zap.String("batch_number", batch.BatchNumber),
 		zap.Int64("batch_id", batch.ID),
+		zap.Int64("project_id", req.ProjectID),
 		zap.Int("app_count", len(req.Apps)))
 
 	return batch, nil
@@ -724,6 +751,7 @@ func (s *BatchService) toBatchResponse(batch *model.Batch, appCount int64) dto.B
 		// 基本信息
 		ID:           batch.ID,
 		BatchNumber:  batch.BatchNumber,
+		ProjectID:    batch.ProjectID,
 		Initiator:    batch.Initiator,
 		ReleaseNotes: batch.ReleaseNotes,
 
@@ -758,6 +786,10 @@ func (s *BatchService) toBatchResponse(batch *model.Batch, appCount int64) dto.B
 		CreatedAt: batch.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt: batch.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+
+	// 添加项目名称（如果需要）
+	// 注意：这里需要 Preload("Project") 才能获取项目信息
+	// 如果需要项目名称，应该在查询时预加载
 
 	return response
 }

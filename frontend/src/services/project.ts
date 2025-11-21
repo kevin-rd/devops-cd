@@ -1,6 +1,6 @@
 import request from '@/utils/request'
-import type { ApiResponse, PaginatedResponse, PaginationParams } from '@/types'
-import type { Team } from '@/services/team'
+import type {ApiResponse, PaginatedResponse, PaginationParams} from '@/types'
+import type {Team} from '@/services/team'
 
 // Project Types
 export interface Project {
@@ -44,7 +44,7 @@ export const projectService = {
   // 获取项目详情
   getById: (id: number) => {
     return request.get<ApiResponse<Project>>('/v1/project/detail', {
-      params: { id },
+      params: {id},
     })
   },
 
@@ -57,7 +57,7 @@ export const projectService = {
 
   // 获取所有项目（用于下拉选择）
   getAll: () => {
-    return request.get<ApiResponse<ProjectSimple[]>>('/v1/projects')
+    return request.get<any, ApiResponse<ProjectSimple[]>>('/v1/projects')
   },
 
   // 更新项目

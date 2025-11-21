@@ -13,7 +13,7 @@ import (
 type TeamService interface {
 	Create(req *dto.CreateTeamRequest) (*dto.TeamResponse, error)
 	GetByID(id int64) (*dto.TeamResponse, error)
-	ListAll() ([]*dto.TeamSimpleResponse, error)
+	List(projectID *int64) ([]*dto.TeamSimpleResponse, error)
 	Update(id int64, req *dto.UpdateTeamRequest) (*dto.TeamResponse, error)
 	Delete(id int64) error
 }
@@ -64,8 +64,16 @@ func (s *teamService) GetByID(id int64) (*dto.TeamResponse, error) {
 	return s.toResponse(team), nil
 }
 
-func (s *teamService) ListAll() ([]*dto.TeamSimpleResponse, error) {
-	teams, err := s.repo.ListAll()
+func (s *teamService) List(projectID *int64) ([]*dto.TeamSimpleResponse, error) {
+	var teams []*model.Team
+	var err error
+
+	if projectID != nil {
+		teams, err = s.repo.ListByProjectID(*projectID)
+	} else {
+		teams, err = s.repo.ListAll()
+	}
+
 	if err != nil {
 		return nil, err
 	}

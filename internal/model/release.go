@@ -7,7 +7,8 @@ import (
 // Batch 发布批次
 type Batch struct {
 	BaseModel
-	BatchNumber  string  `gorm:"uniqueIndex;size:200;not null" json:"batch_number"` // 用户填写的批次编号/标题
+	BatchNumber  string  `gorm:"size:200;not null" json:"batch_number"` // 用户填写的批次编号/标题
+	ProjectID    int64   `gorm:"index;not null" json:"project_id"`      // 关联的项目ID
 	Initiator    string  `gorm:"size:50" json:"initiator"`
 	ReleaseNotes *string `gorm:"type:text" json:"release_notes"` // 批次级发布说明
 

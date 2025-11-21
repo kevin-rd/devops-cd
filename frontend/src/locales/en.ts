@@ -157,6 +157,7 @@ export default {
       name: 'Application Name',
       displayName: 'Display Name',
       project: 'Project',
+      projectAndTeam: 'Project/Team',
       repository: 'Repository',
       namespace: 'Namespace',
       appType: 'App Type',

@@ -1,9 +1,10 @@
-import { memo, useCallback, useMemo } from 'react'
-import { Badge } from 'antd'
-import { Handle, Position } from 'reactflow'
-import type { ReleaseApp } from '@/types'
+import {memo, useCallback, useMemo} from 'react'
+import {Badge} from 'antd'
+import {Handle, Position} from 'reactflow'
+import type {ReleaseApp} from '@/types/release_app.ts'
 import '@/styles/status-theme.css'
 import styles from './AppNode.module.css'
+import {AppStatus} from "@/types/release_app.ts";
 
 interface AppNodeData {
   releaseApp: ReleaseApp
@@ -25,9 +26,9 @@ const APP_TYPE_COLORS: Record<string, string> = {
   default: '#1890ff',
 }
 
-const AppNode = memo(({ data }: AppNodeProps) => {
-  const { releaseApp, isIsolated, onNodeClick } = data
-  const { app_name, app_type, status } = releaseApp
+const AppNode = memo(({data}: AppNodeProps) => {
+  const {releaseApp, isIsolated, onNodeClick} = data
+  const {app_name, app_type, status} = releaseApp
 
   // 获取应用类型颜色
   const ribbonColor = app_type ? (APP_TYPE_COLORS[app_type.toLowerCase()] || APP_TYPE_COLORS.default) : APP_TYPE_COLORS.default
@@ -46,36 +47,38 @@ const AppNode = memo(({ data }: AppNodeProps) => {
     const statusNum = typeof status === 'string' ? parseInt(status, 10) : status
     if (isNaN(statusNum)) return ''
 
-    // 预发布等待 (10) - 虚线不滚动
-    if (statusNum === 10) {
+    // todo: 还需要添加预发布前的状态
+
+    // 预发布等待 (20) - 虚线不滚动
+    if (statusNum === AppStatus.PreWaiting) {
       return styles.preWaiting
     }
-    // 预发布中 (11-12) - 虚线滚动
-    if (statusNum >= 11 && statusNum <= 12) {
+    // 预发布中 (21-22) - 虚线滚动
+    if (statusNum >= AppStatus.PreCanTrigger && statusNum < AppStatus.PreDeployed) {
       return styles.preDeploying
     }
-    // 预发布完成 (13)
-    if (statusNum === 13) {
+    // 预发布完成 (23)
+    if (statusNum === AppStatus.PreDeployed) {
       return styles.preDeployed
     }
-    // 预发布失败 (14)
-    if (statusNum === 14) {
+    // 预发布失败 (24)
+    if (statusNum === AppStatus.PreFailed) {
       return styles.preFailed
     }
-    // 生产等待 (20) - 虚线不滚动
-    if (statusNum === 20) {
+    // 生产等待 (30) - 虚线不滚动
+    if (statusNum === AppStatus.ProdWaiting) {
       return styles.prodWaiting
     }
-    // 生产部署中 (21-22) - 虚线滚动
-    if (statusNum >= 21 && statusNum <= 22) {
+    // 生产部署中 (31-32) - 虚线滚动
+    if (statusNum >= AppStatus.ProdCanTrigger && statusNum < AppStatus.ProdDeployed) {
       return styles.prodDeploying
     }
-    // 生产部署完成 (23)
-    if (statusNum === 23) {
+    // 生产部署完成 (33)
+    if (statusNum === AppStatus.ProdDeployed) {
       return styles.prodDeployed
     }
-    // 生产部署失败 (24)
-    if (statusNum === 24) {
+    // 生产部署失败 (34)
+    if (statusNum === AppStatus.ProdFailed) {
       return styles.prodFailed
     }
 
@@ -98,7 +101,7 @@ const AppNode = memo(({ data }: AppNodeProps) => {
         position={Position.Top}
         className={styles.handle}
         isConnectable={false}
-        style={{ opacity: 0 }}
+        style={{opacity: 0}}
       />
 
       <div className={styles.content}>
@@ -110,23 +113,23 @@ const AppNode = memo(({ data }: AppNodeProps) => {
         position={Position.Bottom}
         className={styles.handle}
         isConnectable={false}
-        style={{ opacity: 0 }}
+        style={{opacity: 0}}
       />
     </div>
   )
 
   return (
-      <Badge onClick={handleClick} style={{ cursor: 'pointer' }}
-        dot={hasNewTag}
-        color="#ff4d4f"
-        offset={[-8, 8]}
-      >
-        {app_type ? (
-          <Badge.Ribbon text={app_type} color={ribbonColor} placement="start">{nodeContent}</Badge.Ribbon>
-        ) : (
-          nodeContent
-        )}
-      </Badge>
+    <Badge onClick={handleClick} style={{cursor: 'pointer'}}
+           dot={hasNewTag}
+           color="#ff4d4f"
+           offset={[-8, 8]}
+    >
+      {app_type ? (
+        <Badge.Ribbon text={app_type} color={ribbonColor} placement="start">{nodeContent}</Badge.Ribbon>
+      ) : (
+        nodeContent
+      )}
+    </Badge>
   )
 })
 

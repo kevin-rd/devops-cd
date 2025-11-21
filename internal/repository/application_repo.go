@@ -19,7 +19,7 @@ type ApplicationRepository interface {
 	FindByRepoIDAndName(repoID int64, name string) (*model.Application, error)
 	List(page, pageSize int, projectID *int64, repoID *int64, teamID *int64, appType *string, keyword string, status *int8) ([]*model.Application, int64, error)
 	ListByRepoID(repoID int64) ([]*model.Application, error)
-	SearchWithBuilds(page, pageSize int, keyword string, projectID *int64, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error)
+	SearchWithBuilds(page, pageSize int, keyword string, projectID *int64, repoID *int64, teamIDs []int64, appTypes []string, status *int8) ([]*model.ApplicationWithBuild, int64, error)
 	Update(app *model.Application) error
 	Delete(id int64) error
 	UpdateDefaultDependencies(appID int64, deps []int64) error
@@ -198,7 +198,8 @@ func (r *applicationRepository) FindByIDs(ids []int64) ([]*model.Application, er
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询 app、repo、commit、tag 等字段）
 // 对于有 deployed_tag 的应用，返回部署后的最新构建；否则返回最新构建
-func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword string, projectID *int64, repoID *int64, teamID *int64, appType *string, status *int8) ([]*model.ApplicationWithBuild, int64, error) {
+// 支持多选团队和应用类型筛选
+func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword string, projectID *int64, repoID *int64, teamIDs []int64, appTypes []string, status *int8) ([]*model.ApplicationWithBuild, int64, error) {
 	var apps []*model.ApplicationWithBuild
 	var total int64
 
@@ -262,11 +263,13 @@ func (r *applicationRepository) SearchWithBuilds(page, pageSize int, keyword str
 	if repoID != nil {
 		baseQuery = baseQuery.Where("applications.repo_id = ?", *repoID)
 	}
-	if teamID != nil {
-		baseQuery = baseQuery.Where("applications.team_id = ?", *teamID)
+	// 多选团队筛选
+	if len(teamIDs) > 0 {
+		baseQuery = baseQuery.Where("applications.team_id IN ?", teamIDs)
 	}
-	if appType != nil {
-		baseQuery = baseQuery.Where("applications.app_type = ?", *appType)
+	// 多选应用类型筛选
+	if len(appTypes) > 0 {
+		baseQuery = baseQuery.Where("applications.app_type IN ?", appTypes)
 	}
 	if status != nil {
 		baseQuery = baseQuery.Where("applications.status = ?", *status)

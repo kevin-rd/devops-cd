@@ -136,7 +136,9 @@ export interface ApplicationQueryParams extends PaginationParams {
   repo_id?: number
   namespace?: string
   app_type?: string
+  app_types?: string[]  // 新增：多选应用类型
   team_id?: number
+  team_ids?: number[]  // 新增：多选团队
   status?: number
   keyword?: string
 }
@@ -228,6 +230,7 @@ export interface BuildSummary {
 
 export interface CreateBatchRequest {
   batch_number: string
+  project_id: number  // 新增：关联的项目ID
   initiator: string
   release_notes?: string
   apps: {

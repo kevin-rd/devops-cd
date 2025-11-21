@@ -1,9 +1,10 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Alert, Button, Drawer, Form, Input, message, Modal, Space, Steps, Table, Tag, Typography,} from 'antd'
+import {Alert, Button, Drawer, Form, Input, message, Modal, Select, Space, Steps, Table, Tag, Typography,} from 'antd'
 import {AppstoreOutlined, CheckCircleOutlined, ExclamationCircleOutlined, FormOutlined} from '@ant-design/icons'
-import {useMutation, useQueryClient} from '@tanstack/react-query'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useTranslation} from 'react-i18next'
 import {batchService} from '@/services/batch'
+import {projectService, ProjectSimple} from '@/services/project'
 import {useAuthStore} from '@/stores/authStore'
 import type {CreateBatchRequest} from '@/types'
 import AppSelectionTable from '@/components/AppSelectionTable'
@@ -37,9 +38,28 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
 
   const [currentStep, setCurrentStep] = useState(0)
 
+  // 选中的项目ID
+  const [selectedProjectId, setSelectedProjectId] = useState<number>()
+
   // 选中的应用ID和发布说明
   const [selectedAppIds, setSelectedAppIds] = useState<number[]>([])
   const [releaseNotesMap, setReleaseNotesMap] = useState<Record<number, string>>({})
+
+  // 加载项目列表
+  const {data: projectsData} = useQuery({
+    queryKey: ['projects'],
+    queryFn: async (): Promise<ProjectSimple[]> => {
+      // 不传分页参数，后端会返回所有项目的简化列表
+      const res = await projectService.getAll()
+      return res.data
+    },
+    enabled: open,
+  })
+
+  const projectOptions = projectsData?.map(project => ({
+    label: project.name,
+    value: project.id,
+  }))
 
   // 创建批次 Mutation
   const createMutation = useMutation({
@@ -73,6 +93,7 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
   const handleClose = () => {
     form.resetFields()
     setCurrentStep(0)
+    setSelectedProjectId(undefined)
     setSelectedAppIds([])
     setReleaseNotesMap({})
     onClose()
@@ -82,13 +103,13 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
   const handleStepChange = (step: number) => {
     // 如果要切换到步骤2（应用管理），先验证基本信息
     if (step === 1) {
-      form.validateFields(['batch_number'])
+      form.validateFields(['batch_number', 'project_id'])
         .then(() => {
           setCurrentStep(step)
         })
         .catch((error) => {
           console.error('Validation failed:', error)
-          message.warning('请先填写批次编号')
+          message.warning('请先填写批次编号和选择项目')
         })
     } else {
       setCurrentStep(step)
@@ -112,6 +133,7 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
     // 构建请求数据
     const requestData: any = {
       batch_number: formValues.batch_number,
+      project_id: formValues.project_id,  // 新增：项目ID
       initiator: formValues.initiator || user?.username || 'unknown',
       apps: selectedAppIds.map((appId) => {
         const app: any = {app_id: appId}
@@ -230,14 +252,8 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
       onOk: () => {
         // 自动取消选择冲突的应用
         const conflictAppIds = conflicts.map(c => c.app_id)
-        setAppSelections(prev =>
-          prev.map(app =>
-            conflictAppIds.includes(app.id)
-              ? {...app, selected: false}
-              : app
-          )
-        )
-        setSelectedAppsMap(prev => {
+        setSelectedAppIds(prev => prev.filter(id => !conflictAppIds.includes(id)))
+        setReleaseNotesMap(prev => {
           const next = {...prev}
           conflictAppIds.forEach(id => {
             delete next[id]
@@ -348,6 +364,26 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
           </Form.Item>
 
           <Form.Item
+            name="project_id"
+            label="所属项目"
+            rules={[{required: true, message: '请选择项目'}]}
+          >
+            <Select
+              placeholder="选择项目"
+              size="large"
+              options={projectOptions}
+              onChange={(value) => {
+                setSelectedProjectId(value)
+                // 切换项目时，清空已选择的应用
+                setSelectedAppIds([])
+                setReleaseNotesMap({})
+              }}
+              showSearch
+              optionFilterProp="label"
+            />
+          </Form.Item>
+
+          <Form.Item
             name="initiator"
             label={t('batch.initiator')}
           >
@@ -369,6 +405,7 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
         <div style={{display: currentStep === 1 ? 'block' : 'none'}}>
           <AppSelectionTable
             selection={{selectedIds: selectedAppIds}}
+            projectId={selectedProjectId}
             onSelectionChange={handleSelectionChange}
             showReleaseNotes={true}
           />

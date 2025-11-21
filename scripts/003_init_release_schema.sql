@@ -45,45 +45,49 @@ CREATE TABLE IF NOT EXISTS `builds` (
 -- 2. 发布批次表 (batches)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `release_batches` (
-    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-    
-    -- 基本信息
-    `batch_number` VARCHAR(200) NOT NULL UNIQUE COMMENT '批次编号/标题(用户填写,如:2025 1010 zkme项目日常更新)',
-    `initiator` VARCHAR(50) DEFAULT NULL COMMENT '发起人',
-    `release_notes` TEXT DEFAULT NULL COMMENT '批次发布说明',
-    
-    -- 审批信息（独立于部署流程）
-    `approval_status` VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '审批状态(pending/approved/rejected/skipped)',
-    `approved_by` VARCHAR(50) DEFAULT NULL COMMENT '审批人',
-    `approved_at` TIMESTAMP NULL DEFAULT NULL COMMENT '审批时间',
-    `reject_reason` TEXT DEFAULT NULL COMMENT '拒绝原因',
-    
-    -- 部署流程状态
-    -- 枚举: DRAFT/SEALED/PRE_DEPLOYING/PRE_DEPLOYED/PROD_DEPLOYING/PROD_DEPLOYED/COMPLETED/CANCELLED
-    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '部署流程状态(0:草稿 10:已封板 21:预发布中 22:预发布完成 31:生产部署中 32:生产部署完成 40:已完成 90:已取消)',
-    
-    -- 时间戳追踪
-    `tagged_at` TIMESTAMP NULL DEFAULT NULL COMMENT '封板时间',
-    `pre_deploy_started_at` TIMESTAMP NULL DEFAULT NULL COMMENT '预发布开始时间',
-    `pre_deploy_finished_at` TIMESTAMP NULL DEFAULT NULL COMMENT '预发布完成时间',
-    `prod_deploy_started_at` TIMESTAMP NULL DEFAULT NULL COMMENT '生产部署开始时间',
-    `prod_deploy_finished_at` TIMESTAMP NULL DEFAULT NULL COMMENT '生产部署完成时间',
-    
-    -- 验收和取消
-    `final_accepted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '最终验收时间',
-    `final_accepted_by` VARCHAR(50) DEFAULT NULL COMMENT '验收人',
-    `cancelled_at` TIMESTAMP NULL DEFAULT NULL COMMENT '取消时间',
-    `cancelled_by` VARCHAR(50) DEFAULT NULL COMMENT '取消人',
-    `cancel_reason` TEXT DEFAULT NULL COMMENT '取消原因',
-    
-    -- 系统字段
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    
-    INDEX `idx_status` (`status`),
-    INDEX `idx_approval_status` (`approval_status`),
-    INDEX `idx_initiator` (`initiator`),
-    INDEX `idx_created_at` (`created_at`)
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+  -- 基本信息
+  `batch_number` VARCHAR(200) NOT NULL UNIQUE COMMENT '批次编号/标题(用户填写,如:2025 1010 zkme项目日常更新)',
+  `project_id` BIGINT NOT NULL COMMENT '关联的项目ID',
+  `initiator` VARCHAR(50) DEFAULT NULL COMMENT '发起人',
+  `release_notes` TEXT DEFAULT NULL COMMENT '批次发布说明',
+
+  -- 审批信息（独立于部署流程）
+  `approval_status` VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '审批状态(pending/approved/rejected/skipped)',
+  `approved_by` VARCHAR(50) DEFAULT NULL COMMENT '审批人',
+  `approved_at` TIMESTAMP NULL DEFAULT NULL COMMENT '审批时间',
+  `reject_reason` TEXT DEFAULT NULL COMMENT '拒绝原因',
+
+  -- 部署流程状态
+  -- 枚举: DRAFT/SEALED/PRE_DEPLOYING/PRE_DEPLOYED/PROD_DEPLOYING/PROD_DEPLOYED/COMPLETED/CANCELLED
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '部署流程状态(0:草稿 10:已封板 21:预发布中 22:预发布完成 31:生产部署中 32:生产部署完成 40:已完成 90:已取消)',
+
+  -- 时间戳追踪
+  `tagged_at` TIMESTAMP NULL DEFAULT NULL COMMENT '封板时间',
+  `pre_deploy_started_at` TIMESTAMP NULL DEFAULT NULL COMMENT '预发布开始时间',
+  `pre_deploy_finished_at` TIMESTAMP NULL DEFAULT NULL COMMENT '预发布完成时间',
+  `prod_deploy_started_at` TIMESTAMP NULL DEFAULT NULL COMMENT '生产部署开始时间',
+  `prod_deploy_finished_at` TIMESTAMP NULL DEFAULT NULL COMMENT '生产部署完成时间',
+
+  -- 验收和取消
+  `final_accepted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '最终验收时间',
+  `final_accepted_by` VARCHAR(50) DEFAULT NULL COMMENT '验收人',
+  `cancelled_at` TIMESTAMP NULL DEFAULT NULL COMMENT '取消时间',
+  `cancelled_by` VARCHAR(50) DEFAULT NULL COMMENT '取消人',
+  `cancel_reason` TEXT DEFAULT NULL COMMENT '取消原因',
+
+  -- 系统字段
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+  UNIQUE INDEX `uk_batch_number` (`batch_number`, `project_id`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_approval_status` (`approval_status`),
+  INDEX `idx_initiator` (`initiator`),
+  INDEX `idx_created_at` (`created_at`),
+  INDEX `idx_project_id` (`project_id`)
+#   FOREIGN KEY (project_id) REFERENCES `projects`(`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='发布批次表';
 
 -- =====================================================
@@ -93,10 +97,10 @@ CREATE TABLE IF NOT EXISTS `release_apps` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     `batch_id` BIGINT NOT NULL COMMENT '批次ID',
     `app_id` BIGINT NOT NULL COMMENT '应用ID',
-    
+
     -- 构建关联（可空：允许无构建应用加入批次，封板时校验）
     `build_id` BIGINT DEFAULT NULL COMMENT '关联的构建ID（封板时固定，不可再变更）',
-    
+
     -- 版本信息
     `previous_deployed_tag` VARCHAR(100) DEFAULT NULL COMMENT '部署前的版本（封板时从 applications.deployed_tag 获取）',
     `target_tag` VARCHAR(100) DEFAULT NULL COMMENT '目标部署版本（封板时从 build.image_tag 获取并固定，部署期间代表期望版本，部署完成后代表已部署版本）',

@@ -157,6 +157,7 @@ export default {
       name: '应用名称',
       displayName: '显示名称',
       project: '所属项目',
+      projectAndTeam: '项目/Team',
       repository: '代码库',
       namespace: '命名空间',
       appType: '应用类型',

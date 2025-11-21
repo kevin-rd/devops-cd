@@ -9,14 +9,18 @@ import (
 )
 
 type Handler interface {
-	// todo: nextStatus 可以改为*int8
-	Handle(ctx context.Context, release *model.ReleaseApp) (nextStatus int8, updateFunc func(*model.ReleaseApp), err error)
+	Handle(ctx context.Context, release *model.ReleaseApp) (nextStatus *int8, updateFunc func(*model.ReleaseApp), err error)
 }
 
-type HandlerFunc func(ctx context.Context, release *model.ReleaseApp) (nextStatus int8, updateFunc func(*model.ReleaseApp), err error)
+type HandlerFunc func(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error)
 
-func (h HandlerFunc) Handle(ctx context.Context, release *model.ReleaseApp) (nextStatus int8, updateFunc func(*model.ReleaseApp), err error) {
-	return h(ctx, release)
+func (h HandlerFunc) Handle(ctx context.Context, release *model.ReleaseApp) (nextStatus *int8, updateFunc func(*model.ReleaseApp), err error) {
+	var status int8
+	status, updateFunc, err = h(ctx, release)
+	if status != 0 {
+		nextStatus = &status
+	}
+	return
 }
 
 func (sm *ReleaseStateMachine) registerHandlers() {

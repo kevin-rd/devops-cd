@@ -44,8 +44,10 @@ export const teamService = {
   },
 
   // 获取所有团队（用于下拉选择）
-  getList: () => {
-    return request.get<ApiResponse<TeamSimple[]>>('/v1/teams')
+  getList: (projectId?: number) => {
+    return request.get<ApiResponse<TeamSimple[]>>('/v1/teams', {
+      params: {project_id: projectId}
+    })
   },
 
   // 更新团队

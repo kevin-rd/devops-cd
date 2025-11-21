@@ -4,6 +4,7 @@ import (
 	"context"
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
+	"devops-cd/pkg/utils"
 	"fmt"
 )
 
@@ -24,7 +25,7 @@ func (sm *ReleaseStateMachine) ManualDeploy(releaseAppID int64, action, operator
 	}
 
 	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
-		WithStatus(e.To),
+		WithStatus(utils.CopyInt8(e.To)),
 		WithSource(TransitionSourceOutside),
 		WithOperator(operator),
 		WithReason(reason),
@@ -40,7 +41,7 @@ func (sm *ReleaseStateMachine) SwitchVersion(releaseAppID, buildID int64, operat
 func (sm *ReleaseStateMachine) TriggerPre(releaseAppID, buildID int64, operator, reason string) error {
 	// 事务更新
 	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
-		WithStatus(constants.ReleaseAppStatusPreCanTrigger),
+		WithStatus(utils.CopyInt8(constants.ReleaseAppStatusPreCanTrigger)),
 		WithSource(TransitionSourceOutside),
 		WithOperator(operator),
 		WithReason(reason),
@@ -52,7 +53,7 @@ func (sm *ReleaseStateMachine) TriggerPre(releaseAppID, buildID int64, operator,
 func (sm *ReleaseStateMachine) TriggerProd(releaseAppID, buildID int64, operator, reason string) error {
 	// 事务更新
 	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
-		WithStatus(constants.ReleaseAppStatusProdCanTrigger),
+		WithStatus(utils.CopyInt8(constants.ReleaseAppStatusPreCanTrigger)),
 		WithSource(TransitionSourceOutside),
 		WithOperator(operator),
 		WithReason(reason),

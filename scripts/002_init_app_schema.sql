@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `repositories` (
 CREATE TABLE IF NOT EXISTS `applications` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `name` VARCHAR(63) NOT NULL COMMENT '应用名称',   --- 期望 RFC1035
-  `project` VARCHAR(63) NOT NULL COMMENT '项目名称(继承自repository.project)',    --- todo:
+  `project_id` VARCHAR(63) NOT NULL COMMENT '项目名称(继承自repository.project)',    --- todo:
   `description` TEXT COMMENT '应用描述',
   `repo_id` BIGINT NOT NULL COMMENT '关联的代码库ID',
   `app_type` VARCHAR(63) NOT NULL COMMENT '应用类型(web/api/job/microservice等)',
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `applications` (
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_project_app_name` (`project`, `name`)
+  UNIQUE KEY `uk_project_name` (`project_id`, `name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用表';
 
 -- =====================================================

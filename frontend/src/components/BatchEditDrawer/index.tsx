@@ -354,6 +354,7 @@ export default function BatchEditDrawer({open, batch, onClose, onSuccess}: Batch
         <div style={{display: currentStep === 1 ? 'block' : 'none'}}>
           <AppSelectionTable
             selection={{selectedIds: selectedAppIds, existingIds: existingAppIds, mode: 'edit'}}
+            projectId={batch.project_id}
             onSelectionChange={handleSelectionChange}
             showReleaseNotes={true}
           />

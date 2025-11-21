@@ -66,6 +66,8 @@ type BatchResponse struct {
 	// 基本信息
 	ID           int64   `json:"id"`
 	BatchNumber  string  `json:"batch_number"`
+	ProjectID    int64   `json:"project_id"`             // 关联的项目ID
+	ProjectName  *string `json:"project_name,omitempty"` // 项目名称
 	Initiator    string  `json:"initiator"`
 	ReleaseNotes *string `json:"release_notes,omitempty"`
 

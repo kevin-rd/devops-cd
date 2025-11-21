@@ -5,6 +5,8 @@ import {AppTypeConfigInfo} from "@/types/index.ts";
 export interface Batch {
   id: number
   batch_number: string
+  project_id: number  // 新增：关联的项目ID
+  project_name?: string  // 新增：项目名称
   initiator: string
   release_notes?: string
   approval_status: 'pending' | 'approved' | 'rejected' | 'skipped'

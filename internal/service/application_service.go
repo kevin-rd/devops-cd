@@ -431,8 +431,8 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 		query.Keyword,
 		query.ProjectID,
 		query.RepoID,
-		query.TeamID,
-		query.AppType,
+		query.TeamIDs,  // 支持多选
+		query.AppTypes, // 支持多选
 		query.Status,
 	)
 	if err != nil {

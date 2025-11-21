@@ -50,7 +50,8 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	}
 
 	// 3. 状态更新
-	if nextStatus != 0 || updateFunc != nil {
+	if nextStatus != nil || updateFunc != nil {
+		log.Debugf("[ReleaseApp SM] [UpdateStatus] Batch:%v ReleaseApp:%v Haandler: %T 状态更新: %v -> %v", release.BatchID, release.ID, handler, release.Status, nextStatus)
 		if err = sm.UpdateStatus(ctx, release, WithStatus(nextStatus), WithModelEffects(updateFunc)); err != nil {
 			log.Errorf("[ReleaseApp SM] [db] 状态更新失败: %v", err)
 		}
@@ -70,9 +71,12 @@ type transitionOptions struct {
 	sideEffect func(r *model.ReleaseApp)
 }
 
-func WithStatus(to int8) TransitionOption {
+func WithStatus(to *int8) TransitionOption {
 	return func(o *transitionOptions) {
-		o.to = &to
+		if to != nil {
+			val := *to
+			o.to = &val
+		}
 	}
 }
 func WithSource(source int8) TransitionOption {

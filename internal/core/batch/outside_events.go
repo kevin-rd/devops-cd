@@ -16,7 +16,7 @@ var events = map[string]Event{
 	"cancel":            {To: constants.BatchStatusCancelled},
 	"start_pre_deploy":  {To: constants.BatchStatusPreWaiting},
 	"start_prod_deploy": {To: constants.BatchStatusProdWaiting},
-	"prod_acceptance":   {To: constants.BatchStatusCompleted},
+	"complete":          {To: constants.BatchStatusCompleted},
 }
 
 func (sm *StateMachine) initActions() {

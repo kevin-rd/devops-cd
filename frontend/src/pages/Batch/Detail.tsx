@@ -350,7 +350,7 @@ export default function BatchDetail() {
       key: string
       label: string
       icon: React.ReactNode
-      type?: 'primary' | 'default'
+      type?: 'primary' | 'default' | 'link'
       danger?: boolean
       action: BatchActionRequest['action']
     }> = []
@@ -428,6 +428,7 @@ export default function BatchDetail() {
         label: t('batch.cancelBatch'),
         icon: <StopOutlined/>,
         danger: true,
+        type: 'link',
         action: 'cancel',
       })
     }
@@ -464,8 +465,20 @@ export default function BatchDetail() {
       ellipsis: true,
       render: (name: string, record: ReleaseApp) => (
         <div style={{display: 'flex', alignItems: 'center', overflow: 'hidden'}}>
-          <span style={{color: '#999', fontSize: 12, userSelect: 'none', flexShrink: 0, marginRight: 4}}>#{record.app_id} </span>
-          <span style={{fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',}}>{name}
+          <span style={{
+            color: '#999',
+            fontSize: 12,
+            userSelect: 'none',
+            flexShrink: 0,
+            marginRight: 4
+          }}>#{record.app_id} </span>
+          <span style={{
+            fontWeight: 500,
+            fontSize: 13,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>{name}
           </span>
         </div>
       )
@@ -577,7 +590,7 @@ export default function BatchDetail() {
                   <Button
                     type="text"
                     size="small"
-                    icon={<UndoOutlined />}
+                    icon={<UndoOutlined/>}
                     style={{
                       padding: '0 4px',
                       minWidth: '22px',
@@ -595,7 +608,7 @@ export default function BatchDetail() {
                     }}
                   />
                 ) : (
-                  <span style={{width: 22, height: 22, display: 'inline-block'}} />
+                  <span style={{width: 22, height: 22, display: 'inline-block'}}/>
                 )}
               </div>
               {displayCommitMessage && (
@@ -737,11 +750,11 @@ export default function BatchDetail() {
             <Button
               icon={<ReloadOutlined/>}
               onClick={() => {
-                queryClient.invalidateQueries({queryKey: ['batchDetail', id]})
-                message.success('已刷新')
+                queryClient.invalidateQueries({queryKey: ['batchDetail', id]}).then(
+                  message.success('已刷新')
+                )
               }}
-            >
-              刷新
+            >刷新
             </Button>
           </Space>
         </div>
@@ -780,8 +793,7 @@ export default function BatchDetail() {
                       handleAction(action.action)
                     }
                   }}
-                >
-                  {action.label}
+                >{action.label}
                 </Button>
               ))}
             </Space>
@@ -841,10 +853,10 @@ export default function BatchDetail() {
                       <Button icon={<EditOutlined/>} onClick={handleManageApps} size="small">
                         添加应用
                       </Button>
-                      <Button 
-                        type="primary" 
-                        icon={<CheckCircleOutlined/>} 
-                        onClick={() => handleAction('seal')} 
+                      <Button
+                        type="primary"
+                        icon={<CheckCircleOutlined/>}
+                        onClick={() => handleAction('seal')}
                         size="small"
                       >
                         {t('batch.seal')}
@@ -898,8 +910,7 @@ export default function BatchDetail() {
         </Card>
       </div>
 
-      {/* 取消批次 Modal */
-      }
+      {/* 取消批次 Modal */}
       <Modal
         title={t('batch.cancelBatch')}
         open={cancelModalVisible}
@@ -921,6 +932,7 @@ export default function BatchDetail() {
         />
       </Modal>
 
+      {/*设置依赖 Modal*/}
       <Modal
         title="设置依赖"
         open={dependencyModalVisible}
@@ -979,6 +991,7 @@ export default function BatchDetail() {
         style={{top: 20}}
       >
         <AppSelectionTable
+          projectId={batch?.project_id}
           selection={{
             selectedIds: selectedAppIds,
             existingIds: batch?.apps?.map(app => app.app_id) || [],
