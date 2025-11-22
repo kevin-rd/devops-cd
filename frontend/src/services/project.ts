@@ -57,7 +57,7 @@ export const projectService = {
 
   // 获取所有项目（用于下拉选择）
   getAll: () => {
-    return request.get<any, ApiResponse<ProjectSimple[]>>('/v1/projects')
+    return request.get<ApiResponse<ProjectSimple[]>>('/v1/projects')
   },
 
   // 更新项目

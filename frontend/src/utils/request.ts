@@ -1,7 +1,7 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
-import { message } from 'antd'
+import axios, {AxiosError, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig} from 'axios'
+import {message} from 'antd'
 import qs from 'qs'
-import { tokenManager } from './token'
+import {tokenManager} from './token'
 
 // 创建 axios 实例
 const request = axios.create({
@@ -9,7 +9,7 @@ const request = axios.create({
   timeout: 30000,
   // 自定义参数序列化器，将数组参数序列化为 status=1&status=2 格式（不带方括号）
   paramsSerializer: (params) => {
-    return qs.stringify(params, { arrayFormat: 'repeat' })
+    return qs.stringify(params, {arrayFormat: 'repeat'})
   },
 })
 
@@ -53,16 +53,16 @@ const refreshAccessToken = async (retryCount: number = 0): Promise<string> => {
   try {
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL || '/api'}/v1/auth/refresh`,
-      { refresh_token: refreshToken }
+      {refresh_token: refreshToken}
     )
 
-    const { access_token, refresh_token, expires_in } = response.data.data
+    const {access_token, refresh_token, expires_in} = response.data.data
     tokenManager.setAccessToken(access_token, expires_in)
     // 如果返回了新的refresh_token，更新它
     if (refresh_token) {
       tokenManager.setRefreshToken(refresh_token)
     }
-    
+
     // 刷新成功，重置失败计数
     refreshFailureCount = 0
     return access_token
@@ -74,7 +74,7 @@ const refreshAccessToken = async (retryCount: number = 0): Promise<string> => {
       await delay(delayMs)
       return refreshAccessToken(retryCount + 1)
     }
-    
+
     // 达到最大重试次数，清空token并抛出错误
     refreshFailureCount++
     tokenManager.clearTokens()
@@ -130,11 +130,11 @@ request.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     // 调试：打印请求信息
     if (config.url?.includes('batch')) {
     }
-    
+
     return config
   },
   (error) => {
@@ -145,7 +145,7 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response: AxiosResponse) => {
-    const { data } = response
+    const {data} = response
     const configWithMeta = response.config as AxiosRequestConfig & { skipErrorMessage?: boolean }
     const skipErrorMessage = configWithMeta.skipErrorMessage
 
@@ -161,8 +161,11 @@ request.interceptors.response.use(
 
     // 如果响应数据中的code是401（Token相关错误），需要刷新token
     if (data.code === 401) {
-      const originalRequest = response.config as InternalAxiosRequestConfig & { _retry?: boolean, skipErrorMessage?: boolean }
-      
+      const originalRequest = response.config as InternalAxiosRequestConfig & {
+        _retry?: boolean,
+        skipErrorMessage?: boolean
+      }
+
       // 如果是刷新 token 的请求，直接返回错误
       if (originalRequest.url?.includes('/auth/refresh')) {
         message.error('登录已过期，请重新登录')
@@ -183,7 +186,7 @@ request.interceptors.response.use(
         // 如果正在刷新 token，将请求加入队列
         if (isRefreshing) {
           return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject })
+            failedQueue.push({resolve, reject})
           })
             .then(() => {
               // token 刷新成功，重试原请求
@@ -202,10 +205,10 @@ request.interceptors.response.use(
           .then((newAccessToken) => {
             // 更新请求头
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-            
+
             // 处理队列中的请求
             processQueue()
-            
+
             // 重试原请求（使用新的token）
             return request(originalRequest)
           })
@@ -213,13 +216,13 @@ request.interceptors.response.use(
             // refreshAccessToken已经处理了重试，如果到这里说明所有重试都失败了
             processQueue(refreshError)
             message.error('登录已过期，请重新登录')
-            
+
             // 保存当前路径
             const currentPath = window.location.pathname + window.location.search
             if (currentPath !== '/login') {
               localStorage.setItem('redirect_path', currentPath)
             }
-            
+
             window.location.href = '/login'
             refreshFailureCount = 0
             return Promise.reject(refreshError)
@@ -228,7 +231,7 @@ request.interceptors.response.use(
             isRefreshing = false
           })
       }
-      
+
       // 如果已经重试过但仍然失败，返回错误
       return Promise.reject(new Error(data.message || 'Token解析失败'))
     }
@@ -240,8 +243,11 @@ request.interceptors.response.use(
     return Promise.reject(new Error(data.message || 'Request failed'))
   },
   async (error: AxiosError<any>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean, skipErrorMessage?: boolean }
-    
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean,
+      skipErrorMessage?: boolean
+    }
+
     // 调试：打印错误信息
     if (error.config?.url?.includes('batch')) {
       console.error('Batch API Error:', {
@@ -251,15 +257,15 @@ request.interceptors.response.use(
         message: error.message,
       })
     }
-    
+
     // 处理不同的错误状态
     if (error.response) {
-      const { status, data: responseData } = error.response
+      const {status, data: responseData} = error.response
       const skipErrorMessage = originalRequest?.skipErrorMessage
 
       // 检查是否是401错误（HTTP状态码401或响应数据中的code是401）
       const isTokenError = status === 401 || responseData?.code === 401
-      
+
       // 处理 401 错误 - Token 过期或解析失败
       if (isTokenError && !originalRequest._retry) {
         // 如果是刷新 token 的请求失败（已经重试过），直接跳转登录
@@ -283,7 +289,7 @@ request.interceptors.response.use(
         // 如果正在刷新 token，将请求加入队列
         if (isRefreshing) {
           return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject })
+            failedQueue.push({resolve, reject})
           })
             .then(() => {
               // token 刷新成功，重试原请求
@@ -300,26 +306,26 @@ request.interceptors.response.use(
 
         try {
           const newAccessToken = await refreshAccessToken()
-          
+
           // 更新请求头
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-          
+
           // 处理队列中的请求
           processQueue()
-          
+
           // 重试原请求（使用新的token）
           return request(originalRequest)
         } catch (refreshError) {
           // refreshAccessToken已经处理了重试，如果到这里说明所有重试都失败了
           processQueue(refreshError)
           message.error('登录已过期，请重新登录')
-          
+
           // 保存当前路径
           const currentPath = window.location.pathname + window.location.search
           if (currentPath !== '/login') {
             localStorage.setItem('redirect_path', currentPath)
           }
-          
+
           window.location.href = '/login'
           refreshFailureCount = 0
           return Promise.reject(refreshError)
@@ -327,7 +333,7 @@ request.interceptors.response.use(
           isRefreshing = false
         }
       }
-      
+
       // 处理其他错误状态
       switch (status) {
         case 403:
@@ -353,16 +359,5 @@ request.interceptors.response.use(
 
 export default request
 
-// 导出常用方法
-export const get = <T = any>(url: string, config?: AxiosRequestConfig) =>
-  request.get<any, T>(url, config)
 
-export const post = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
-  request.post<any, T>(url, data, config)
-
-export const put = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
-  request.put<any, T>(url, data, config)
-
-export const del = <T = any>(url: string, config?: AxiosRequestConfig) =>
-  request.delete<any, T>(url, config)
 

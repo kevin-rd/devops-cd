@@ -1,4 +1,4 @@
-import { post } from '@/utils/request'
+import request from '@/utils/request'
 import type { ApiResponse } from '@/types'
 
 export const releaseService = {
@@ -8,7 +8,7 @@ export const releaseService = {
     latest_build_id: number
     operator: string
   }) =>
-    post<ApiResponse<{
+    request.post<ApiResponse<{
       release_app_id: number
       build_id: number
       deployment_id: number

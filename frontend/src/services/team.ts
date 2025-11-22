@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ApiResponse } from '@/types'
+import type {ApiResponse} from '@/types'
 
 // Team Types
 export interface Team {
@@ -44,8 +44,8 @@ export const teamService = {
   },
 
   // 获取所有团队（用于下拉选择）
-  getList: (projectId?: number) => {
-    return request.get<ApiResponse<TeamSimple[]>>('/v1/teams', {
+  getList: async  (projectId?: number): Promise<ApiResponse<TeamSimple[]>> => {
+    return await request.get<ApiResponse<TeamSimple[]>>('/v1/teams', {
       params: {project_id: projectId}
     })
   },

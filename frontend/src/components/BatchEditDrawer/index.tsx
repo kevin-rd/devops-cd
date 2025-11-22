@@ -36,7 +36,7 @@ export default function BatchEditDrawer({open, batch, onClose, onSuccess}: Batch
   const [existingAppIds, setExistingAppIds] = useState<number[]>([])
 
   // 查询批次详情（使用 placeholderData 先展示传入的数据）
-  const {data: batchDetailResponse, isLoading: loadingBatchDetail, isFetching: fetchingBatchDetail} = useQuery({
+  const {data: batchDetailResponse, isFetching: fetchingBatchDetail} = useQuery({
     queryKey: ['batchDetail', batch?.id],
     queryFn: async () => {
       if (!batch?.id) return null

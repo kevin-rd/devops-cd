@@ -133,7 +133,7 @@ export default function AppSelectionTable(
   }, [teamsResponse])
 
   const appTypeOptions = useMemo(() => {
-    return (appTypesResponse || []).map(type => ({
+    return appTypesResponse?.map(type => ({
       label: type.label,
       value: type.value,
     }))
@@ -343,15 +343,15 @@ export default function AppSelectionTable(
       width: 120,
       ellipsis: true,
       render: (_, record) =>
-      record.project_name || record.team_name ? (
-        <Tag>
-          <span>{record.project_name ? record.project_name : '-'}</span>
-          <span> / </span>
-          <span>{record.team_name ? record.team_name : '-'}</span>
-        </Tag>
-      ) : (
-        <Tag style={{color: '#999'}}>-</Tag>
-      ),
+        record.project_name || record.team_name ? (
+          <Tag>
+            <span>{record.project_name ? record.project_name : '-'}</span>
+            <span> / </span>
+            <span>{record.team_name ? record.team_name : '-'}</span>
+          </Tag>
+        ) : (
+          <Tag style={{color: '#999'}}>-</Tag>
+        ),
     },
     {
       title: t('application.repository'),
