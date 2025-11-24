@@ -93,38 +93,47 @@ func (sm *ReleaseStateMachine) HandleCanTrigger(ctx context.Context, release *mo
 		return 0, nil, fmt.Errorf("app record not found: %w", err)
 	}
 
-	// 3. 幂等创建 Deployment
-	clusters := []string{"default"} // todo: 从 app 配置读取
+	// 3. 查询 Pre 环境的集群配置
+	var configs []model.AppEnvConfig
+	if err := sm.db.Where("app_id = ? AND env = ? AND status = 1", release.AppID, constants.EnvTypePre).
+		Find(&configs).Error; err != nil {
+		return 0, nil, fmt.Errorf("查询 Pre 环境配置失败: %w", err)
+	}
+	if len(configs) == 0 {
+		return 0, nil, fmt.Errorf("应用未配置 Pre 环境")
+	}
+
+	// 4. 为每个集群创建 Deployment
 	var failed []string
-	for _, cluster := range clusters {
+	for _, config := range configs {
 		dep := model.Deployment{
 			BatchID:        release.BatchID,
 			AppID:          release.AppID,
 			ReleaseID:      release.ID,
 			DeploymentName: app.Name,
 			Environment:    constants.EnvTypePre,
-			Cluster:        cluster,
+			Cluster:        config.Cluster,
 			ImageTag:       build.ImageTag,
 			Status:         "pending",
 			RetryCount:     0,
 		}
 
 		// 正确使用 FirstOrCreate
-		result := sm.db.Where("release_id = ? AND environment = ? AND cluster = ?", release.ID, constants.EnvTypePre, cluster).FirstOrCreate(&dep)
+		result := sm.db.Where("release_id = ? AND environment = ? AND cluster = ?", release.ID, constants.EnvTypePre, config.Cluster).FirstOrCreate(&dep)
 
 		if result.Error != nil {
-			failed = append(failed, cluster)
-			log.Error("创建 Deployment 失败", zap.String("cluster", cluster), zap.Error(result.Error))
+			failed = append(failed, config.Cluster)
+			log.Error("创建 Deployment 失败", zap.String("cluster", config.Cluster), zap.Error(result.Error))
 		}
 	}
 
-	// 4. 记录失败信息
+	// 5. 记录失败信息
 	if len(failed) > 0 {
 		release.Reason = fmt.Sprintf("failed clusters: %v", failed)
 		return 0, nil, fmt.Errorf("部分集群创建失败")
 	}
 
-	log.Info("PreDeploy 触发成功", zap.String("image", build.ImageTag))
+	log.Info(fmt.Sprintf("PreDeploy 触发成功,创建了 %d 个集群的 Deployment", len(configs)), zap.String("image", build.ImageTag))
 	return constants.ReleaseAppStatusPreTriggered, nil, nil
 }
 
@@ -238,39 +247,48 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 		return 0, nil, fmt.Errorf("app record not found: %w", err)
 	}
 
-	// 3. 幂等创建 Deployment
-	clusters := []string{"default"} // todo: 从 app 配置读取生产集群
+	// 3. 查询 Prod 环境的集群配置
+	var configs []model.AppEnvConfig
+	if err := sm.db.Where("app_id = ? AND env = ? AND status = 1", release.AppID, constants.EnvTypeProd).
+		Find(&configs).Error; err != nil {
+		return 0, nil, fmt.Errorf("查询 Prod 环境配置失败: %w", err)
+	}
+	if len(configs) == 0 {
+		return 0, nil, fmt.Errorf("应用未配置生产环境")
+	}
+
+	// 4. 为每个集群创建 Deployment
 	var failed []string
-	for _, cluster := range clusters {
+	for _, config := range configs {
 		dep := model.Deployment{
 			BatchID:        release.BatchID,
 			AppID:          release.AppID,
 			ReleaseID:      release.ID,
 			DeploymentName: app.Name,
 			Environment:    constants.EnvTypeProd, // 生产环境
-			Cluster:        cluster,
+			Cluster:        config.Cluster,
 			ImageTag:       build.ImageTag,
 			Status:         "pending",
 			RetryCount:     0,
 		}
 
-		result := sm.db.Where("release_id = ? AND environment = ? AND cluster = ?", release.ID, constants.EnvTypeProd, cluster).
+		result := sm.db.Where("release_id = ? AND environment = ? AND cluster = ?", release.ID, constants.EnvTypeProd, config.Cluster).
 			FirstOrCreate(&dep)
 
 		if result.Error != nil {
-			failed = append(failed, cluster)
-			log.Error("创建 Deployment 失败", zap.String("cluster", cluster), zap.Error(result.Error))
+			failed = append(failed, config.Cluster)
+			log.Error("创建 Deployment 失败", zap.String("cluster", config.Cluster), zap.Error(result.Error))
 		}
 	}
 
-	// 4. 记录失败信息
+	// 5. 记录失败信息
 	if len(failed) > 0 {
 		return 0, func(r *model.ReleaseApp) {
 			r.Reason = fmt.Sprintf("生产部署触发失败: %v", failed)
 		}, fmt.Errorf("部分集群创建失败")
 	}
 
-	log.Info("ProdDeploy 触发成功", zap.String("image", build.ImageTag))
+	log.Info(fmt.Sprintf("ProdDeploy 触发成功,创建了 %d 个集群的 Deployment", len(configs)), zap.String("image", build.ImageTag))
 	return constants.ReleaseAppStatusProdTriggered, nil, nil
 }
 

@@ -44,6 +44,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	repositoryRepo := repository.NewRepositoryRepository(db)
 	repoSyncSourceRepo := repository.NewRepoSyncSourceRepository(db)
 	applicationRepo := repository.NewApplicationRepository(db)
+	appEnvConfigRepo := repository.NewAppEnvConfigRepository(db)
 	buildRepo := repository.NewBuildRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
 	teamRepo := repository.NewTeamRepository(db)
@@ -59,6 +60,8 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	repoSourceService := service.NewRepoSourceService(repoSyncSourceRepo, teamRepo, cfg.Crypto.AESKey)
 	repoSyncService := service.NewRepoSyncService(db, logger, cfg.Crypto.AESKey)
 	applicationService := service.NewApplicationService(applicationRepo, repositoryRepo, db)
+	appEnvConfigService := service.NewAppEnvConfigService(appEnvConfigRepo, applicationRepo, db)
+	clusterService := service.NewClusterService(db)
 	batchService := service.NewBatchService(db)
 	buildService := service.NewBuildService(db, buildRepo, repositoryRepo, applicationRepo, coreEngine)
 
@@ -70,6 +73,8 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	repositoryHandler := handler.NewRepositoryHandler(repositoryService)
 	repoSourceHandler := handler.NewRepoSourceHandler(repoSourceService, repoSyncService)
 	applicationHandler := handler.NewApplicationHandler(applicationService)
+	appEnvConfigHandler := handler.NewAppEnvConfigHandler(appEnvConfigService)
+	clusterHandler := handler.NewClusterHandler(clusterService)
 	batchHandler := handler.NewBatchHandler(coreEngine, batchService)
 	buildHandler := handler.NewBuildHandler(buildService, batchService)
 	releaseAppHandler := handler.NewReleaseAppHandler(batchService)
@@ -158,6 +163,27 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 				groupApplication.GET("/:id/dependencies", applicationHandler.GetDependencies)    // 获取默认依赖
 				groupApplication.PUT("/:id/dependencies", applicationHandler.UpdateDependencies) // 更新默认依赖
 				authed.GET("/application_builds", applicationHandler.SearchWithBuilds)           // 搜索应用（包含构建信息，支持模糊查询）
+			}
+
+			// 应用环境配置管理
+			appEnvConfigGroup := authed.Group("/app-env-configs")
+			{
+				appEnvConfigGroup.POST("", appEnvConfigHandler.Create)            // 创建应用环境配置
+				appEnvConfigGroup.GET("", appEnvConfigHandler.List)               // 查询应用环境配置列表
+				appEnvConfigGroup.GET("/:id", appEnvConfigHandler.GetByID)        // 获取应用环境配置详情
+				appEnvConfigGroup.PUT("/:id", appEnvConfigHandler.Update)         // 更新应用环境配置
+				appEnvConfigGroup.DELETE("/:id", appEnvConfigHandler.Delete)      // 删除应用环境配置
+				appEnvConfigGroup.POST("/batch", appEnvConfigHandler.BatchCreate) // 批量创建应用环境配置
+			}
+
+			// 集群管理
+			clusterGroup := authed.Group("/clusters")
+			{
+				clusterGroup.POST("", clusterHandler.Create)       // 创建集群
+				clusterGroup.GET("", clusterHandler.List)          // 查询集群列表
+				clusterGroup.GET("/:id", clusterHandler.Get)       // 获取集群详情
+				clusterGroup.PUT("/:id", clusterHandler.Update)    // 更新集群
+				clusterGroup.DELETE("/:id", clusterHandler.Delete) // 删除集群
 			}
 
 			// 批次管理

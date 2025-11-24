@@ -87,6 +87,29 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 		return nil, err
 	}
 
+	// 5. 创建默认环境配置
+	defaultConfigs := []model.AppEnvConfig{
+		{
+			AppID:      app.ID,
+			Env:        "pre",
+			Cluster:    "default",
+			Replicas:   1,
+			BaseStatus: model.BaseStatus{Status: constants.StatusEnabled},
+		},
+		{
+			AppID:      app.ID,
+			Env:        "prod",
+			Cluster:    "default",
+			Replicas:   3,
+			BaseStatus: model.BaseStatus{Status: constants.StatusEnabled},
+		},
+	}
+	if err := s.db.Create(&defaultConfigs).Error; err != nil {
+		// 回滚应用创建
+		s.db.Delete(app)
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "创建默认环境配置失败", err)
+	}
+
 	// 手动设置关联数据以便正确返回
 	app.Repository = repo
 

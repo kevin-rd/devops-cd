@@ -45,14 +45,20 @@ func HandleSealed(ctx context.Context, batch *model.Batch) (int8, func(*model.Ba
 func (sm *StateMachine) HandlePreWaiting(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	batchName := fmt.Sprintf("%s[%v]", batch.BatchNumber, batch.ID)
 
-	// 更新 all releaseApp.status -> PreWaiting
+	// 更新 all releaseApp.status -> PreWaiting (只更新需要 pre 的应用)
 	result := sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ?", batch.ID).
+		Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).
 		Where("status < ?", constants.ReleaseAppStatusPreWaiting).
 		Update("status", constants.ReleaseAppStatusPreWaiting)
 
 	if result.Error != nil {
 		return 0, nil, fmt.Errorf("更新发布记录状态失败: %w", result.Error)
+	}
+
+	// 如果批次中没有需要 pre 的应用,直接跳到 prod
+	if result.RowsAffected == 0 {
+		sm.logger.Info(fmt.Sprintf("Batch:%s -> 无需预发布的应用,直接跳转到生产部署", batchName))
+		return constants.BatchStatusProdWaiting, nil, nil
 	}
 
 	sm.logger.Info(fmt.Sprintf("Batch:%s -> %d 条发布记录更新为 PreWaiting", batchName, result.RowsAffected))
@@ -63,10 +69,10 @@ func (sm *StateMachine) HandlePreWaiting(ctx context.Context, batch *model.Batch
 func (sm *StateMachine) HandlePreDeploying(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	batchName := fmt.Sprintf("%s[%v]", batch.BatchNumber, batch.ID)
 
-	// 统计status < PreDeployed的release_app数量
+	// 统计status < PreDeployed的release_app数量 (只统计需要 pre 的应用)
 	var notDeployedCount int64
 	if err := sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ? AND status < ?", batch.ID, constants.ReleaseAppStatusPreDeployed).
+		Where("batch_id = ? AND skip_pre_env = ? AND status < ?", batch.ID, false, constants.ReleaseAppStatusPreDeployed).
 		Count(&notDeployedCount).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询未部署应用失败: %w", err)
 	}
@@ -77,9 +83,11 @@ func (sm *StateMachine) HandlePreDeploying(ctx context.Context, batch *model.Bat
 
 	// 检查是否有release, 防止空批次误判
 	var total int64
-	sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).Count(&total)
+	sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).Count(&total)
 	if total == 0 {
-		return 0, nil, fmt.Errorf("批次无发布记录")
+		// 不应该到达这里,但保险起见,直接跳到 prod
+		sm.logger.Warn(fmt.Sprintf("Batch:%s -> PreDeploying 但无需要 pre 的应用,跳转到 ProdWaiting", batchName))
+		return constants.BatchStatusProdWaiting, nil, nil
 	}
 
 	return constants.BatchStatusPreDeployed, func(b *model.Batch) {
@@ -97,17 +105,25 @@ func (sm *StateMachine) HandlePreDeployed(ctx context.Context, batch *model.Batc
 func (sm *StateMachine) HandleProdWaiting(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	batchName := fmt.Sprintf("%s[%v]", batch.BatchNumber, batch.ID)
 
-	// 更新 all releaseApp.status -> ProdWaiting
-	result := sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ?", batch.ID).
+	// 1. 更新跳过 pre 的应用: Tagged → ProdWaiting
+	result1 := sm.db.Model(&model.ReleaseApp{}).
+		Where("batch_id = ? AND skip_pre_env = ?", batch.ID, true).
+		Where("status = ?", constants.ReleaseAppStatusTagged).
+		Update("status", constants.ReleaseAppStatusProdWaiting)
+
+	// 2. 更新经过 pre 的应用: PreDeployed → ProdWaiting
+	result2 := sm.db.Model(&model.ReleaseApp{}).
+		Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).
 		Where("status = ?", constants.ReleaseAppStatusPreDeployed).
 		Update("status", constants.ReleaseAppStatusProdWaiting)
 
-	if result.Error != nil {
-		return 0, nil, fmt.Errorf("更新发布记录状态失败: %w", result.Error)
+	if result1.Error != nil || result2.Error != nil {
+		return 0, nil, fmt.Errorf("更新发布记录状态失败")
 	}
 
-	sm.logger.Info(fmt.Sprintf("Batch:%s -> %d 条release_app记录更新为 ProdWaiting", batchName, result.RowsAffected))
+	total := result1.RowsAffected + result2.RowsAffected
+	sm.logger.Info(fmt.Sprintf("Batch:%s -> %d 条release_app记录更新为 ProdWaiting (跳过pre:%d, 经过pre:%d)",
+		batchName, total, result1.RowsAffected, result2.RowsAffected))
 	return constants.BatchStatusProdDeploying, nil, nil
 }
 

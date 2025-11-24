@@ -39,7 +39,7 @@ export interface AppSelectionTableProps {
 
 export default function AppSelectionTable(
   {
-    projectId,  // 接收 projectId 参数
+    projectId,
     selection,
     onSelectionChange,
     showReleaseNotes = true,
@@ -586,16 +586,11 @@ export default function AppSelectionTable(
         loading={{
           spinning: isLoading,
           indicator: <Spin size="large"/>,
-          tip: "加载应用列表中...",
         }}
         pagination={false}
         scroll={{y: 'calc(100vh - 400px)'}}
         locale={{
-          emptyText: isLoading ? (
-            <div style={{padding: '60px 0'}}>
-              <Spin size="large" tip="加载应用列表中..."/>
-            </div>
-          ) : (
+          emptyText: (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={

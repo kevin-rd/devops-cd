@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `repositories` (
   UNIQUE INDEX `idx_project_name` (`project`, `name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='代码库表';
 
+
 -- =====================================================
 -- 2. 应用表 (applications)
 -- =====================================================
@@ -42,42 +43,40 @@ CREATE TABLE IF NOT EXISTS `applications` (
   UNIQUE KEY `uk_project_name` (`project_id`, `name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用表';
 
--- =====================================================
--- 3. 环境表 (environments)
--- =====================================================
-CREATE TABLE IF NOT EXISTS `environments` (
-    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-    `name` VARCHAR(63) NOT NULL UNIQUE COMMENT '环境名称(dev/test/staging/prod)',
-    `description` TEXT DEFAULT NULL COMMENT '环境描述',
-    `env_type` VARCHAR(63) NOT NULL COMMENT '环境类型(dev/test/staging/prod)',
-    `cluster_name` VARCHAR(63) DEFAULT NULL COMMENT '集群名称',
-    `cluster_url` VARCHAR(255) DEFAULT NULL COMMENT '集群API地址',
-    `cluster_token` VARCHAR(1000) DEFAULT NULL COMMENT '集群访问Token(加密存储)',
-    `namespace` VARCHAR(63) DEFAULT NULL COMMENT 'K8s命名空间',
-    `priority` INT NOT NULL DEFAULT 0 COMMENT '优先级(用于排序)',
-    `require_approval` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否需要审批',
-    `auto_deploy` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否自动部署',
-    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用)',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
-    INDEX `idx_name` (`name`),
-    INDEX `idx_env_type` (`env_type`),
-    INDEX `idx_priority` (`priority`),
-    INDEX `idx_status` (`status`),
-    INDEX `idx_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='环境表';
-
--- 插入默认环境
-INSERT INTO `environments` (`name`, `display_name`, `description`, `env_type`, `priority`, `require_approval`, `auto_deploy`, `status`)
-VALUES
-    ('pre', '预发布环境', '用于上线前的最终验证', 'pre', 3, TRUE, FALSE, 1),
-    ('prod', '生产环境', '正式生产环境', 'prod', 4, TRUE, FALSE, 1)
-    ON DUPLICATE KEY UPDATE `name` = `name`;
 
 -- =====================================================
--- 4. 表关系说明
+-- 3. 应用环境配置表
+-- 用途: 通过记录存在判断应用是否需要部署到某环境
+-- 设计:
+--   - 每个集群一条记录,支持不同集群独立配置
+--   - 有 env='pre' 记录 -> 应用需要部署到 pre
+--   - 无 env='pre' 记录 -> 应用跳过 pre,直接到 prod
+--
+-- 示例:
+--   app_id=1, env='prod', cluster='cluster-a', replicas=2
+--   app_id=1, env='prod', cluster='cluster-b', replicas=3
 -- =====================================================
--- repositories (1) ----< (N) applications: 一个代码库可以有多个应用
--- applications (N) ----< (N) environments: 应用和环境通过app_env_configs表建立多对多关系
+CREATE TABLE IF NOT EXISTS `app_env_configs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `app_id` BIGINT NOT NULL COMMENT '应用ID,关联 applications.id',
+  `env` VARCHAR(20) NOT NULL COMMENT '环境名称: pre/prod/dev/test/uat 等',
+  `cluster` VARCHAR(50) NOT NULL DEFAULT 'default' COMMENT '集群名称',
 
+  -- 部署配置
+  `replicas` INT DEFAULT 1 COMMENT '副本数量',
+  `config_data` JSON DEFAULT NULL COMMENT '环境专属配置(JSON格式,用于存储扩展配置)',
+
+  -- 系统字段
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用,用于临时禁用配置)',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
+
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_app_env_cluster` (`app_id`, `env`, `cluster`),
+  INDEX `idx_app_env` (`app_id`, `env`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_deleted_at` (`deleted_at`),
+  CONSTRAINT `fk_app_env_configs_cluster` FOREIGN KEY (`cluster`) REFERENCES `clusters` (`name`) ON DELETE RESTRICT ON UPDATE CASCADE
+  #CONSTRAINT `fk_app_env_configs_app` FOREIGN KEY (`app_id`) REFERENCES `applications` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用环境配置表';

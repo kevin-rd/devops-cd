@@ -282,7 +282,7 @@
 
 /* 批次内容卡片 */
 .batch-content-card {
-  min-height: 500px;
+  min-height: 400px;
 }
 
 .batch-content-card .ant-card-body {

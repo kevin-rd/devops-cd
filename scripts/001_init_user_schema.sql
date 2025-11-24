@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS `projects` (
 
 -- 插入默认本地管理员用户 (密码: admin123, 需要使用bcrypt加密)
 -- 以下密码哈希是 "admin123" 的 bcrypt 加密结果
-INSERT INTO `local_users` (`username`, `password`, `email`, `display_name`, `status`)
+INSERT INTO `users` (`username`, `password`, `email`, `display_name`, `status`)
 VALUES ('admin', '$2a$10$N9qo8u1K5PJXh3x9Y7u6J.eqw6Xb5nBxw5TqKJ1x9Y7u6J.eqw6Xb', 'admin@example.com', '系统管理员', 1)
 ON DUPLICATE KEY UPDATE `username` = `username`;
 

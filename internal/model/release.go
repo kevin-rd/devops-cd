@@ -59,8 +59,9 @@ type ReleaseApp struct {
 	LatestBuildID       *int64  `gorm:"column:latest_build_id" json:"latest_build_id"`                      // 最新检测到的构建ID（新tag到达时更新）
 
 	// 业务字段
-	ReleaseNotes  *string   `gorm:"type:text" json:"release_notes"` // 应用级发布说明（可选）
-	IsLocked      bool      `gorm:"default:false" json:"is_locked"` // 是否已锁定（封板后为true）
+	ReleaseNotes  *string   `gorm:"type:text" json:"release_notes"`    // 应用级发布说明（可选）
+	IsLocked      bool      `gorm:"default:false" json:"is_locked"`    // 是否已锁定（封板后为true）
+	SkipPreEnv    bool      `gorm:"default:false" json:"skip_pre_env"` // 是否跳过预发布环境(封板时从 app_env_configs 计算得出)
 	Status        int8      `gorm:"index;not null;default:0" json:"status"`
 	Reason        string    `gorm:"type:text" json:"reason"`
 	TempDependsOn Int64List `gorm:"column:temp_depends_on;type:json;default:[]" json:"temp_depends_on"` // 批次内临时依赖（JSON 数组，记录应用 ID）
