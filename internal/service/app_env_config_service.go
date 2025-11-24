@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -27,9 +28,10 @@ type AppEnvConfigService interface {
 }
 
 type appEnvConfigService struct {
-	repo    repository.AppEnvConfigRepository
-	appRepo repository.ApplicationRepository
-	db      *gorm.DB
+	repo        repository.AppEnvConfigRepository
+	appRepo     repository.ApplicationRepository
+	projectRepo repository.ProjectRepository
+	db          *gorm.DB
 }
 
 func NewAppEnvConfigService(
@@ -38,15 +40,16 @@ func NewAppEnvConfigService(
 	db *gorm.DB,
 ) AppEnvConfigService {
 	return &appEnvConfigService{
-		repo:    repo,
-		appRepo: appRepo,
-		db:      db,
+		repo:        repo,
+		appRepo:     appRepo,
+		projectRepo: repository.NewProjectRepository(db),
+		db:          db,
 	}
 }
 
 func (s *appEnvConfigService) Create(req *dto.CreateAppEnvConfigRequest) (*dto.AppEnvConfigResponse, error) {
 	// 1. 检查应用是否存在
-	_, err := s.appRepo.FindByID(req.AppID)
+	app, err := s.appRepo.FindByID(req.AppID)
 	if err != nil {
 		if err == pkgErrors.ErrRecordNotFound {
 			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "应用不存在", nil)
@@ -54,7 +57,12 @@ func (s *appEnvConfigService) Create(req *dto.CreateAppEnvConfigRequest) (*dto.A
 		return nil, err
 	}
 
-	// 2. 检查是否已存在相同配置
+	// 2. 校验环境和集群是否在项目允许范围内
+	if err := s.validateEnvCluster(app.ProjectID, req.Env, req.Cluster); err != nil {
+		return nil, err
+	}
+
+	// 3. 检查是否已存在相同配置
 	exists, err := s.repo.CheckExists(req.AppID, req.Env, req.Cluster)
 	if err != nil {
 		return nil, err
@@ -64,7 +72,7 @@ func (s *appEnvConfigService) Create(req *dto.CreateAppEnvConfigRequest) (*dto.A
 			fmt.Sprintf("应用在 %s 环境的 %s 集群已存在配置", req.Env, req.Cluster), nil)
 	}
 
-	// 3. 创建配置
+	// 4. 创建配置
 	config := &model.AppEnvConfig{
 		AppID:      req.AppID,
 		Env:        req.Env,
@@ -166,8 +174,8 @@ func (s *appEnvConfigService) List(query *dto.ListAppEnvConfigsQuery) ([]*dto.Ap
 }
 
 func (s *appEnvConfigService) BatchCreate(req *dto.BatchCreateAppEnvConfigsRequest) ([]*dto.AppEnvConfigResponse, error) {
-	// 1. 检查应用是否存在
-	_, err := s.appRepo.FindByID(req.AppID)
+	// 1. 检查应用是否存在并获取项目ID
+	app, err := s.appRepo.FindByID(req.AppID)
 	if err != nil {
 		if err == pkgErrors.ErrRecordNotFound {
 			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "应用不存在", nil)
@@ -175,7 +183,15 @@ func (s *appEnvConfigService) BatchCreate(req *dto.BatchCreateAppEnvConfigsReque
 		return nil, err
 	}
 
-	// 2. 检查是否有重复配置
+	// 2. 校验所有配置项是否在项目允许范围内
+	for i, item := range req.Configs {
+		if err := s.validateEnvCluster(app.ProjectID, item.Env, item.Cluster); err != nil {
+			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest,
+				fmt.Sprintf("第 %d 项配置校验失败: %s", i+1, err.Error()), nil)
+		}
+	}
+
+	// 3. 检查是否有重复配置
 	for i, item := range req.Configs {
 		exists, err := s.repo.CheckExists(req.AppID, item.Env, item.Cluster)
 		if err != nil {
@@ -187,7 +203,7 @@ func (s *appEnvConfigService) BatchCreate(req *dto.BatchCreateAppEnvConfigsReque
 		}
 	}
 
-	// 3. 批量创建
+	// 4. 批量创建
 	configs := make([]*model.AppEnvConfig, len(req.Configs))
 	for i, item := range req.Configs {
 		configs[i] = &model.AppEnvConfig{
@@ -204,7 +220,7 @@ func (s *appEnvConfigService) BatchCreate(req *dto.BatchCreateAppEnvConfigsReque
 		return nil, err
 	}
 
-	// 4. 返回创建的配置列表
+	// 5. 返回创建的配置列表
 	responses := make([]*dto.AppEnvConfigResponse, len(configs))
 	for i, config := range configs {
 		responses[i] = s.toResponse(config)
@@ -240,4 +256,60 @@ func (s *appEnvConfigService) toResponse(config *model.AppEnvConfig) *dto.AppEnv
 		CreatedAt:  config.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:  config.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+// validateEnvCluster 校验环境和集群是否在项目允许范围内
+func (s *appEnvConfigService) validateEnvCluster(projectID int64, env string, cluster string) error {
+	// 1. 查询项目
+	project, err := s.projectRepo.FindByID(projectID)
+	if err != nil {
+		return pkgErrors.Wrap(pkgErrors.CodeInternalError, "查询项目失败", err)
+	}
+
+	// 2. 如果项目未配置 allowed_env_clusters,则不允许选择(必须先配置)
+	if project.AllowedEnvClusters == nil || *project.AllowedEnvClusters == "" {
+		return pkgErrors.New(pkgErrors.CodeBadRequest,
+			"项目未配置允许的环境集群,请先在项目管理中配置")
+	}
+
+	// 3. 解析 allowed_env_clusters
+	var allowedEnvClusters map[string][]string
+	if err := json.Unmarshal([]byte(*project.AllowedEnvClusters), &allowedEnvClusters); err != nil {
+		return pkgErrors.Wrap(pkgErrors.CodeInternalError, "解析项目环境集群配置失败", err)
+	}
+
+	// 4. 空对象 {} 也不允许
+	if len(allowedEnvClusters) == 0 {
+		return pkgErrors.New(pkgErrors.CodeBadRequest,
+			"项目未配置允许的环境集群,请先在项目管理中配置")
+	}
+
+	// 5. 检查环境是否允许
+	allowedClusters, envExists := allowedEnvClusters[env]
+	if !envExists {
+		return pkgErrors.New(pkgErrors.CodeBadRequest,
+			fmt.Sprintf("项目不允许部署到 %s 环境", env))
+	}
+
+	// 6. 检查集群列表是否为空
+	if len(allowedClusters) == 0 {
+		return pkgErrors.New(pkgErrors.CodeBadRequest,
+			fmt.Sprintf("项目在 %s 环境未配置可用集群", env))
+	}
+
+	// 7. 检查集群是否允许
+	clusterAllowed := false
+	for _, c := range allowedClusters {
+		if c == cluster {
+			clusterAllowed = true
+			break
+		}
+	}
+
+	if !clusterAllowed {
+		return pkgErrors.New(pkgErrors.CodeBadRequest,
+			fmt.Sprintf("项目不允许在 %s 环境部署到 %s 集群", env, cluster))
+	}
+
+	return nil
 }

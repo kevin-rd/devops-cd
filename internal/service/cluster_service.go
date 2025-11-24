@@ -36,7 +36,6 @@ func (s *ClusterService) Create(req *dto.ClusterCreateRequest) (*dto.ClusterResp
 	// 2. 创建集群
 	cluster := &model.Cluster{
 		Name:        req.Name,
-		DisplayName: req.DisplayName,
 		Description: req.Description,
 		Region:      req.Region,
 		BaseStatus: model.BaseStatus{
@@ -75,9 +74,6 @@ func (s *ClusterService) Update(id int64, req *dto.ClusterUpdateRequest) (*dto.C
 	}
 
 	// 3. 更新字段
-	if req.DisplayName != nil {
-		cluster.DisplayName = req.DisplayName
-	}
 	if req.Description != nil {
 		cluster.Description = req.Description
 	}
@@ -160,7 +156,6 @@ func (s *ClusterService) toClusterResponse(cluster *model.Cluster) *dto.ClusterR
 	return &dto.ClusterResponse{
 		ID:          cluster.ID,
 		Name:        cluster.Name,
-		DisplayName: cluster.DisplayName,
 		Description: cluster.Description,
 		Region:      cluster.Region,
 		Status:      cluster.Status,

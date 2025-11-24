@@ -13,6 +13,7 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
   Tooltip,
 } from 'antd'
@@ -36,6 +37,7 @@ import {projectService} from '@/services/project'
 import type {TeamSimple} from '@/services/team'
 import {teamService} from '@/services/team'
 import BuildHistoryDrawer from '@/components/BuildHistoryDrawer'
+import EnvClusterConfig from '@/components/EnvClusterConfig'
 import type {ApiResponse, Application, CreateApplicationRequest, CreateRepositoryRequest, Repository,} from '@/types'
 import './index.css'
 
@@ -269,7 +271,11 @@ const RepositoryPage: React.FC = () => {
     setEditingApp(app)
     // 设置应用模态框的项目ID（用于过滤团队列表）
     setAppModalProjectId(app.project_id)
-    appForm.setFieldsValue(app)
+    
+    appForm.setFieldsValue({
+      ...app,
+      env_clusters: app.env_clusters || {},
+    })
     setAppModalVisible(true)
   }
 
@@ -784,105 +790,133 @@ const RepositoryPage: React.FC = () => {
           appForm.resetFields()
         }}
         confirmLoading={appMutation.isPending}
-        width={600}
+        width={700}
       >
-        <Form form={appForm} layout="vertical">
-          <Form.Item
-            name="repo_id"
-            label={t('application.repository')}
-            rules={[{required: true}]}
-          >
-            <Select disabled>
-              {repoData?.map((repo) => (
-                <Select.Option key={repo.id} value={repo.id}>
-                  {repo.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+        <Tabs
+          defaultActiveKey="basic"
+          items={[
+            {
+              key: 'basic',
+              label: '基本信息',
+              children: (
+                <Form form={appForm} layout="vertical">
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Form.Item
+                        name="repo_id"
+                        label={t('application.repository')}
+                        rules={[{required: true}]}
+                      >
+                        <Select disabled>
+                          {repoData?.map((repo) => (
+                            <Select.Option key={repo.id} value={repo.id}>
+                              {repo.name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={16}>
+                      <Form.Item
+                        name="name"
+                        label={t('application.name')}
+                        rules={[{required: true}]}
+                      >
+                        <Input placeholder="my-service"/>
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-          <Form.Item
-            name="name"
-            label={t('application.name')}
-            rules={[{required: true}]}
-          >
-            <Input placeholder="my-service"/>
-          </Form.Item>
+                  <Form.Item name="description" label={t('common.description')}>
+                    <Input.TextArea rows={3}/>
+                  </Form.Item>
 
-          <Form.Item name="display_name" label={t('application.displayName')}>
-            <Input placeholder="My Service"/>
-          </Form.Item>
+                  <Form.Item
+                    name="app_type"
+                    label={t('application.appType')}
+                    rules={[{required: true}]}
+                  >
+                    <Select placeholder={t('application.appType')}>
+                      {appTypes.map((type: AppTypeOption) => (
+                        <Select.Option key={type.value} value={type.value}>
+                          <Space>
+                            <span style={{color: type.color}}>●</span>
+                            <span>{type.label}</span>
+                            {type.description && (
+                              <span style={{color: '#999', fontSize: '12px'}}>
+                                ({type.description})
+                              </span>
+                            )}
+                          </Space>
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
 
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3}/>
-          </Form.Item>
-
-          <Form.Item
-            name="app_type"
-            label={t('application.appType')}
-            rules={[{required: true}]}
-          >
-            <Select placeholder={t('application.appType')}>
-              {appTypes.map((type: AppTypeOption) => (
-                <Select.Option key={type.value} value={type.value}>
-                  <Space>
-                    <span style={{color: type.color}}>●</span>
-                    <span>{type.label}</span>
-                    {type.description && (
-                      <span style={{color: '#999', fontSize: '12px'}}>
-                        ({type.description})
-                      </span>
-                    )}
-                  </Space>
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="project_id"
-                label={t('application.project')}
-                rules={[{required: true, message: t('repository.selectProject')}]}
-              >
-                <Select
-                  placeholder={t('repository.selectProject')}
-                  allowClear
-                  disabled={editingApp !== null}
-                  onChange={(value) => {
-                    // 当项目改变时，更新应用模态框的项目ID并清空团队选择
-                    setAppModalProjectId(value)
-                    appForm.setFieldValue('team_id', undefined)
-                  }}
-                >
-                  {projects?.map((project: ProjectSimple) => (
-                    <Select.Option key={project.id} value={project.id}>
-                      {project.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="team_id"
-                label={t('application.team')}
-              >
-                <Select
-                  placeholder={t('repository.selectTeam')}
-                  allowClear
-                >
-                  {appModalFilteredTeams?.map((team: TeamSimple) => (
-                    <Select.Option key={team.id} value={team.id}>
-                      {team.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="project_id"
+                        label={t('application.project')}
+                        rules={[{required: true, message: t('repository.selectProject')}]}
+                      >
+                        <Select
+                          placeholder={t('repository.selectProject')}
+                          allowClear
+                          disabled={editingApp !== null}
+                          onChange={(value) => {
+                            // 当项目改变时，更新应用模态框的项目ID并清空团队选择
+                            setAppModalProjectId(value)
+                            appForm.setFieldValue('team_id', undefined)
+                          }}
+                        >
+                          {projects?.map((project: ProjectSimple) => (
+                            <Select.Option key={project.id} value={project.id}>
+                              {project.name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="team_id"
+                        label={t('application.team')}
+                      >
+                        <Select
+                          placeholder={t('repository.selectTeam')}
+                          allowClear
+                        >
+                          {appModalFilteredTeams?.map((team: TeamSimple) => (
+                            <Select.Option key={team.id} value={team.id}>
+                              {team.name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Form>
+              ),
+            },
+            {
+              key: 'env-cluster',
+              label: '环境集群配置',
+              children: (
+                <Form form={appForm} layout="vertical">
+                  <Form.Item
+                    name="env_clusters"
+                    label="应用的环境集群配置"
+                    tooltip="只能选择项目允许的环境和集群。如果项目未配置，需要先在项目管理中配置。"
+                    rules={[{required: true, message: '请配置至少一个环境集群'}]}
+                  >
+                    <EnvClusterConfig projectId={appModalProjectId}/>
+                  </Form.Item>
+                </Form>
+              ),
+            },
+          ]}
+        />
       </Modal>
 
       {/* Build History Drawer */}

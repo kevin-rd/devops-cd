@@ -8,7 +8,7 @@
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `repositories` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
-  `project` VARCHAR(63) NOT NULL COMMENT 'user/org 如(my_org)', --- todo: rename to namespace
+  `project` VARCHAR(63) NOT NULL COMMENT 'user/org 如(my_org)', -- todo: rename to namespace
   `name` VARCHAR(63) NOT NULL COMMENT '仓库名称(如: my_repo)',
   `description` TEXT DEFAULT NULL COMMENT '代码库描述',
   `git_url` VARCHAR(255) NOT NULL COMMENT 'Git仓库地址',
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS `repositories` (
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `applications` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `name` VARCHAR(63) NOT NULL COMMENT '应用名称',   --- 期望 RFC1035
-  `project_id` VARCHAR(63) NOT NULL COMMENT '项目名称(继承自repository.project)',    --- todo:
+  `name` VARCHAR(63) NOT NULL COMMENT '应用名称',   -- 期望 RFC1035
+  `project_id` VARCHAR(63) NOT NULL COMMENT '项目名称(继承自repository.project)',    -- todo:
   `description` TEXT COMMENT '应用描述',
   `repo_id` BIGINT NOT NULL COMMENT '关联的代码库ID',
   `app_type` VARCHAR(63) NOT NULL COMMENT '应用类型(web/api/job/microservice等)',

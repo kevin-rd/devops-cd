@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -81,6 +82,16 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 		BaseStatus: model.BaseStatus{
 			Status: constants.StatusEnabled,
 		},
+	}
+
+	// 处理 EnvClusters: map → JSON string
+	if len(req.EnvClusters) > 0 {
+		jsonData, err := json.Marshal(req.EnvClusters)
+		if err != nil {
+			return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "序列化环境集群配置失败", err)
+		}
+		jsonStr := string(jsonData)
+		app.EnvClusters = &jsonStr
 	}
 
 	if err := s.appRepo.Create(app); err != nil {
@@ -196,6 +207,14 @@ func (s *applicationService) Update(id int64, req *dto.UpdateApplicationRequest)
 	}
 	if req.DeployedTag != nil {
 		app.DeployedTag = req.DeployedTag
+	}
+	if len(req.EnvClusters) > 0 {
+		jsonData, err := json.Marshal(req.EnvClusters)
+		if err != nil {
+			return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "序列化环境集群配置失败", err)
+		}
+		jsonStr := string(jsonData)
+		app.EnvClusters = &jsonStr
 	}
 	if req.Status != nil {
 		app.Status = *req.Status
@@ -369,6 +388,14 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 	}
 
 	resp.DefaultDependsOn = app.DefaultDependsOn
+
+	// 处理 EnvClusters: JSON string → map
+	if app.EnvClusters != nil && *app.EnvClusters != "" {
+		var envClusters map[string][]string
+		if err := json.Unmarshal([]byte(*app.EnvClusters), &envClusters); err == nil {
+			resp.EnvClusters = envClusters
+		}
+	}
 
 	// 添加项目名称
 	if app.Project != nil {

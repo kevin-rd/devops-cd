@@ -13,6 +13,7 @@ import {
   Popconfirm,
   Pagination,
   Tag,
+  Tabs,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import {
@@ -31,6 +32,7 @@ import { teamService } from '@/services/team'
 import type { Project, CreateProjectRequest } from '@/services/project'
 import type { Team, CreateTeamRequest } from '@/services/team'
 import type { BackendPaginatedResponse } from '@/types'
+import EnvClusterConfig from '@/components/EnvClusterConfig'
 import './index.css'
 
 const ProjectPage: React.FC = () => {
@@ -156,6 +158,8 @@ const ProjectPage: React.FC = () => {
       name: project.name,
       description: project.description,
       owner_name: project.owner_name,
+      allowed_env_clusters: project.allowed_env_clusters || {},
+      default_env_clusters: project.default_env_clusters || {},
       create_default_team: undefined,
     })
     setModalVisible(true)
@@ -459,41 +463,121 @@ const ProjectPage: React.FC = () => {
           form.resetFields()
         }}
         confirmLoading={mutation.isPending}
-        width={600}
+        width={800}
+        style={{ top: 20 }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label={t('project.name')}
-            rules={[
-              { required: true, message: t('project.nameRequired') },
-              { max: 100, message: t('project.nameTooLong') },
+          <Tabs
+            defaultActiveKey="basic"
+            items={[
+              {
+                key: 'basic',
+                label: '基本信息',
+                children: (
+                  <>
+                    <Form.Item
+                      name="name"
+                      label={t('project.name')}
+                      rules={[
+                        { required: true, message: t('project.nameRequired') },
+                        { max: 100, message: t('project.nameTooLong') },
+                      ]}
+                    >
+                      <Input placeholder="my-project" disabled={!!editingProject} />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="owner_name"
+                      label={t('project.owner')}
+                      rules={[{ max: 100, message: t('project.ownerTooLong') }]}
+                    >
+                      <Input placeholder="owner" />
+                    </Form.Item>
+
+                    <Form.Item name="description" label={t('common.description')}>
+                      <Input.TextArea rows={4} placeholder={t('project.descriptionPlaceholder')} />
+                    </Form.Item>
+
+                    {!editingProject && (
+                      <Form.Item
+                        name="create_default_team"
+                        valuePropName="checked"
+                        initialValue
+                      >
+                        <Checkbox>{t('project.createDefaultTeam')}</Checkbox>
+                      </Form.Item>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: 'env_cluster',
+                label: '环境集群配置',
+                children: (
+                  <>
+                    <Form.Item
+                      name="allowed_env_clusters"
+                      label="允许的环境和集群"
+                      tooltip="配置项目下应用可以部署的环境和集群。如果不配置,应用将无法创建环境配置。"
+                    >
+                      <EnvClusterConfig />
+                    </Form.Item>
+
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prevValues, currentValues) =>
+                        prevValues.allowed_env_clusters !== currentValues.allowed_env_clusters
+                      }
+                    >
+                      {({ getFieldValue }) => {
+                        const allowedEnvClusters = getFieldValue('allowed_env_clusters')
+                        return (
+                          <Form.Item
+                            name="default_env_clusters"
+                            label="默认环境集群配置"
+                            tooltip="配置项目的默认环境集群。只能选择上方'允许的环境和集群'中已配置的选项。"
+                            dependencies={['allowed_env_clusters']}
+                            rules={[
+                              ({ getFieldValue }) => ({
+                                validator(_, value) {
+                                  if (!value || Object.keys(value).length === 0) {
+                                    return Promise.resolve()
+                                  }
+                                  const allowedEnvClusters = getFieldValue('allowed_env_clusters')
+                                  if (!allowedEnvClusters || Object.keys(allowedEnvClusters).length === 0) {
+                                    return Promise.reject(new Error('请先配置允许的环境和集群'))
+                                  }
+                                  
+                                  // 校验是否为子集
+                                  for (const env in value) {
+                                    if (!allowedEnvClusters[env]) {
+                                      return Promise.reject(new Error(`环境 '${env}' 不在允许的环境列表中`))
+                                    }
+                                    const allowedClusters = allowedEnvClusters[env] || []
+                                    const defaultClusters = value[env] || []
+                                    for (const cluster of defaultClusters) {
+                                      if (!allowedClusters.includes(cluster)) {
+                                        return Promise.reject(
+                                          new Error(`集群 '${cluster}' 不在环境 '${env}' 的允许集群列表中`)
+                                        )
+                                      }
+                                    }
+                                  }
+                                  return Promise.resolve()
+                                },
+                              }),
+                            ]}
+                          >
+                            <EnvClusterConfig allowedOptions={allowedEnvClusters} />
+                          </Form.Item>
+                        )
+                      }}
+                    </Form.Item>
+                  </>
+                ),
+              },
             ]}
-          >
-            <Input placeholder="my-project" disabled={!!editingProject} />
-          </Form.Item>
-
-          <Form.Item
-            name="owner_name"
-            label={t('project.owner')}
-            rules={[{ max: 100, message: t('project.ownerTooLong') }]}
-          >
-            <Input placeholder="owner" />
-          </Form.Item>
-
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={4} placeholder={t('project.descriptionPlaceholder')} />
-          </Form.Item>
-
-          {!editingProject && (
-            <Form.Item
-              name="create_default_team"
-              valuePropName="checked"
-              initialValue
-            >
-              <Checkbox>{t('project.createDefaultTeam')}</Checkbox>
-            </Form.Item>
-          )}
+          />
         </Form>
       </Modal>
 

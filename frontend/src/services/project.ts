@@ -8,6 +8,8 @@ export interface Project {
   name: string
   description?: string
   owner_name?: string
+  allowed_env_clusters?: Record<string, string[]> // {"pre": ["cluster-a"], "prod": ["cluster-b"]}
+  default_env_clusters?: Record<string, string[]> // 项目默认环境集群配置(必须是 allowed_env_clusters 的子集)
   created_at: string
   updated_at: string
   teams?: Team[]
@@ -23,6 +25,8 @@ export interface CreateProjectRequest {
   description?: string
   owner_name?: string
   create_default_team?: boolean
+  allowed_env_clusters?: Record<string, string[]> // 允许的环境集群配置
+  default_env_clusters?: Record<string, string[]> // 项目默认环境集群配置(必须是 allowed_env_clusters 的子集)
 }
 
 export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
@@ -32,6 +36,12 @@ export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
 export interface ProjectQueryParams extends PaginationParams {
   keyword?: string
   with_teams?: boolean
+}
+
+// 项目可用环境集群配置响应
+export interface ProjectAvailableEnvClustersResponse {
+  allowed_env_clusters: Record<string, string[]> // 完整配置: {"pre": ["cluster-a"], "prod": ["cluster-b"]}
+  available_clusters: string[] // 如果指定了env,返回该环境下可用集群列表
 }
 
 // Project Service
@@ -71,6 +81,16 @@ export const projectService = {
   // 删除项目
   delete: (id: number) => {
     return request.delete<ApiResponse<void>>(`/v1/project/${id}`)
+  },
+
+  // 获取项目可用的环境集群配置
+  getAvailableEnvClusters: (projectId: number, env?: string) => {
+    return request.get<ApiResponse<ProjectAvailableEnvClustersResponse>>(
+      '/v1/projects/available-env-clusters',
+      {
+        params: { project_id: projectId, env },
+      }
+    )
   },
 }
 

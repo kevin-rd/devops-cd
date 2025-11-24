@@ -3,7 +3,6 @@ package dto
 // ClusterCreateRequest 创建集群请求
 type ClusterCreateRequest struct {
 	Name        string  `json:"name" binding:"required,max=50" example:"cluster-prod-01"`
-	DisplayName *string `json:"display_name" binding:"omitempty,max=100" example:"生产集群01"`
 	Description *string `json:"description" example:"华东区域生产集群"`
 	Region      *string `json:"region" binding:"omitempty,max=50" example:"cn-east-1"`
 }
@@ -11,7 +10,6 @@ type ClusterCreateRequest struct {
 // ClusterUpdateRequest 更新集群请求
 type ClusterUpdateRequest struct {
 	Name        *string `json:"name" binding:"omitempty,max=50" example:"cluster-prod-01"`
-	DisplayName *string `json:"display_name" binding:"omitempty,max=100" example:"生产集群01"`
 	Description *string `json:"description" example:"华东区域生产集群"`
 	Region      *string `json:"region" binding:"omitempty,max=50" example:"cn-east-1"`
 	Status      *int8   `json:"status" binding:"omitempty,oneof=0 1" example:"1"`
@@ -21,7 +19,6 @@ type ClusterUpdateRequest struct {
 type ClusterResponse struct {
 	ID          int64   `json:"id"`
 	Name        string  `json:"name"`
-	DisplayName *string `json:"display_name"`
 	Description *string `json:"description"`
 	Region      *string `json:"region"`
 	Status      int8    `json:"status"`

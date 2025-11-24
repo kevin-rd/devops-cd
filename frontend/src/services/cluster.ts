@@ -9,7 +9,6 @@ import { ApiResponse } from '../types';
 export interface Cluster {
   id: number;
   name: string;
-  display_name?: string;
   description?: string;
   region?: string;
   status: number;
@@ -20,7 +19,6 @@ export interface Cluster {
 // 创建集群请求
 export interface CreateClusterRequest {
   name: string;
-  display_name?: string;
   description?: string;
   region?: string;
 }
@@ -28,7 +26,6 @@ export interface CreateClusterRequest {
 // 更新集群请求
 export interface UpdateClusterRequest {
   name?: string;
-  display_name?: string;
   description?: string;
   region?: string;
   status?: number;
@@ -46,34 +43,34 @@ export interface ClusterListRequest {
  * 获取集群列表
  */
 export const getClusters = (params?: ClusterListRequest) => {
-  return request.get<ApiResponse<Cluster[]>>('/api/v1/clusters', { params });
+  return request.get<ApiResponse<Cluster[]>>('/v1/clusters', { params });
 };
 
 /**
  * 获取集群详情
  */
 export const getCluster = (id: number) => {
-  return request.get<ApiResponse<Cluster>>(`/api/v1/clusters/${id}`);
+  return request.get<ApiResponse<Cluster>>(`/v1/clusters/${id}`);
 };
 
 /**
  * 创建集群
  */
 export const createCluster = (data: CreateClusterRequest) => {
-  return request.post<ApiResponse<Cluster>>('/api/v1/clusters', data);
+  return request.post<ApiResponse<Cluster>>('/v1/clusters', data);
 };
 
 /**
  * 更新集群
  */
 export const updateCluster = (id: number, data: UpdateClusterRequest) => {
-  return request.put<ApiResponse<Cluster>>(`/api/v1/clusters/${id}`, data);
+  return request.put<ApiResponse<Cluster>>(`/v1/clusters/${id}`, data);
 };
 
 /**
  * 删除集群
  */
 export const deleteCluster = (id: number) => {
-  return request.delete<ApiResponse<void>>(`/api/v1/clusters/${id}`);
+  return request.delete<ApiResponse<void>>(`/v1/clusters/${id}`);
 };
 

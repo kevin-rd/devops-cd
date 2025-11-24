@@ -1,0 +1,94 @@
+/* 整体容器 */
+.env-cluster-config {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* 表格布局 */
+ .env-cluster-table {
+  width: 100%;
+  display: flex;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* 固定第一列 - 环境标签 */
+.env-cluster-table .fixed-column {
+  flex-shrink: 0;
+  width: 80px;
+  background-color: #fafafa;
+  border-right: 1px solid #e8e8e8;
+}
+
+/* 环境标签单元格 */
+.env-cluster-table .env-cell {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  font-weight: 500;
+  color: #333;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.env-cluster-table .env-cell:last-child {
+  border-bottom: none;
+}
+
+/* 可滚动的集群列容器 */
+.env-cluster-table .scrollable-columns {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 每一行 */
+.env-cluster-table .env-row {
+  display: flex;
+  height: 48px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.env-cluster-table .env-row:last-child {
+  border-bottom: none;
+}
+
+/* 集群单元格 */
+.env-cluster-table .cluster-cell {
+  flex-shrink: 0;
+  min-width: 120px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #f0f0f0;
+}
+
+.env-cluster-table .cluster-cell:last-child {
+  border-right: none;
+}
+
+/* Checkbox 样式调整 */
+.env-cluster-table .cluster-cell .ant-checkbox-wrapper {
+  white-space: nowrap;
+}
+
+/* 滚动条样式优化 */
+.env-cluster-table .scrollable-columns::-webkit-scrollbar {
+  height: 8px;
+}
+
+.env-cluster-table .scrollable-columns::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.env-cluster-table .scrollable-columns::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 4px;
+}
+
+.env-cluster-table .scrollable-columns::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}

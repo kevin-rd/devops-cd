@@ -39,6 +39,7 @@ type Application struct {
 	AppType          string    `gorm:"size:50;not null;index" json:"app_type"`
 	DeployedTag      *string   `gorm:"column:deployed_tag;size:100" json:"deployed_tag"`              // 当前部署的镜像标签
 	DefaultDependsOn Int64List `gorm:"column:default_depends_on;type:json" json:"default_depends_on"` // DefaultDependsOn 配置级依赖（JSON 数组，记录应用 ID）
+	EnvClusters      *string   `gorm:"type:json" json:"env_clusters"`                                 // 应用的环境集群配置,格式: {"env": ["cluster1", "cluster2"]}
 
 	// Relations
 	Repository *Repository `gorm:"foreignKey:RepoID" json:"repository,omitempty"`

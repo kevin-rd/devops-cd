@@ -4,25 +4,27 @@ import "time"
 
 // CreateApplicationRequest 创建应用请求
 type CreateApplicationRequest struct {
-	Name        string  `json:"name" binding:"required,max=100"`
-	DisplayName *string `json:"display_name"`
-	Description *string `json:"description"`
-	ProjectID   *int64  `json:"project_id"` // 可选：如果不指定则从 Repository 继承
-	RepoID      int64   `json:"repo_id" binding:"required"`
-	AppType     string  `json:"app_type" binding:"required,oneof=static node java go py"`
-	TeamID      *int64  `json:"team_id"`
+	Name        string              `json:"name" binding:"required,max=100"`
+	DisplayName *string             `json:"display_name"`
+	Description *string             `json:"description"`
+	ProjectID   *int64              `json:"project_id"` // 可选：如果不指定则从 Repository 继承
+	RepoID      int64               `json:"repo_id" binding:"required"`
+	AppType     string              `json:"app_type" binding:"required,oneof=static node java go py"`
+	TeamID      *int64              `json:"team_id"`
+	EnvClusters map[string][]string `json:"env_clusters,omitempty"` // 应用的环境集群配置
 }
 
 // UpdateApplicationRequest 更新应用请求
 type UpdateApplicationRequest struct {
-	ID          int64   `json:"id" binding:"required"` // 必填：应用ID
-	Name        *string `json:"name" binding:"omitempty,max=100"`
-	DisplayName *string `json:"display_name"`
-	Description *string `json:"description"`
-	AppType     *string `json:"app_type" binding:"omitempty,oneof=static node java go py"`
-	TeamID      *int64  `json:"team_id"`
-	DeployedTag *string `json:"deployed_tag"` // 当前部署的镜像标签
-	Status      *int8   `json:"status" binding:"omitempty,oneof=0 1"`
+	ID          int64               `json:"id" binding:"required"` // 必填：应用ID
+	Name        *string             `json:"name" binding:"omitempty,max=100"`
+	DisplayName *string             `json:"display_name"`
+	Description *string             `json:"description"`
+	AppType     *string             `json:"app_type" binding:"omitempty,oneof=static node java go py"`
+	TeamID      *int64              `json:"team_id"`
+	DeployedTag *string             `json:"deployed_tag"` // 当前部署的镜像标签
+	EnvClusters map[string][]string `json:"env_clusters,omitempty"`
+	Status      *int8               `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
 // GetApplicationRequest 获取应用详情请求
@@ -43,23 +45,24 @@ type GetApplicationBuildsRequest struct {
 
 // ApplicationResponse 应用响应
 type ApplicationResponse struct {
-	ID               int64   `json:"id"`
-	Name             string  `json:"name"`
-	Namespace        string  `json:"namespace"` // 命名空间（从 Repository 继承）
-	DisplayName      *string `json:"display_name"`
-	Description      *string `json:"description"`
-	ProjectID        int64   `json:"project_id"`             // 关联的项目ID
-	ProjectName      *string `json:"project_name,omitempty"` // 项目名称
-	RepoID           int64   `json:"repo_id"`
-	RepoName         *string `json:"repo_name,omitempty"` // Repository的namespace/name
-	AppType          string  `json:"app_type"`
-	TeamID           *int64  `json:"team_id"`
-	TeamName         *string `json:"team_name,omitempty"` // 团队名称
-	DeployedTag      *string `json:"deployed_tag"`        // 当前部署的镜像标签
-	DefaultDependsOn []int64 `json:"default_depends_on"`
-	Status           int8    `json:"status"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
+	ID               int64               `json:"id"`
+	Name             string              `json:"name"`
+	Namespace        string              `json:"namespace"` // 命名空间（从 Repository 继承）
+	DisplayName      *string             `json:"display_name"`
+	Description      *string             `json:"description"`
+	ProjectID        int64               `json:"project_id"`             // 关联的项目ID
+	ProjectName      *string             `json:"project_name,omitempty"` // 项目名称
+	RepoID           int64               `json:"repo_id"`
+	RepoName         *string             `json:"repo_name,omitempty"` // Repository的namespace/name
+	AppType          string              `json:"app_type"`
+	TeamID           *int64              `json:"team_id"`
+	TeamName         *string             `json:"team_name,omitempty"` // 团队名称
+	DeployedTag      *string             `json:"deployed_tag"`        // 当前部署的镜像标签
+	DefaultDependsOn []int64             `json:"default_depends_on"`
+	EnvClusters      map[string][]string `json:"env_clusters,omitempty"` // 应用的环境集群配置
+	Status           int8                `json:"status"`
+	CreatedAt        string              `json:"created_at"`
+	UpdatedAt        string              `json:"updated_at"`
 }
 
 // ApplicationListQuery 应用列表查询参数

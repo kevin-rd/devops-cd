@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS `projects` (
     `display_name` VARCHAR(100) COMMENT '项目显示名称',
     `description` TEXT COMMENT '项目描述',
     `owner_name` VARCHAR(100) COMMENT '项目负责人',
+    `allowed_env_clusters` JSON DEFAULT NULL COMMENT '允许的环境集群配置, 格式: {"env": ["cluster1", "cluster2"]}',
+    `default_env_clusters` JSON DEFAULT NULL COMMENT '默认环境集群, 格式: {"env": ["cluster1", "cluster2"]}, 必须是 allowed_env_clusters 的子集',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL,

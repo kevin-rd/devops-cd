@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS `repo_sync_sources` (
 CREATE TABLE `clusters` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(50) NOT NULL COMMENT '集群名称(唯一标识,业务主键)',
-  `display_name` VARCHAR(100) DEFAULT NULL COMMENT '显示名称',
   `description` TEXT DEFAULT NULL COMMENT '集群描述',
   `region` VARCHAR(50) DEFAULT NULL COMMENT '地域/区域',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用)',

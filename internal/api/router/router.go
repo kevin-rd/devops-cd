@@ -7,6 +7,7 @@ import (
 	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/repository"
 	"devops-cd/internal/service"
+
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -101,11 +102,12 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 			groupProject := authed.Group("/project")
 			groupProjects := authed.Group("/projects")
 			{
-				groupProject.POST("", projectHandler.Create)        // 创建项目
-				groupProjects.GET("", projectHandler.List)          // 列表查询（无参数返回全部，有分页参数返回分页数据）
-				groupProject.GET("/detail", projectHandler.GetByID) // 获取详情
-				groupProject.PUT("", projectHandler.Update)         // 更新项目
-				groupProject.DELETE("/:id", projectHandler.Delete)  // 删除项目
+				groupProject.POST("", projectHandler.Create)                                         // 创建项目
+				groupProjects.GET("", projectHandler.List)                                           // 列表查询（无参数返回全部，有分页参数返回分页数据）
+				groupProject.GET("/detail", projectHandler.GetByID)                                  // 获取详情
+				groupProject.PUT("", projectHandler.Update)                                          // 更新项目
+				groupProject.DELETE("/:id", projectHandler.Delete)                                   // 删除项目
+				groupProjects.GET("/available-env-clusters", projectHandler.GetAvailableEnvClusters) // 获取项目可用的环境集群配置
 			}
 
 			// 团队管理

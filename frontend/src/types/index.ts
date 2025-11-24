@@ -104,6 +104,7 @@ export interface Application {
   status: number
   created_at: string
   updated_at: string
+  env_clusters?: Record<string, string[]>  // 应用的环境集群配置
 }
 
 export interface CreateApplicationRequest {
@@ -113,6 +114,8 @@ export interface CreateApplicationRequest {
   repo_id: number
   app_type: string
   team_id?: number
+  project_id?: number
+  env_clusters?: Record<string, string[]>  // 应用的环境集群配置
 }
 
 export interface UpdateApplicationRequest extends Partial<CreateApplicationRequest> {

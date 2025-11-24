@@ -45,7 +45,6 @@ func (Deployment) TableName() string {
 type Cluster struct {
 	BaseStatus
 	Name        string  `gorm:"size:50;not null;uniqueIndex" json:"name"`
-	DisplayName *string `gorm:"size:100" json:"display_name"`
 	Description *string `gorm:"type:text" json:"description"`
 	Region      *string `gorm:"size:50" json:"region"`
 }

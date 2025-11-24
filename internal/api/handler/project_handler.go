@@ -108,23 +108,6 @@ func (h *ProjectHandler) List(c *gin.Context) {
 	utils.PageSuccess(c, projects, total, query.GetPage(), query.GetPageSize())
 }
 
-// ListAll 获取所有项目（用于下拉选择）
-// @Summary 获取所有项目
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Success 200 {object} utils.Response{data=[]dto.ProjectSimpleResponse}
-// @Router /api/v1/projects/all [get]
-func (h *ProjectHandler) ListAll(c *gin.Context) {
-	projects, err := h.projectService.ListAll()
-	if err != nil {
-		utils.Error(c, err)
-		return
-	}
-
-	utils.Success(c, projects)
-}
-
 // Update 更新项目
 // @Summary 更新项目
 // @Tags Project
@@ -171,4 +154,29 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 	}
 
 	utils.Success(c, nil)
+}
+
+// GetAvailableEnvClusters 获取项目可用的环境集群配置
+// @Summary 获取项目可用的环境集群配置
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Param project_id query int64 true "项目ID"
+// @Param env query string false "环境名称(pre/prod),不传返回全部配置"
+// @Success 200 {object} utils.Response{data=dto.ProjectAvailableEnvClustersResponse}
+// @Router /api/v1/projects/available-env-clusters [get]
+func (h *ProjectHandler) GetAvailableEnvClusters(c *gin.Context) {
+	var req dto.GetProjectAvailableEnvClustersRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		return
+	}
+
+	resp, err := h.projectService.GetAvailableEnvClusters(req.ProjectID, req.Env)
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+
+	utils.Success(c, resp)
 }
