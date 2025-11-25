@@ -34,6 +34,7 @@ export default {
       total: 'Total',
       start: 'Started',
       finish: 'Finished',
+      unit: ''
     },
 
     // Auth

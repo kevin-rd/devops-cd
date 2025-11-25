@@ -118,8 +118,8 @@ func (r *applicationRepository) List(page, pageSize int, projectID *int64, repoI
 		query = query.Where("app_type = ?", *appType)
 	}
 	if keyword != "" {
-		query = query.Where("name LIKE ? OR display_name LIKE ? OR description LIKE ?",
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+		query = query.Where("name LIKE ? OR description LIKE ?",
+			"%"+keyword+"%", "%"+keyword+"%")
 	}
 	if status != nil {
 		query = query.Where("status = ?", *status)

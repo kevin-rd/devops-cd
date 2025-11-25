@@ -63,7 +63,7 @@ core:
     poll_interval: 5s               # 部署状态轮询间隔
   app_types:
     static:
-      label: "静态网站"
+      label: "Static"
       description: "纯静态网站，使用Nginx部署"
       icon: "html5"
       color: "#E34F26"
@@ -73,7 +73,7 @@ core:
         - py
         - node
     node:
-      label: "Node.js应用"
+      label: "Node.js"
       description: "Node.js/Express/Nest.js等应用"
       icon: "nodejs"
       color: "#339933"
@@ -82,19 +82,19 @@ core:
         - java
         - py
     java:
-      label: "Java应用"
+      label: "Java"
       description: "Spring Boot/Spring Cloud等应用"
       icon: "java"
       color: "#007396"
       dependencies: []
     go:
-      label: "Go应用"
+      label: "Go"
       description: "Golang应用"
       icon: "go"
       color: "#00ADD8"
       dependencies: []
     py:
-      label: "Python应用"
+      label: "Python"
       description: "Python/Django/Flask等应用"
       icon: "python"
       color: "#3776AB"

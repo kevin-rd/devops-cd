@@ -34,6 +34,7 @@ export default {
       total: '共',
       start: '开始',
       finish: '完成',
+      unit: '个'
     },
 
     // 认证

@@ -10,6 +10,7 @@ import {
   Pagination,
   Popconfirm,
   Row,
+  Segmented,
   Select,
   Space,
   Table,
@@ -64,19 +65,32 @@ const RepositoryPage: React.FC = () => {
   const [editingApp, setEditingApp] = useState<Application | null>(null)
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
 
+  // 视图模式切换
+  const [viewMode, setViewMode] = useState<'repo' | 'app'>('repo')
+
   // 模态框中选择的项目ID（用于联动团队列表）
   const [modalProjectId, setModalProjectId] = useState<number | undefined>()
   // 应用模态框中的项目ID（用于过滤团队列表）
   const [appModalProjectId, setAppModalProjectId] = useState<number | undefined>()
 
-  // 分页状态
+  // Repository 视图 - 分页状态
   const [repoPage, setRepoPage] = useState(1)
-  const [repoPageSize, setRepoPageSize] = useState(10)
+  const [repoPageSize, setRepoPageSize] = useState(20)
 
-  // 筛选状态
+  // Repository 视图 - 筛选状态
   const [keyword, setKeyword] = useState('')
   const [projectId, setProjectId] = useState<number | undefined>()
   const [teamId, setTeamId] = useState<number | undefined>()
+
+  // 🔥 Application 视图 - 分页状态
+  const [appPage, setAppPage] = useState(1)
+  const [appPageSize, setAppPageSize] = useState(20)
+
+  // 🔥 Application 视图 - 筛选状态
+  const [appKeyword, setAppKeyword] = useState('')
+  const [appProjectId, setAppProjectId] = useState<number | undefined>()
+  const [appTeamId, setAppTeamId] = useState<number | undefined>()
+  const [appTypeFilter, setAppTypeFilter] = useState<string | undefined>()
 
   // 特殊值：-1 表示"无归属"
   const NO_RELATION = -1
@@ -116,10 +130,35 @@ const RepositoryPage: React.FC = () => {
       })
       return res.data
     },
+    enabled: viewMode === 'repo',  // 只在 repo 视图时查询
   })
 
   const repoData = repoResponse?.items || []
   const repoTotal = repoResponse?.total || 0
+
+  // 查询应用列表（Application 视图）
+  const {data: appListResponse, isLoading: appListLoading} = useQuery({
+    queryKey: ['applications', appPage, appPageSize, appKeyword, appProjectId, appTeamId, appTypeFilter],
+    queryFn: async () => {
+      // 处理特殊值：-1 表示查询无归属的，转换为 0
+      const actualProjectId = appProjectId === NO_RELATION ? 0 : appProjectId
+      const actualTeamId = appTeamId === NO_RELATION ? 0 : appTeamId
+
+      const res = await applicationService.getList({
+        page: appPage,
+        page_size: appPageSize,
+        keyword: appKeyword || undefined,
+        project_id: actualProjectId,
+        team_id: actualTeamId,
+        app_type: appTypeFilter || undefined,
+      })
+      return res.data
+    },
+    enabled: viewMode === 'app',  // 🔥 只在 app 视图时查询
+  })
+
+  const appListData = appListResponse?.items || []
+  const appListTotal = appListResponse?.total || 0
 
   // 查询应用类型列表（永久缓存，页面加载时获取一次）
   const {data: appTypesResponse} = useQuery({
@@ -184,9 +223,14 @@ const RepositoryPage: React.FC = () => {
     }
   }, [projectDetail, editingApp, appModalVisible, appForm])
 
-  // 根据选择的项目过滤团队列表（用于页面筛选）
+  // 根据选择的项目过滤团队列表（用于页面筛选 - Repo 视图）
   const filteredTeams = projectId && projectId !== NO_RELATION
     ? teams.filter(team => team.project_id === projectId)
+    : teams
+
+  // 🔥 根据选择的项目过滤团队列表（用于页面筛选 - App 视图）
+  const appFilteredTeams = appProjectId && appProjectId !== NO_RELATION
+    ? teams.filter(team => team.project_id === appProjectId)
     : teams
 
   // 根据模态框中选择的项目过滤团队列表（用于 Repository 模态框）
@@ -242,6 +286,7 @@ const RepositoryPage: React.FC = () => {
       
       // 使用返回的数据直接更新缓存，避免重新请求
       if (response?.data) {
+        // 更新 Repository 视图的缓存
         queryClient.setQueryData(
           ['repositories', repoPage, repoPageSize, keyword, projectId, teamId],
           (oldData: { items: Repository[]; total: number; page: number; page_size: number } | undefined) => {
@@ -278,6 +323,28 @@ const RepositoryPage: React.FC = () => {
             }
           }
         )
+
+        // 更新 Application 视图的缓存
+        queryClient.setQueryData(
+          ['applications', appPage, appPageSize, appKeyword, appProjectId, appTeamId, appTypeFilter],
+          (oldData: { items: Application[]; total: number; page: number; page_size: number } | undefined) => {
+            if (!oldData?.items) {
+              return oldData
+            }
+
+            return {
+              ...oldData,
+              items: editingApp
+                ? // 更新操作：替换对应的应用
+                  oldData.items.map((app: Application) =>
+                    app.id === response.data.id ? { ...app, ...response.data } : app
+                  )
+                : // 创建操作：在列表开头添加新应用
+                  [response.data, ...oldData.items],
+              total: editingApp ? oldData.total : oldData.total + 1,
+            }
+          }
+        )
       }
       
       setAppModalVisible(false)
@@ -293,6 +360,8 @@ const RepositoryPage: React.FC = () => {
     mutationFn: (id: number) => applicationService.delete(id),
     onSuccess: () => {
       message.success(t('application.deleteSuccess'))
+      // 🔥 同时刷新两个视图的查询
+      queryClient.invalidateQueries({queryKey: ['repositories']})
       queryClient.invalidateQueries({queryKey: ['applications']})
     },
   })
@@ -404,7 +473,7 @@ const RepositoryPage: React.FC = () => {
     setBuildDrawerVisible(true)
   }
 
-  // 处理筛选重置
+  // 处理筛选重置 - Repo 视图
   const handleResetFilters = () => {
     setKeyword('')
     setProjectId(undefined)
@@ -412,9 +481,23 @@ const RepositoryPage: React.FC = () => {
     setRepoPage(1)
   }
 
-  // 筛选条件变化时重置到第一页
+  // 🔥 处理筛选重置 - App 视图
+  const handleResetAppFilters = () => {
+    setAppKeyword('')
+    setAppProjectId(undefined)
+    setAppTeamId(undefined)
+    setAppTypeFilter(undefined)
+    setAppPage(1)
+  }
+
+  // 筛选条件变化时重置到第一页 - Repo 视图
   const handleFilterChange = () => {
     setRepoPage(1)
+  }
+
+  // 🔥 筛选条件变化时重置到第一页 - App 视图
+  const handleAppFilterChange = () => {
+    setAppPage(1)
   }
 
   // Repository 表格列定义
@@ -545,7 +628,7 @@ const RepositoryPage: React.FC = () => {
       title: t('application.appType'),
       dataIndex: 'app_type',
       key: 'app_type',
-      width: 120,
+      width: 100,
       render: (appType: string) => {
         const typeConfig = getAppTypeConfig(appType)
         if (typeConfig) {
@@ -630,6 +713,137 @@ const RepositoryPage: React.FC = () => {
     },
   ]
 
+  // 🔥 Application 视图的表格列定义（独立表格，非嵌套）
+  const appListColumns: ColumnsType<Application> = [
+    {
+      title: t('application.name'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 300,
+      render: (text, record) => (
+        <Space>
+          <AppstoreOutlined style={{color: '#52c41a'}}/>
+          <span style={{color: '#999', fontSize: 12, userSelect: 'none'}}>#{record.id} </span>
+          <span style={{fontWeight: 500, userSelect: 'text'}}>{text}</span>
+        </Space>
+      ),
+    },
+    {
+      title: '所属代码库',
+      dataIndex: 'repo_name',
+      key: 'repo_name',
+      width: 220,
+      render: (repoName, record) => {
+        if (!repoName) return <Tag style={{color: '#999'}}>-</Tag>
+        const fullName = record.namespace ? `${record.namespace}/${repoName}` : repoName
+        return (
+          <Space>
+            {/*<FolderOutlined style={{color: '#1890ff', fontSize: 12}}/>*/}
+            <span style={{fontSize: 13, userSelect: 'text'}}>{fullName}</span>
+          </Space>
+        )
+      },
+    },
+    {
+      title: t('application.project'),
+      key: 'project_name-team_name',
+      width: 150,
+      render: (_, record) =>
+        record.project_name || record.team_name ? (
+          <Tag>
+            <span>{record.project_name ? record.project_name : '-'}</span>
+            <span> / </span>
+            <span>{record.team_name ? record.team_name : '-'}</span>
+          </Tag>
+        ) : (
+          <Tag style={{color: '#999'}}>-</Tag>
+        )
+    },
+    {
+      title: t('application.appType'),
+      dataIndex: 'app_type',
+      key: 'app_type',
+      width: 100,
+      render: (appType: string) => {
+        const typeConfig = getAppTypeConfig(appType)
+        if (typeConfig) {
+          return (
+            <Tag color={typeConfig.color}>
+              <Space size={4}>
+                <span>●</span>
+                <span>{typeConfig.label}</span>
+              </Space>
+            </Tag>
+          )
+        }
+        return <Tag color="default">{appType}</Tag>
+      },
+    },
+    {
+      title: '环境集群',
+      dataIndex: 'env_clusters',
+      key: 'env_clusters',
+      width: 200,
+      render: (envClusters: Record<string, string[]>) => {
+        if (!envClusters || Object.keys(envClusters).length === 0) {
+          return <Tag style={{color: '#999'}}>-</Tag>
+        }
+        return (
+          <Space size={[0, 4]} wrap>
+            {Object.entries(envClusters).map(([env, clusters]) => (
+              <Tag key={env} color="blue">
+                {env}: {clusters.join(', ')}
+              </Tag>
+            ))}
+          </Space>
+        )
+      },
+    },
+    {
+      title: t('application.lastTag'),
+      dataIndex: 'last_tag',
+      key: 'last_tag',
+      width: 150,
+      render: (text) => text && <Tag color="purple">{text}</Tag>,
+    },
+    {
+      title: t('common.action'),
+      key: 'action',
+      width: 200,
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title={t('application.viewBuilds')}>
+            <Button
+              type="text"
+              size="small"
+              icon={<HistoryOutlined/>}
+              onClick={() => handleViewBuilds(record)}
+            />
+          </Tooltip>
+          <Tooltip title={t('common.edit')}>
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined/>}
+              onClick={() => handleEditApp(record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title={t('application.deleteConfirm')}
+            onConfirm={() => deleteAppMutation.mutate(record.id)}
+          >
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined/>}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ]
+
   return (
     <div className="repository-page">
       <Card
@@ -637,6 +851,15 @@ const RepositoryPage: React.FC = () => {
           <Space>
             <FolderOutlined/>
             <span>{t('repository.title')}</span>
+            <Segmented
+              value={viewMode}
+              onChange={(value) => setViewMode(value as 'repo' | 'app')}
+              options={[
+                {label: '仓库视图', value: 'repo'},
+                {label: '应用视图', value: 'app'},
+              ]}
+              style={{marginLeft: 16}}
+            />
           </Space>
         }
         extra={
@@ -660,117 +883,229 @@ const RepositoryPage: React.FC = () => {
           </Space>
         }
       >
-        {/* 筛选器 */}
-        <div style={{marginBottom: 16}}>
-          <Space size="middle" wrap>
-            <Input.Search
-              placeholder={t('repository.keywordPlaceholder')}
-              value={keyword}
-              onChange={(e) => {
-                setKeyword(e.target.value)
-                handleFilterChange()
-              }}
-              onSearch={handleFilterChange}
-              style={{width: 280}}
-              allowClear
-            />
-            <Select
-              placeholder={t('repository.selectProject')}
-              value={projectId}
-              onChange={(value) => {
-                setProjectId(value)
-                // 当项目改变时，清空团队选择（因为团队列表会联动变化）
-                // 如果选择了"无归属"，也清空团队
-                if (value === NO_RELATION) {
-                  setTeamId(undefined)
-                }
-                handleFilterChange()
-              }}
-              style={{width: 200}}
-              allowClear
-            >
-              <Select.Option value={undefined}>{t('repository.allProjects')}</Select.Option>
-              <Select.Option value={NO_RELATION}>{t('repository.noProject')}</Select.Option>
-              {projects.map((project: ProjectSimple) => (
-                <Select.Option key={project.id} value={project.id}>
-                  {project.name}
-                </Select.Option>
-              ))}
-            </Select>
-            <Select
-              placeholder={t('repository.selectTeam')}
-              value={teamId}
-              onChange={(value) => {
-                setTeamId(value)
-                handleFilterChange()
-              }}
-              style={{width: 200}}
-              allowClear
-              disabled={projectId === NO_RELATION || (!projectId && projectId !== 0)}
-            >
-              <Select.Option value={undefined}>{t('repository.allTeams')}</Select.Option>
-              <Select.Option value={NO_RELATION}>{t('repository.noTeam')}</Select.Option>
-              {filteredTeams.map((team: TeamSimple) => (
-                <Select.Option key={team.id} value={team.id}>
-                  {team.name}
-                </Select.Option>
-              ))}
-            </Select>
-            <Button onClick={handleResetFilters}>{t('common.reset')}</Button>
-          </Space>
-        </div>
-        <Table
-          columns={repoColumns}
-          dataSource={repoData}
-          rowKey="id"
-          loading={repoLoading}
-          pagination={false}
-          sticky={true}
-          expandable={{
-            expandedRowKeys,
-            onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
-            expandRowByClick: true,
-            showExpandColumn: false,
-            expandedRowRender: (record) => {
-              const apps = record.applications || []
-              return (
-                <Table
-                  columns={appColumns}
-                  dataSource={apps}
-                  rowKey="id"
-                  pagination={false}
-                  // showHeader={false}
-                  sticky={{offsetHeader: 55}}
-                  size="small"
-                  className="app-table"
-                  scroll={{ x: 'max-content', scrollToFirstRowOnChange: true}}
-                />
-              )
-            },
-            rowExpandable: (record) => {
-              return (record.applications?.length || 0) > 0
-            },
-          }}
-          onRow={() => ({
-            style: {cursor: 'pointer'},
-          })}
-        />
-
-        {repoTotal > repoPageSize && (
-          <div style={{marginTop: 16, textAlign: 'right'}}>
-            <Pagination
-              current={repoPage}
-              pageSize={repoPageSize}
-              total={repoTotal}
-              onChange={(page, pageSize) => {
-                setRepoPage(page)
-                setRepoPageSize(pageSize)
-              }}
-              showSizeChanger
-              showQuickJumper
-              showTotal={(total) => `${t('common.total')} ${total} ${t('repository.list')}`}
-            />
+        {/* Repository 视图 - 筛选器和分页器 */}
+        {viewMode === 'repo' && (
+          <div style={{marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'}}>
+            <Space size="middle" wrap>
+              <Select
+                placeholder={t('repository.selectProject')}
+                value={projectId}
+                onChange={(value) => {
+                  setProjectId(value)
+                  // 当项目改变时，清空团队选择（因为团队列表会联动变化）
+                  // 如果选择了"无归属"，也清空团队
+                  if (value === NO_RELATION) {
+                    setTeamId(undefined)
+                  }
+                  handleFilterChange()
+                }}
+                style={{width: 140}}
+                allowClear
+              >
+                <Select.Option value={undefined}>{t('repository.allProjects')}</Select.Option>
+                <Select.Option value={NO_RELATION}>{t('repository.noProject')}</Select.Option>
+                {projects.map((project: ProjectSimple) => (
+                  <Select.Option key={project.id} value={project.id}>
+                    {project.name}
+                  </Select.Option>
+                ))}
+              </Select>
+              <Select
+                placeholder={t('repository.selectTeam')}
+                value={teamId}
+                onChange={(value) => {
+                  setTeamId(value)
+                  handleFilterChange()
+                }}
+                style={{width: 140}}
+                allowClear
+                disabled={projectId === NO_RELATION || (!projectId && projectId !== 0)}
+              >
+                <Select.Option value={undefined}>{t('repository.allTeams')}</Select.Option>
+                <Select.Option value={NO_RELATION}>{t('repository.noTeam')}</Select.Option>
+                {filteredTeams.map((team: TeamSimple) => (
+                  <Select.Option key={team.id} value={team.id}>
+                    {team.name}
+                  </Select.Option>
+                ))}
+              </Select>
+              <Input.Search
+                placeholder={t('repository.keywordPlaceholder')}
+                value={keyword}
+                onChange={(e) => {
+                  setKeyword(e.target.value)
+                  handleFilterChange()
+                }}
+                onSearch={handleFilterChange}
+                style={{width: 240}}
+                allowClear
+              />
+              <Button onClick={handleResetFilters}>{t('common.reset')}</Button>
+            </Space>
+            
+            {/* 🔥 分页器移到右侧 */}
+            {repoTotal > repoPageSize && (
+              <Pagination
+                current={repoPage}
+                pageSize={repoPageSize}
+                total={repoTotal}
+                onChange={(page, pageSize) => {
+                  setRepoPage(page)
+                  setRepoPageSize(pageSize)
+                }}
+                showSizeChanger
+                // showQuickJumper
+                showTotal={(total) => `${t('common.total')} ${total} ${t('common.unit')}`}
+              />
+            )}
           </div>
+        )}
+
+        {/* Application 视图 - 筛选器和分页器 */}
+        {viewMode === 'app' && (
+          <div style={{marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'}}>
+            <Space size="middle" wrap>
+              <Select
+                placeholder={t('repository.selectProject')}
+                value={appProjectId}
+                onChange={(value) => {
+                  setAppProjectId(value)
+                  // 当项目改变时，清空团队选择
+                  if (value === NO_RELATION) {
+                    setAppTeamId(undefined)
+                  }
+                  handleAppFilterChange()
+                }}
+                style={{width: 140}}
+                allowClear
+              >
+                <Select.Option value={undefined}>{t('repository.allProjects')}</Select.Option>
+                <Select.Option value={NO_RELATION}>{t('repository.noProject')}</Select.Option>
+                {projects.map((project: ProjectSimple) => (
+                  <Select.Option key={project.id} value={project.id}>
+                    {project.name}
+                  </Select.Option>
+                ))}
+              </Select>
+              <Select
+                placeholder={t('repository.selectTeam')}
+                value={appTeamId}
+                onChange={(value) => {
+                  setAppTeamId(value)
+                  handleAppFilterChange()
+                }}
+                style={{width: 140}}
+                allowClear
+                disabled={appProjectId === NO_RELATION || (!appProjectId && appProjectId !== 0)}
+              >
+                <Select.Option value={undefined}>{t('repository.allTeams')}</Select.Option>
+                <Select.Option value={NO_RELATION}>{t('repository.noTeam')}</Select.Option>
+                {appFilteredTeams.map((team: TeamSimple) => (
+                  <Select.Option key={team.id} value={team.id}>
+                    {team.name}
+                  </Select.Option>
+                ))}
+              </Select>
+              <Select
+                placeholder="应用类型"
+                value={appTypeFilter}
+                onChange={(value) => {
+                  setAppTypeFilter(value)
+                  handleAppFilterChange()
+                }}
+                style={{width: 140}}
+                allowClear
+              >
+                <Select.Option value={undefined}>全部类型</Select.Option>
+                {appTypes.map((type: AppTypeOption) => (
+                  <Select.Option key={type.value} value={type.value}>
+                    <Space size={4}>
+                      <span style={{color: type.color}}>●</span>
+                      <span>{type.label}</span>
+                    </Space>
+                  </Select.Option>
+                ))}
+              </Select>
+              <Input.Search
+                placeholder="搜索应用名称"
+                value={appKeyword}
+                onChange={(e) => {
+                  setAppKeyword(e.target.value)
+                  handleAppFilterChange()
+                }}
+                onSearch={handleAppFilterChange}
+                style={{width: 240}}
+                allowClear
+              />
+              <Button onClick={handleResetAppFilters}>{t('common.reset')}</Button>
+            </Space>
+            
+            {/* 分页器移到右侧 */}
+            {appListTotal > appPageSize && (
+              <Pagination
+                current={appPage}
+                pageSize={appPageSize}
+                total={appListTotal}
+                onChange={(page, pageSize) => {
+                  setAppPage(page)
+                  setAppPageSize(pageSize)
+                }}
+                showSizeChanger
+                showTotal={(total) => `${t('common.total')} ${total} ${t('common.unit')}`}
+              />
+            )}
+          </div>
+        )}
+        
+        {/* Repository 视图 - 表格 */}
+        {viewMode === 'repo' && (
+          <Table
+            columns={repoColumns}
+            dataSource={repoData}
+            rowKey="id"
+            loading={repoLoading}
+            pagination={false}
+            sticky={true}
+            expandable={{
+              expandedRowKeys,
+              onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
+              expandRowByClick: true,
+              showExpandColumn: false,
+              expandedRowRender: (record) => {
+                const apps = record.applications || []
+                return (
+                  <Table
+                    columns={appColumns}
+                    dataSource={apps}
+                    rowKey="id"
+                    pagination={false}
+                    // showHeader={false}
+                    sticky={{offsetHeader: 55}}
+                    size="small"
+                    className="app-table"
+                    scroll={{ x: 'max-content', scrollToFirstRowOnChange: true}}
+                  />
+                )
+              },
+              rowExpandable: (record) => {
+                return (record.applications?.length || 0) > 0
+              },
+            }}
+            onRow={() => ({
+              style: {cursor: 'pointer'},
+            })}
+          />
+        )}
+
+        {/* 🔥 Application 视图 - 表格 */}
+        {viewMode === 'app' && (
+          <Table
+            columns={appListColumns}
+            dataSource={appListData}
+            rowKey="id"
+            loading={appListLoading}
+            pagination={false}
+          />
         )}
       </Card>
 
