@@ -240,6 +240,8 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 		UpdatedAt:   app.UpdatedAt.Format(time.RFC3339),
 	}
 
+	appResp.DefaultDependsOn = app.DefaultDependsOn
+
 	// 添加项目名称
 	if app.Project != nil {
 		appResp.ProjectName = &app.Project.Name
@@ -247,7 +249,6 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 
 	// 添加代码库信息（namespace 和名称）
 	if app.Repository != nil {
-		appResp.Namespace = app.Repository.Namespace // 从 Repository 获取 namespace
 		repoName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 		appResp.RepoName = &repoName
 	}
@@ -255,6 +256,15 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 	// 添加团队名称
 	if app.Team != nil {
 		appResp.TeamName = &app.Team.Name
+	}
+
+	// 从预加载的关联数据中转换 env_clusters
+	if len(app.EnvConfigs) > 0 {
+		envClustersMap := make(map[string][]string)
+		for _, config := range app.EnvConfigs {
+			envClustersMap[config.Env] = append(envClustersMap[config.Env], config.Cluster)
+		}
+		appResp.EnvClusters = envClustersMap
 	}
 
 	return appResp

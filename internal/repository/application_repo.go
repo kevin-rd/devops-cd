@@ -44,7 +44,11 @@ func (r *applicationRepository) Create(app *model.Application) error {
 
 func (r *applicationRepository) FindByID(id int64) (*model.Application, error) {
 	var app model.Application
-	err := r.db.Preload("Project").Preload("Repository").Preload("Team").First(&app, id).Error
+	err := r.db.Preload("Project").
+		Preload("Repository").
+		Preload("Team").
+		Preload("EnvConfigs", "deleted_at IS NULL").
+		First(&app, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -94,7 +98,11 @@ func (r *applicationRepository) List(page, pageSize int, projectID *int64, repoI
 	var apps []*model.Application
 	var total int64
 
-	query := r.db.Model(&model.Application{}).Preload("Project").Preload("Repository").Preload("Team")
+	query := r.db.Model(&model.Application{}).
+		Preload("Project").
+		Preload("Repository").
+		Preload("Team").
+		Preload("EnvConfigs", "deleted_at IS NULL")
 
 	// 过滤条件
 	if projectID != nil {
@@ -137,6 +145,7 @@ func (r *applicationRepository) ListByRepoID(repoID int64) ([]*model.Application
 		Preload("Project").
 		Preload("Repository").
 		Preload("Team").
+		Preload("EnvConfigs", "deleted_at IS NULL").
 		Order("created_at DESC").
 		Find(&apps).Error
 	if err != nil {

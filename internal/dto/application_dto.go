@@ -47,16 +47,15 @@ type GetApplicationBuildsRequest struct {
 type ApplicationResponse struct {
 	ID               int64               `json:"id"`
 	Name             string              `json:"name"`
-	Namespace        string              `json:"namespace"` // 命名空间（从 Repository 继承）
 	Description      *string             `json:"description"`
 	ProjectID        int64               `json:"project_id"`             // 关联的项目ID
 	ProjectName      *string             `json:"project_name,omitempty"` // 项目名称
 	RepoID           int64               `json:"repo_id"`
 	RepoName         *string             `json:"repo_name,omitempty"` // Repository的namespace/name
-	AppType          string              `json:"app_type"`
 	TeamID           *int64              `json:"team_id"`
 	TeamName         *string             `json:"team_name,omitempty"` // 团队名称
-	DeployedTag      *string             `json:"deployed_tag"`        // 当前部署的镜像标签
+	AppType          string              `json:"app_type"`
+	DeployedTag      *string             `json:"deployed_tag"` // 当前部署的镜像标签
 	DefaultDependsOn []int64             `json:"default_depends_on"`
 	EnvClusters      map[string][]string `json:"env_clusters,omitempty"` // 环境集群配置，从 app_env_configs 表查询得出
 	Status           int8                `json:"status"`

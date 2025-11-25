@@ -40,9 +40,10 @@ type Application struct {
 	DefaultDependsOn Int64List `gorm:"column:default_depends_on;type:json" json:"default_depends_on"` // DefaultDependsOn 配置级依赖（JSON 数组，记录应用 ID）
 
 	// Relations
-	Repository *Repository `gorm:"foreignKey:RepoID" json:"repository,omitempty"`
-	Project    *Project    `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
-	Team       *Team       `gorm:"foreignKey:TeamID" json:"team,omitempty"`
+	Repository *Repository    `gorm:"foreignKey:RepoID" json:"repository,omitempty"`
+	Project    *Project       `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	Team       *Team          `gorm:"foreignKey:TeamID" json:"team,omitempty"`
+	EnvConfigs []AppEnvConfig `gorm:"foreignKey:AppID" json:"env_configs,omitempty"`
 }
 
 func (Application) TableName() string {

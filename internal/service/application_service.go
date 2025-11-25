@@ -401,7 +401,6 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 
 	// 添加代码库信息（namespace 和名称）
 	if app.Repository != nil {
-		resp.Namespace = app.Repository.Namespace // 从 Repository 获取 namespace
 		repoName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
 		resp.RepoName = &repoName
 	}
@@ -411,17 +410,13 @@ func (s *applicationService) toResponse(app *model.Application) *dto.Application
 		resp.TeamName = &app.Team.Name
 	}
 
-	// 查询并添加环境集群配置
-	var envConfigs []model.AppEnvConfig
-	if err := s.db.Where("app_id = ? AND deleted_at IS NULL", app.ID).Find(&envConfigs).Error; err == nil {
-		// 转换为 map[env][]cluster 格式
+	// 添加env_clusters
+	if len(app.EnvConfigs) > 0 {
 		envClustersMap := make(map[string][]string)
-		for _, config := range envConfigs {
-			envClustersMap[config.Env] = append(envClustersMap[config.Env], config.Cluster)
+		for _, ec := range app.EnvConfigs {
+			envClustersMap[ec.Env] = append(envClustersMap[ec.Env], ec.Cluster)
 		}
-		if len(envClustersMap) > 0 {
-			resp.EnvClusters = envClustersMap
-		}
+		resp.EnvClusters = envClustersMap
 	}
 
 	return resp
