@@ -11,7 +11,7 @@ type CreateApplicationRequest struct {
 	RepoID      int64               `json:"repo_id" binding:"required"`
 	AppType     string              `json:"app_type" binding:"required,oneof=static node java go py"`
 	TeamID      *int64              `json:"team_id"`
-	EnvClusters map[string][]string `json:"env_clusters,omitempty"` // 应用的环境集群配置
+	EnvClusters map[string][]string `json:"env_clusters,omitempty"` // 环境集群配置，用于初始化 app_env_configs 表
 }
 
 // UpdateApplicationRequest 更新应用请求
@@ -22,8 +22,8 @@ type UpdateApplicationRequest struct {
 	Description *string             `json:"description"`
 	AppType     *string             `json:"app_type" binding:"omitempty,oneof=static node java go py"`
 	TeamID      *int64              `json:"team_id"`
-	DeployedTag *string             `json:"deployed_tag"` // 当前部署的镜像标签
-	EnvClusters map[string][]string `json:"env_clusters,omitempty"`
+	DeployedTag *string             `json:"deployed_tag"`           // 当前部署的镜像标签
+	EnvClusters map[string][]string `json:"env_clusters,omitempty"` // 环境集群配置，用于同步更新 app_env_configs 表
 	Status      *int8               `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
@@ -48,7 +48,6 @@ type ApplicationResponse struct {
 	ID               int64               `json:"id"`
 	Name             string              `json:"name"`
 	Namespace        string              `json:"namespace"` // 命名空间（从 Repository 继承）
-	DisplayName      *string             `json:"display_name"`
 	Description      *string             `json:"description"`
 	ProjectID        int64               `json:"project_id"`             // 关联的项目ID
 	ProjectName      *string             `json:"project_name,omitempty"` // 项目名称
@@ -59,7 +58,7 @@ type ApplicationResponse struct {
 	TeamName         *string             `json:"team_name,omitempty"` // 团队名称
 	DeployedTag      *string             `json:"deployed_tag"`        // 当前部署的镜像标签
 	DefaultDependsOn []int64             `json:"default_depends_on"`
-	EnvClusters      map[string][]string `json:"env_clusters,omitempty"` // 应用的环境集群配置
+	EnvClusters      map[string][]string `json:"env_clusters,omitempty"` // 环境集群配置，从 app_env_configs 表查询得出
 	Status           int8                `json:"status"`
 	CreatedAt        string              `json:"created_at"`
 	UpdatedAt        string              `json:"updated_at"`
@@ -117,7 +116,6 @@ type ApplicationBuildResponse struct {
 	ID           int64   `json:"id"`
 	Name         string  `json:"name"`
 	Namespace    string  `json:"namespace"` // 命名空间（从 Repository 继承）
-	DisplayName  *string `json:"display_name"`
 	Description  *string `json:"description"`
 	ProjectID    int64   `json:"project_id"`             // 关联的项目ID
 	ProjectName  *string `json:"project_name,omitempty"` // 项目名称

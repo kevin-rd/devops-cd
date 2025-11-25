@@ -229,7 +229,6 @@ func (s *repositoryService) toApplicationResponse(app *model.Application) *dto.A
 	appResp := &dto.ApplicationResponse{
 		ID:          app.ID,
 		Name:        app.Name,
-		DisplayName: app.DisplayName,
 		Description: app.Description,
 		ProjectID:   app.ProjectID,
 		RepoID:      app.RepoID,

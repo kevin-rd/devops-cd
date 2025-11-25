@@ -44,7 +44,6 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 	// 1.1 填充应用信息
 	if release.Application != nil {
 		releaseResp.AppName = release.Application.Name
-		releaseResp.AppDisplayName = release.Application.DisplayName
 		releaseResp.AppType = release.Application.AppType
 		//releaseResp.AppProject = release.Application.Namespace
 		releaseResp.TeamID = release.Application.TeamID

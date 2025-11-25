@@ -1,42 +1,42 @@
-import React, { useState } from 'react'
+import React, {useState} from 'react'
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Modal,
+  Card,
+  Checkbox,
   Form,
   Input,
-  Select,
-  Checkbox,
   message,
-  Popconfirm,
+  Modal,
   Pagination,
-  Tag,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
   Tabs,
+  Tag,
 } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import type {ColumnsType} from 'antd/es/table'
 import {
-  ProjectOutlined,
-  TeamOutlined,
-  PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  ProjectOutlined,
   ReloadOutlined,
   SearchOutlined,
+  TeamOutlined,
 } from '@ant-design/icons'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-import { projectService } from '@/services/project'
-import { teamService } from '@/services/team'
-import type { Project, CreateProjectRequest } from '@/services/project'
-import type { Team, CreateTeamRequest } from '@/services/team'
-import type { BackendPaginatedResponse } from '@/types'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {useTranslation} from 'react-i18next'
+import type {CreateProjectRequest, Project} from '@/services/project'
+import {projectService} from '@/services/project'
+import type {CreateTeamRequest, Team} from '@/services/team'
+import {teamService} from '@/services/team'
+import type {BackendPaginatedResponse} from '@/types'
 import EnvClusterConfig from '@/components/EnvClusterConfig'
 import './index.css'
 
 const ProjectPage: React.FC = () => {
-  const { t } = useTranslation()
+  const {t} = useTranslation()
   const queryClient = useQueryClient()
   const [form] = Form.useForm()
   const [teamForm] = Form.useForm()
@@ -46,14 +46,14 @@ const ProjectPage: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
-  
+
   // 分页和搜索状态
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [keyword, setKeyword] = useState('')
 
   // 查询项目列表
-  const { data: response, isLoading } = useQuery<BackendPaginatedResponse<Project>>({
+  const {data: response, isLoading} = useQuery<BackendPaginatedResponse<Project>>({
     queryKey: ['projects', page, pageSize, keyword],
     queryFn: async () => {
       const res = await projectService.getList({
@@ -85,7 +85,7 @@ const ProjectPage: React.FC = () => {
       setModalVisible(false)
       form.resetFields()
       setEditingProject(null)
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({queryKey: ['projects']})
     },
     onError: () => {
       message.error(
@@ -99,7 +99,7 @@ const ProjectPage: React.FC = () => {
     mutationFn: (id: number) => projectService.delete(id),
     onSuccess: () => {
       message.success(t('project.deleteSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({queryKey: ['projects']})
     },
     onError: () => {
       message.error(t('project.deleteFailed'))
@@ -120,8 +120,8 @@ const ProjectPage: React.FC = () => {
       setTeamModalVisible(false)
       setEditingTeam(null)
       teamForm.resetFields()
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-      queryClient.invalidateQueries({ queryKey: ['teams_all'] })
+      queryClient.invalidateQueries({queryKey: ['projects']})
+      queryClient.invalidateQueries({queryKey: ['teams_all']})
     },
     onError: () => {
       message.error(
@@ -134,8 +134,8 @@ const ProjectPage: React.FC = () => {
     mutationFn: (id: number) => teamService.delete(id),
     onSuccess: () => {
       message.success(t('team.deleteSuccess'))
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-      queryClient.invalidateQueries({ queryKey: ['teams_all'] })
+      queryClient.invalidateQueries({queryKey: ['projects']})
+      queryClient.invalidateQueries({queryKey: ['teams_all']})
     },
     onError: () => {
       message.error(t('team.deleteFailed'))
@@ -199,7 +199,7 @@ const ProjectPage: React.FC = () => {
   const handleTeamSubmit = () => {
     teamForm.validateFields().then((values) => {
       const payload = editingTeam
-        ? { ...values, id: editingTeam.id }
+        ? {...values, id: editingTeam.id}
         : values
       teamMutation.mutate(payload as CreateTeamRequest & { id?: number })
     })
@@ -214,7 +214,7 @@ const ProjectPage: React.FC = () => {
       width: 200,
       render: (text) => (
         <Space>
-          <ProjectOutlined style={{ color: '#1890ff' }} />
+          <ProjectOutlined style={{color: '#1890ff'}}/>
           <span className="project-name">{text}</span>
         </Space>
       ),
@@ -224,14 +224,14 @@ const ProjectPage: React.FC = () => {
       dataIndex: 'owner_name',
       key: 'owner_name',
       width: 150,
-      render: (text) => text ? <Tag color="blue">{text}</Tag> : <span style={{ color: '#999' }}>-</span>,
+      render: (text) => text ? <Tag color="blue">{text}</Tag> : <span style={{color: '#999'}}>-</span>,
     },
     {
       title: t('common.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
-      render: (text) => text || <span style={{ color: '#999' }}>-</span>,
+      render: (text) => text || <span style={{color: '#999'}}>-</span>,
     },
     {
       title: t('project.teamCount'),
@@ -242,29 +242,26 @@ const ProjectPage: React.FC = () => {
       ),
     },
     {
-      title: t('common.createdAt'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 180,
-      render: (text) => new Date(text).toLocaleString(),
-    },
-    {
       title: t('common.action'),
       key: 'action',
-      width: 180,
+      width: 240,
       fixed: 'right',
       render: (_, project) => (
         <Space size="small" wrap>
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleEdit(project)
-            }}
-          >
-            {t('common.edit')}
+          <Button type="text" size="small" icon={<PlusOutlined/>}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleCreateTeam(project)
+                  }}
+          >Team
+          </Button>
+          <Button type="text" size="small"
+                  icon={<EditOutlined/>}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleEdit(project)
+                  }}
+          >{t('common.edit')}
           </Button>
           <Popconfirm
             title={t('project.deleteConfirm')}
@@ -275,10 +272,10 @@ const ProjectPage: React.FC = () => {
               type="text"
               size="small"
               danger
-              icon={<DeleteOutlined />}
+              icon={<DeleteOutlined/>}
               onClick={(e) => e.stopPropagation()}
             >
-              {t('common.delete')}
+              {/*{t('common.delete')}*/}
             </Button>
           </Popconfirm>
         </Space>
@@ -294,7 +291,7 @@ const ProjectPage: React.FC = () => {
       width: 200,
       render: (text) => (
         <Space>
-          <TeamOutlined style={{ color: '#52c41a' }} />
+          <TeamOutlined style={{color: '#52c41a'}}/>
           <span>{text}</span>
         </Space>
       ),
@@ -304,14 +301,14 @@ const ProjectPage: React.FC = () => {
       dataIndex: 'leader_name',
       key: 'leader_name',
       width: 160,
-      render: (text) => (text ? <Tag color="purple">{text}</Tag> : <span style={{ color: '#999' }}>-</span>),
+      render: (text) => (text ? <Tag color="purple">{text}</Tag> : <span style={{color: '#999'}}>-</span>),
     },
     {
       title: t('common.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
-      render: (text) => text || <span style={{ color: '#999' }}>-</span>,
+      render: (text) => text || <span style={{color: '#999'}}>-</span>,
     },
     {
       title: t('common.action'),
@@ -322,7 +319,7 @@ const ProjectPage: React.FC = () => {
           <Button
             type="text"
             size="small"
-            icon={<EditOutlined />}
+            icon={<EditOutlined/>}
             onClick={(e) => {
               e.stopPropagation()
               handleEditTeam(team)
@@ -339,7 +336,7 @@ const ProjectPage: React.FC = () => {
               type="text"
               size="small"
               danger
-              icon={<DeleteOutlined />}
+              icon={<DeleteOutlined/>}
               onClick={(e) => e.stopPropagation()}
               loading={deleteTeamMutation.isPending}
             >
@@ -354,34 +351,16 @@ const ProjectPage: React.FC = () => {
   const renderTeamTable = (project: Project) => {
     const teams = project.teams || []
     return (
-      <div className="project-team-table" onClick={(e) => e.stopPropagation()}>
-        <div className="project-team-table__header">
-          <Space>
-            <TeamOutlined />
-            <span>{t('team.title')}</span>
-          </Space>
-          <Button
-            size="small"
-            icon={<PlusOutlined />}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleCreateTeam(project)
-            }}
-          >
-            {t('team.create')}
-          </Button>
-        </div>
-        <Table
-          columns={teamColumns}
-          dataSource={teams}
-          rowKey="id"
-          pagination={false}
-          size="small"
-          locale={{
-            emptyText: t('team.noData'),
-          }}
-        />
-      </div>
+      <Table className="project-team-table"
+             columns={teamColumns}
+             dataSource={teams}
+             rowKey="id"
+             pagination={false}
+             size="small"
+             locale={{
+               emptyText: t('team.noData'),
+             }}
+      />
     )
   }
 
@@ -390,7 +369,7 @@ const ProjectPage: React.FC = () => {
       <Card
         title={
           <Space>
-            <ProjectOutlined />
+            <ProjectOutlined/>
             <span>{t('project.title')}</span>
           </Space>
         }
@@ -399,19 +378,19 @@ const ProjectPage: React.FC = () => {
             <Input.Search
               placeholder={t('project.searchPlaceholder')}
               allowClear
-              style={{ width: 250 }}
+              style={{width: 250}}
               onSearch={handleSearch}
-              enterButton={<SearchOutlined />}
+              enterButton={<SearchOutlined/>}
             />
             <Button
-              icon={<ReloadOutlined />}
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['projects'] })}
+              icon={<ReloadOutlined/>}
+              onClick={() => queryClient.invalidateQueries({queryKey: ['projects']})}
             >
               {t('common.refresh')}
             </Button>
             <Button
               type="primary"
-              icon={<PlusOutlined />}
+              icon={<PlusOutlined/>}
               onClick={handleCreate}
             >
               {t('project.create')}
@@ -435,7 +414,7 @@ const ProjectPage: React.FC = () => {
         />
 
         {total > pageSize && (
-          <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <div style={{marginTop: 16, textAlign: 'right'}}>
             <Pagination
               current={page}
               pageSize={pageSize}
@@ -464,7 +443,7 @@ const ProjectPage: React.FC = () => {
         }}
         confirmLoading={mutation.isPending}
         width={800}
-        style={{ top: 20 }}
+        style={{top: 20}}
       >
         <Form form={form} layout="vertical">
           <Tabs
@@ -479,23 +458,23 @@ const ProjectPage: React.FC = () => {
                       name="name"
                       label={t('project.name')}
                       rules={[
-                        { required: true, message: t('project.nameRequired') },
-                        { max: 100, message: t('project.nameTooLong') },
+                        {required: true, message: t('project.nameRequired')},
+                        {max: 100, message: t('project.nameTooLong')},
                       ]}
                     >
-                      <Input placeholder="my-project" disabled={!!editingProject} />
+                      <Input placeholder="my-project" disabled={!!editingProject}/>
                     </Form.Item>
 
                     <Form.Item
                       name="owner_name"
                       label={t('project.owner')}
-                      rules={[{ max: 100, message: t('project.ownerTooLong') }]}
+                      rules={[{max: 100, message: t('project.ownerTooLong')}]}
                     >
-                      <Input placeholder="owner" />
+                      <Input placeholder="owner"/>
                     </Form.Item>
 
                     <Form.Item name="description" label={t('common.description')}>
-                      <Input.TextArea rows={4} placeholder={t('project.descriptionPlaceholder')} />
+                      <Input.TextArea rows={4} placeholder={t('project.descriptionPlaceholder')}/>
                     </Form.Item>
 
                     {!editingProject && (
@@ -520,7 +499,7 @@ const ProjectPage: React.FC = () => {
                       label="允许的环境和集群"
                       tooltip="配置项目下应用可以部署的环境和集群。如果不配置,应用将无法创建环境配置。"
                     >
-                      <EnvClusterConfig />
+                      <EnvClusterConfig/>
                     </Form.Item>
 
                     <Form.Item
@@ -529,7 +508,7 @@ const ProjectPage: React.FC = () => {
                         prevValues.allowed_env_clusters !== currentValues.allowed_env_clusters
                       }
                     >
-                      {({ getFieldValue }) => {
+                      {({getFieldValue}) => {
                         const allowedEnvClusters = getFieldValue('allowed_env_clusters')
                         return (
                           <Form.Item
@@ -538,7 +517,7 @@ const ProjectPage: React.FC = () => {
                             tooltip="配置项目的默认环境集群。只能选择上方'允许的环境和集群'中已配置的选项。"
                             dependencies={['allowed_env_clusters']}
                             rules={[
-                              ({ getFieldValue }) => ({
+                              ({getFieldValue}) => ({
                                 validator(_, value) {
                                   if (!value || Object.keys(value).length === 0) {
                                     return Promise.resolve()
@@ -547,7 +526,7 @@ const ProjectPage: React.FC = () => {
                                   if (!allowedEnvClusters || Object.keys(allowedEnvClusters).length === 0) {
                                     return Promise.reject(new Error('请先配置允许的环境和集群'))
                                   }
-                                  
+
                                   // 校验是否为子集
                                   for (const env in value) {
                                     if (!allowedEnvClusters[env]) {
@@ -568,7 +547,7 @@ const ProjectPage: React.FC = () => {
                               }),
                             ]}
                           >
-                            <EnvClusterConfig allowedOptions={allowedEnvClusters} />
+                            <EnvClusterConfig allowedOptions={allowedEnvClusters}/>
                           </Form.Item>
                         )
                       }}
@@ -598,7 +577,7 @@ const ProjectPage: React.FC = () => {
           <Form.Item
             name="project_id"
             label={t('project.name')}
-            rules={[{ required: true, message: t('project.nameRequired') }]}
+            rules={[{required: true, message: t('project.nameRequired')}]}
           >
             <Select placeholder={t('project.selectProject')} disabled={!!editingTeam}>
               {projects.map((project) => (
@@ -613,23 +592,23 @@ const ProjectPage: React.FC = () => {
             name="name"
             label={t('team.name')}
             rules={[
-              { required: true, message: t('team.nameRequired') },
-              { max: 100, message: t('team.nameTooLong') },
+              {required: true, message: t('team.nameRequired')},
+              {max: 100, message: t('team.nameTooLong')},
             ]}
           >
-            <Input placeholder="backend-team" />
+            <Input placeholder="backend-team"/>
           </Form.Item>
 
           <Form.Item
             name="leader_name"
             label={t('team.leader')}
-            rules={[{ max: 100, message: t('team.leaderTooLong') }]}
+            rules={[{max: 100, message: t('team.leaderTooLong')}]}
           >
-            <Input placeholder="leader" />
+            <Input placeholder="leader"/>
           </Form.Item>
 
           <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} placeholder={t('team.descriptionPlaceholder')} />
+            <Input.TextArea rows={3} placeholder={t('team.descriptionPlaceholder')}/>
           </Form.Item>
         </Form>
       </Modal>

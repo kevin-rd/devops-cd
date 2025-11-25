@@ -136,12 +136,11 @@ type ReleaseAppResponse struct {
 	TargetTag           *string `json:"target_tag,omitempty"`            // 目标部署版本（封板时固定，部署期间代表期望版本，部署完成后代表已部署版本）
 
 	// 应用信息
-	AppName        string  `json:"app_name"`
-	AppDisplayName *string `json:"app_display_name,omitempty"`
-	AppType        string  `json:"app_type"`
-	AppProject     string  `json:"app_project"`
-	AppStatus      int8    `json:"app_status"`
-	DeployedTag    *string `json:"deployed_tag,omitempty"` // 应用当前部署的镜像标签（从 applications 表获取）
+	AppName     string  `json:"app_name"`
+	AppType     string  `json:"app_type"`
+	AppProject  string  `json:"app_project"`
+	AppStatus   int8    `json:"app_status"`
+	DeployedTag *string `json:"deployed_tag,omitempty"` // 应用当前部署的镜像标签（从 applications 表获取）
 
 	// 仓库信息
 	RepoID       int64  `json:"repo_id"`

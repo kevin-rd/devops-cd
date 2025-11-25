@@ -465,7 +465,7 @@ const RepoSourcesPage: React.FC = () => {
               <Form.Item
                 label="默认团队"
                 name="default_team_id"
-                extra="扫描时自动为新代码库设置此团队（需先选择项目）"
+                extra="扫描时自动为新代码库设置此团队"
               >
                 <Select
                   placeholder="选择默认团队（可选）"
