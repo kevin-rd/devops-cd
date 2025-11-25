@@ -38,6 +38,7 @@ import type {TeamSimple} from '@/services/team'
 import {teamService} from '@/services/team'
 import BuildHistoryDrawer from '@/components/BuildHistoryDrawer'
 import EnvClusterConfig from '@/components/EnvClusterConfig'
+import {useDirtyFields} from '@/hooks/useDirtyFields'
 import type {ApiResponse, Application, CreateApplicationRequest, CreateRepositoryRequest, Repository,} from '@/types'
 import './index.css'
 
@@ -84,6 +85,18 @@ const RepositoryPage: React.FC = () => {
   const [buildDrawerVisible, setBuildDrawerVisible] = useState(false)
   const [selectedAppId, setSelectedAppId] = useState<number | null>(null)
   const [selectedAppName, setSelectedAppName] = useState('')
+
+  // 🔥 Dirty Fields 功能 - Application
+  const {
+    setInitialValues: setAppInitialValues,
+    getDirtyValues: getAppDirtyValues,
+    getDirtyFields: getAppDirtyFields,
+    resetDirty: resetAppDirty,
+  } = useDirtyFields(appForm, {
+    excludeFields: ['id', 'created_at', 'updated_at', 'status', 'repo_name', 'namespace', 'project_name', 'team_name', 'last_tag'],
+    deepCompare: true,
+    treatEmptyAsSame: true,
+  })
 
   // 查询代码库列表（包含应用）
   const {data: repoResponse, isLoading: repoLoading} = useQuery({
@@ -201,14 +214,54 @@ const RepositoryPage: React.FC = () => {
       }
       return await applicationService.create(values as CreateApplicationRequest)
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       message.success(
         editingApp ? t('application.updateSuccess') : t('application.createSuccess')
       )
+      
+      // 🔥 使用返回的数据直接更新缓存，避免重新请求
+      if (response?.data) {
+        queryClient.setQueryData(
+          ['repositories', repoPage, repoPageSize, keyword, projectId, teamId],
+          (oldData: ApiResponse<{ items: Repository[]; total: number; page: number; page_size: number }> | undefined) => {
+            if (!oldData?.data?.items) return oldData
+            
+            return {
+              ...oldData,
+              data: {
+                ...oldData.data,
+                items: oldData.data.items.map((repo: Repository) => {
+                  if (repo.applications) {
+                    // 如果是更新操作，更新对应的应用
+                    if (editingApp) {
+                      return {
+                        ...repo,
+                        applications: repo.applications.map((app: Application) =>
+                          app.id === response.data.id ? { ...app, ...response.data } : app
+                        ),
+                      }
+                    }
+                    // 如果是创建操作，添加新应用到对应的 repo
+                    if (repo.id === response.data.repo_id) {
+                      return {
+                        ...repo,
+                        applications: [...repo.applications, response.data],
+                      }
+                    }
+                  }
+                  return repo
+                }),
+              },
+            }
+          }
+        )
+      }
+      
       setAppModalVisible(false)
       appForm.resetFields()
+      resetAppDirty()
       setEditingApp(null)
-      queryClient.invalidateQueries({queryKey: ['repositories']})
+      setAppModalProjectId(undefined)
     },
   })
 
@@ -276,6 +329,10 @@ const RepositoryPage: React.FC = () => {
       ...app,
       env_clusters: app.env_clusters || {},
     })
+    
+    // 🔥 设置初始值，用于追踪字段变化
+    setAppInitialValues(app as unknown as Record<string, unknown>)
+    
     setAppModalVisible(true)
   }
 
@@ -287,7 +344,26 @@ const RepositoryPage: React.FC = () => {
 
   const handleAppSubmit = () => {
     appForm.validateFields().then((values) => {
-      appMutation.mutate(values)
+      // 🔥 如果是编辑模式，只提交修改过的字段
+      let submitValues = values
+      
+      if (editingApp) {
+        const dirtyValues = getAppDirtyValues()
+        
+        // 如果没有任何修改，提示用户
+        if (Object.keys(dirtyValues).length === 0) {
+          message.info('没有任何修改')
+          return
+        }
+        
+        submitValues = dirtyValues
+        
+        // 打印调试信息（可选）
+        console.log('📝 Dirty fields:', getAppDirtyFields())
+        console.log('📦 Submitting values:', submitValues)
+      }
+      
+      appMutation.mutate(submitValues)
     })
   }
 
@@ -454,6 +530,26 @@ const RepositoryPage: React.FC = () => {
         }
         // 如果找不到配置，使用默认样式
         return <Tag color="default">{appType}</Tag>
+      },
+    },
+    {
+      title: '环境集群',
+      dataIndex: 'env_clusters',
+      key: 'env_clusters',
+      width: 200,
+      render: (envClusters: Record<string, string[]>) => {
+        if (!envClusters || Object.keys(envClusters).length === 0) {
+          return <Tag style={{color: '#999'}}>-</Tag>
+        }
+        return (
+          <Space size={[0, 4]} wrap>
+            {Object.entries(envClusters).map(([env, clusters]) => (
+              <Tag key={env} color="blue">
+                {env}: {clusters.join(', ')}
+              </Tag>
+            ))}
+          </Space>
+        )
       },
     },
     {
@@ -788,6 +884,7 @@ const RepositoryPage: React.FC = () => {
           setEditingApp(null)
           setAppModalProjectId(undefined)
           appForm.resetFields()
+          resetAppDirty()
         }}
         confirmLoading={appMutation.isPending}
         width={700}
