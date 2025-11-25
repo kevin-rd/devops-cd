@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, {useState, useEffect} from 'react'
 import {
   Button,
   Card,
@@ -158,6 +158,32 @@ const RepositoryPage: React.FC = () => {
 
   const teams: TeamSimple[] = teamsResponse?.data || []
 
+  // 🔥 查询项目详情（包含 teams 和 default_env_clusters）
+  // 用于创建/编辑应用时获取项目的完整信息
+  const {data: projectDetailResponse, isLoading: projectDetailLoading} = useQuery({
+    queryKey: ['project-detail', appModalProjectId],
+    queryFn: async () => {
+      if (!appModalProjectId) return null
+      const res = await projectService.getById(appModalProjectId, true)  // with_teams=true
+      return res.data
+    },
+    enabled: !!appModalProjectId && appModalVisible,  // 只在 modal 打开且有 projectId 时查询
+  })
+
+  const projectDetail = projectDetailResponse
+
+  // 🔥 自动预填充 default_env_clusters（仅创建模式）
+  useEffect(() => {
+    if (!editingApp && projectDetail?.default_env_clusters && appModalVisible) {
+      // 创建模式下，如果项目有 default_env_clusters，自动设置
+      const currentEnvClusters = appForm.getFieldValue('env_clusters')
+      // 只有在 env_clusters 为空时才自动设置
+      if (!currentEnvClusters || Object.keys(currentEnvClusters).length === 0) {
+        appForm.setFieldValue('env_clusters', projectDetail.default_env_clusters)
+      }
+    }
+  }, [projectDetail, editingApp, appModalVisible, appForm])
+
   // 根据选择的项目过滤团队列表（用于页面筛选）
   const filteredTeams = projectId && projectId !== NO_RELATION
     ? teams.filter(team => team.project_id === projectId)
@@ -166,11 +192,6 @@ const RepositoryPage: React.FC = () => {
   // 根据模态框中选择的项目过滤团队列表（用于 Repository 模态框）
   const modalFilteredTeams = modalProjectId
     ? teams.filter(team => team.project_id === modalProjectId)
-    : teams
-
-  // 根据应用模态框中选择的项目过滤团队列表（用于 Application 模态框）
-  const appModalFilteredTeams = appModalProjectId
-    ? teams.filter(team => team.project_id === appModalProjectId)
     : teams
 
   // 根据 app_type 值获取类型配置
@@ -219,39 +240,41 @@ const RepositoryPage: React.FC = () => {
         editingApp ? t('application.updateSuccess') : t('application.createSuccess')
       )
       
-      // 🔥 使用返回的数据直接更新缓存，避免重新请求
+      // 使用返回的数据直接更新缓存，避免重新请求
       if (response?.data) {
         queryClient.setQueryData(
           ['repositories', repoPage, repoPageSize, keyword, projectId, teamId],
-          (oldData: ApiResponse<{ items: Repository[]; total: number; page: number; page_size: number }> | undefined) => {
-            if (!oldData?.data?.items) return oldData
-            
+          (oldData: { items: Repository[]; total: number; page: number; page_size: number } | undefined) => {
+            if (!oldData?.items) {
+              return oldData
+            }
+
             return {
               ...oldData,
-              data: {
-                ...oldData.data,
-                items: oldData.data.items.map((repo: Repository) => {
-                  if (repo.applications) {
-                    // 如果是更新操作，更新对应的应用
-                    if (editingApp) {
-                      return {
-                        ...repo,
-                        applications: repo.applications.map((app: Application) =>
-                          app.id === response.data.id ? { ...app, ...response.data } : app
-                        ),
-                      }
-                    }
-                    // 如果是创建操作，添加新应用到对应的 repo
-                    if (repo.id === response.data.repo_id) {
-                      return {
-                        ...repo,
-                        applications: [...repo.applications, response.data],
-                      }
-                    }
+              items: oldData.items.map((repo: Repository) => {
+                // 如果是更新操作，更新对应的应用
+                if (editingApp && repo.applications) {
+                  return {
+                    ...repo,
+                    applications: repo.applications.map((app: Application) =>
+                      app.id === response.data.id ? { ...app, ...response.data } : app
+                    ),
                   }
-                  return repo
-                }),
-              },
+                }
+
+                // 如果是创建操作，添加新应用到对应的 repo
+                if (!editingApp && repo.id === response.data.repo_id) {
+                  return {
+                    ...repo,
+                    // 确保 applications 数组存在，如果不存在则创建
+                    applications: repo.applications
+                      ? [...repo.applications, response.data]
+                      : [response.data],
+                  }
+                }
+
+                return repo
+              }),
             }
           }
         )
@@ -304,18 +327,25 @@ const RepositoryPage: React.FC = () => {
     // 找到当前 repo
     const currentRepo = repoData.find(repo => repo.id === repoId)
 
+    // 🔥 如果 repo 没有归属 project，不允许创建 app
+    if (!currentRepo?.project_id) {
+      message.error('该代码库未归属任何项目，无法创建应用。请先为代码库分配项目。')
+      return
+    }
+
     // 检查该 repo 是否已有应用
     const hasApps = (currentRepo?.applications?.length || 0) > 0
 
-    // 设置应用模态框的项目ID（用于过滤团队列表）
-    setAppModalProjectId(currentRepo?.project_id)
+    // 设置应用模态框的项目ID（用于查询项目详情）
+    setAppModalProjectId(currentRepo.project_id)
 
     appForm.resetFields()
     appForm.setFieldsValue({
       repo_id: repoId,
       name: hasApps ? '' : currentRepo?.name,  // 如果没有应用，默认使用 repo 名称
-      project_id: currentRepo?.project_id,  // 继承 repo 的项目
+      project_id: currentRepo.project_id,  // 🔥 固定为 repo 的项目（不允许修改）
       team_id: currentRepo?.team_id,  // 继承 repo 的团队
+      // env_clusters 将在 project 详情加载后自动设置 default 值
     })
     setAppModalVisible(true)
   }
@@ -393,14 +423,14 @@ const RepositoryPage: React.FC = () => {
       title: t('repository.name'),
       dataIndex: 'name',
       key: 'name',
-      width: 450,
+      width: 400,
       render: (_, record) => {
         const appCount = record.applications?.length || 0
         const fullName = `${record.namespace}/${record.name}`
         return (
           <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
             <Space>
-              <FolderOutlined style={{color: '#1890ff'}}/>
+              {/*<FolderOutlined style={{color: '#1890ff'}}/>*/}
               <span style={{color: '#999', fontSize: 12, userSelect: 'none'}}>#{record.id} </span>
               <span className="repo-name" style={{userSelect: 'text'}}>{fullName}</span>
               {record.git_url && (
@@ -490,12 +520,12 @@ const RepositoryPage: React.FC = () => {
       title: t('application.name'),
       dataIndex: 'name',
       key: 'name',
-      width: 300,
+      width: 400,
       render: (text, record) => (
-        <Space style={{paddingLeft: 24}}>
+        <Space style={{paddingLeft: 12}}>
           <AppstoreOutlined style={{color: '#52c41a'}}/>
           <span style={{color: '#999', fontSize: 12, userSelect: 'none'}}>#{record.id} </span>
-          <span style={{userSelect: 'text'}}>{text}</span>
+          <span style={{fontWeight: 500, userSelect: 'text'}}>{text}</span>
         </Space>
       ),
     },
@@ -695,6 +725,7 @@ const RepositoryPage: React.FC = () => {
           rowKey="id"
           loading={repoLoading}
           pagination={false}
+          sticky={true}
           expandable={{
             expandedRowKeys,
             onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
@@ -708,9 +739,11 @@ const RepositoryPage: React.FC = () => {
                   dataSource={apps}
                   rowKey="id"
                   pagination={false}
-                  showHeader={false}
+                  // showHeader={false}
+                  sticky={{offsetHeader: 55}}
                   size="small"
                   className="app-table"
+                  scroll={{ x: 'max-content', scrollToFirstRowOnChange: true}}
                 />
               )
             },
@@ -959,13 +992,8 @@ const RepositoryPage: React.FC = () => {
                       >
                         <Select
                           placeholder={t('repository.selectProject')}
-                          allowClear
-                          disabled={editingApp !== null}
-                          onChange={(value) => {
-                            // 当项目改变时，更新应用模态框的项目ID并清空团队选择
-                            setAppModalProjectId(value)
-                            appForm.setFieldValue('team_id', undefined)
-                          }}
+                          disabled={true}  // 🔥 始终禁用，创建时继承 repo 的 project，编辑时不允许修改
+                          loading={projectDetailLoading}
                         >
                           {projects?.map((project: ProjectSimple) => (
                             <Select.Option key={project.id} value={project.id}>
@@ -983,8 +1011,10 @@ const RepositoryPage: React.FC = () => {
                         <Select
                           placeholder={t('repository.selectTeam')}
                           allowClear
+                          loading={projectDetailLoading}
                         >
-                          {appModalFilteredTeams?.map((team: TeamSimple) => (
+                          {/* 🔥 使用 projectDetail.teams 而不是全局 teams */}
+                          {projectDetail?.teams?.map((team) => (
                             <Select.Option key={team.id} value={team.id}>
                               {team.name}
                             </Select.Option>
@@ -1007,7 +1037,11 @@ const RepositoryPage: React.FC = () => {
                     tooltip="只能选择项目允许的环境和集群。如果项目未配置，需要先在项目管理中配置。"
                     rules={[{required: true, message: '请配置至少一个环境集群'}]}
                   >
-                    <EnvClusterConfig projectId={appModalProjectId}/>
+                    {/* 🔥 传入 projectDetail，避免重复查询 */}
+                    <EnvClusterConfig 
+                      projectId={appModalProjectId}
+                      project={projectDetail || undefined}
+                    />
                   </Form.Item>
                 </Form>
               ),

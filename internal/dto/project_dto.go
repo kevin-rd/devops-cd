@@ -27,7 +27,8 @@ type DeleteProjectRequest struct {
 
 // GetProjectRequest 获取项目详情请求
 type GetProjectRequest struct {
-	ID int64 `form:"id" binding:"required"`
+	ID        int64 `form:"id" binding:"required"`
+	WithTeams bool  `form:"with_teams"` // 是否包含团队列表
 }
 
 // ProjectResponse 项目响应

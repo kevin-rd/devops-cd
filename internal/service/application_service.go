@@ -104,23 +104,7 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 			}
 		}
 	} else {
-		// 使用默认配置：pre 和 prod 环境，使用 default 集群
-		envConfigs = []model.AppEnvConfig{
-			{
-				AppID:      app.ID,
-				Env:        "pre",
-				Cluster:    "default",
-				Replicas:   1,
-				BaseStatus: model.BaseStatus{Status: constants.StatusEnabled},
-			},
-			{
-				AppID:      app.ID,
-				Env:        "prod",
-				Cluster:    "default",
-				Replicas:   3,
-				BaseStatus: model.BaseStatus{Status: constants.StatusEnabled},
-			},
-		}
+		return nil, pkgErrors.New(pkgErrors.CodeBadRequest, "未指定环境集群配置")
 	}
 
 	if len(envConfigs) > 0 {
@@ -129,6 +113,7 @@ func (s *applicationService) Create(req *dto.CreateApplicationRequest) (*dto.App
 			s.db.Delete(app)
 			return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "创建环境配置失败", err)
 		}
+		app.EnvConfigs = envConfigs
 	}
 
 	// 手动设置关联数据以便正确返回

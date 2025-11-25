@@ -13,7 +13,7 @@ import (
 
 type ProjectService interface {
 	Create(req *dto.CreateProjectRequest) (*dto.ProjectResponse, error)
-	GetByID(id int64) (*dto.ProjectResponse, error)
+	GetByID(id int64, withTeams bool) (*dto.ProjectResponse, error)
 	List(query *dto.ProjectListQuery) ([]*dto.ProjectResponse, int64, error)
 	ListAll() ([]*dto.ProjectSimpleResponse, error)
 	Update(id int64, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error)
@@ -92,12 +92,28 @@ func (s *projectService) Create(req *dto.CreateProjectRequest) (*dto.ProjectResp
 	return s.toResponse(project), nil
 }
 
-func (s *projectService) GetByID(id int64) (*dto.ProjectResponse, error) {
+func (s *projectService) GetByID(id int64, withTeams bool) (*dto.ProjectResponse, error) {
 	project, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
-	return s.toResponse(project), nil
+
+	resp := s.toResponse(project)
+
+	// 如果需要包含团队列表
+	if withTeams {
+		teams, err := s.teamRepo.ListByProjectIDs([]int64{id})
+		if err != nil {
+			return nil, err
+		}
+
+		resp.Teams = make([]*dto.TeamResponse, len(teams))
+		for i, team := range teams {
+			resp.Teams[i] = s.toTeamResponse(team)
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *projectService) List(query *dto.ProjectListQuery) ([]*dto.ProjectResponse, int64, error) {

@@ -3,14 +3,16 @@ import {Alert, Checkbox, Empty, Spin} from 'antd'
 import {useQuery} from '@tanstack/react-query'
 import type {Cluster} from '@/services/cluster'
 import {getClusters} from '@/services/cluster'
+import type {Project} from '@/services/project'
 import {projectService} from '@/services/project'
 import './index.css'
 
 interface EnvClusterConfigProps {
   value?: Record<string, string[]>
   onChange?: (value: Record<string, string[]>) => void
-  projectId?: number  // 新增：项目ID，用于获取允许的环境集群配置
-  allowedOptions?: Record<string, string[]>  // 新增：限制可选的环境和集群（用于 default_env_clusters）
+  projectId?: number  // 项目ID，用于获取允许的环境集群配置
+  project?: Project  // 新增：直接传入项目详情，避免重复查询
+  allowedOptions?: Record<string, string[]>  // 限制可选的环境和集群（用于 default_env_clusters）
 }
 
 // 只支持 pre 和 prod 两个环境
@@ -19,35 +21,44 @@ const ENVS = [
   {key: 'prod', label: 'Prod'},
 ]
 
-const EnvClusterConfig: React.FC<EnvClusterConfigProps> = ({value = {}, onChange, projectId, allowedOptions}) => {
+const EnvClusterConfig: React.FC<EnvClusterConfigProps> = ({
+  value = {}, 
+  onChange, 
+  projectId, 
+  project,  // 新增：直接传入的项目详情
+  allowedOptions
+}) => {
   const [config, setConfig] = useState<Record<string, string[]>>(value)
 
   // 获取集群列表
   const {data: clustersResponse, isLoading: clustersLoading} = useQuery({
     queryKey: ['clusters'],
     queryFn: async () => {
-      const res = await getClusters({status: 1})
-      return res
+      return await getClusters({status: 1})
     },
   })
 
-  // 获取项目允许的环境集群配置
+  // 获取项目允许的环境集群配置（仅在没有传入 project 时查询）
   const {data: projectEnvClustersResponse, isLoading: projectLoading} = useQuery({
     queryKey: ['project-env-clusters', projectId],
     queryFn: async () => {
-      if (!projectId) return null
+      if (!projectId || project) return null  // 如果已经有 project 数据，不查询
       const res = await projectService.getAvailableEnvClusters(projectId)
       return res.data
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !project,  // 只有在没有 project 时才启用
   })
 
   // 后端返回格式: {code, message, data: [...], total, page, size}
   const allClusters: Cluster[] = (clustersResponse?.data as any) || []
   
   // 项目允许的环境集群配置
-  // 如果传入了 allowedOptions，优先使用它；否则使用从 API 获取的配置
-  const allowedEnvClusters = allowedOptions || projectEnvClustersResponse?.allowed_env_clusters || {}
+  // 优先级：allowedOptions > 传入的 project.allowed_env_clusters > API 查询结果
+  const allowedEnvClusters = 
+    allowedOptions || 
+    project?.allowed_env_clusters || 
+    projectEnvClustersResponse?.allowed_env_clusters || 
+    {}
 
   useEffect(() => {
     setConfig(value || {})
@@ -87,25 +98,25 @@ const EnvClusterConfig: React.FC<EnvClusterConfigProps> = ({value = {}, onChange
 
   // 获取某个环境允许的集群列表
   const getAvailableClusters = (env: string) => {
-    if (!projectId && !allowedOptions) return allClusters  // 如果没有限制，返回所有集群
+    if (!projectId && !project && !allowedOptions) return allClusters  // 如果没有限制，返回所有集群
     const allowedClusterNames = allowedEnvClusters[env] || []
     return allClusters.filter(cluster => allowedClusterNames.includes(cluster.name))
   }
 
   // 检查某个环境是否被允许
   const isEnvAllowed = (env: string) => {
-    if (!projectId && !allowedOptions) return true  // 如果没有限制，允许所有环境
+    if (!projectId && !project && !allowedOptions) return true  // 如果没有限制，允许所有环境
     return env in allowedEnvClusters
   }
 
-  const isLoading = clustersLoading || projectLoading
+  const isLoading = clustersLoading || (!project && projectLoading)
 
   if (isLoading) {
     return <Spin/>
   }
 
   // 如果有限制条件但没有配置allowed_env_clusters
-  if ((projectId || allowedOptions) && Object.keys(allowedEnvClusters).length === 0) {
+  if ((projectId || project || allowedOptions) && Object.keys(allowedEnvClusters).length === 0) {
     return (
       <Alert
         message={allowedOptions ? "请先配置允许的环境集群" : "项目未配置环境集群"}

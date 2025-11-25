@@ -52,9 +52,12 @@ export const projectService = {
   },
 
   // 获取项目详情
-  getById: (id: number) => {
-    return request.get<ApiResponse<Project>>('/v1/project/detail', {
-      params: {id},
+  getById: (id: number, withTeams?: boolean) => {
+    return request.get<ApiResponse<Project>>('/v1/project', {
+      params: {
+        id,
+        with_teams: withTeams,
+      },
     })
   },
 

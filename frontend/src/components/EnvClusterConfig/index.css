@@ -18,7 +18,7 @@
   flex-shrink: 0;
   width: 80px;
   background-color: #fafafa;
-  border-right: 1px solid #e8e8e8;
+  /*border-right: 1px solid #e8e8e8;*/
 }
 
 /* 环境标签单元格 */
@@ -30,7 +30,7 @@
   padding-right: 16px;
   font-weight: 500;
   color: #333;
-  border-bottom: 1px solid #e8e8e8;
+  /*border-bottom: 1px solid #e8e8e8;*/
 }
 
 .env-cluster-table .env-cell:last-child {
@@ -48,7 +48,7 @@
 .env-cluster-table .env-row {
   display: flex;
   height: 48px;
-  border-bottom: 1px solid #e8e8e8;
+  /*border-bottom: 1px solid #e8e8e8;*/
 }
 
 .env-cluster-table .env-row:last-child {
@@ -62,7 +62,7 @@
   padding: 0 16px;
   display: flex;
   align-items: center;
-  border-right: 1px solid #f0f0f0;
+  /*border-right: 1px solid #f0f0f0;*/
 }
 
 .env-cluster-table .cluster-cell:last-child {

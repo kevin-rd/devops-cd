@@ -51,8 +51,9 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id query int64 true "项目ID"
+// @Param with_teams query bool false "是否包含团队列表"
 // @Success 200 {object} utils.Response{data=dto.ProjectResponse}
-// @Router /api/v1/projects/detail [get]
+// @Router /api/v1/project [get]
 func (h *ProjectHandler) GetByID(c *gin.Context) {
 	var req dto.GetProjectRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -60,7 +61,7 @@ func (h *ProjectHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	project, err := h.projectService.GetByID(req.ID)
+	project, err := h.projectService.GetByID(req.ID, req.WithTeams)
 	if err != nil {
 		utils.Error(c, err)
 		return

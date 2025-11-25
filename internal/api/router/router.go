@@ -104,7 +104,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 			{
 				groupProject.POST("", projectHandler.Create)                                         // 创建项目
 				groupProjects.GET("", projectHandler.List)                                           // 列表查询（无参数返回全部，有分页参数返回分页数据）
-				groupProject.GET("/detail", projectHandler.GetByID)                                  // 获取详情
+				groupProject.GET("", projectHandler.GetByID)                                         // 获取详情（支持 with_teams 参数）
 				groupProject.PUT("", projectHandler.Update)                                          // 更新项目
 				groupProject.DELETE("/:id", projectHandler.Delete)                                   // 删除项目
 				groupProjects.GET("/available-env-clusters", projectHandler.GetAvailableEnvClusters) // 获取项目可用的环境集群配置
