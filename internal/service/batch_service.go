@@ -560,6 +560,7 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			// 发布信息
 			ReleaseNotes: release.ReleaseNotes,
 			IsLocked:     release.IsLocked,
+			SkipPreEnv:   release.SkipPreEnv,
 			Reason:       release.Reason,
 			Status:       release.Status,
 
@@ -1113,6 +1114,7 @@ func (s *BatchService) GetBatchStatus(batchID int64, appPage, appPageSize int) (
 			BuildID:       app.BuildID,
 			LatestBuildID: app.LatestBuildID,
 			IsLocked:      app.IsLocked,
+			SkipPreEnv:    app.SkipPreEnv,
 		}
 	}
 

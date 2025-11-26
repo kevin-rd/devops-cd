@@ -4,7 +4,7 @@ import {LeftOutlined, RightOutlined} from '@ant-design/icons'
 import {useTranslation} from 'react-i18next'
 import {useQuery} from '@tanstack/react-query'
 import type {ColumnsType} from 'antd/es/table'
-import type {ApplicationWithBuild} from '@/types'
+import type {ApplicationType, ApplicationWithBuild} from '@/types'
 import {applicationService} from '@/services/application'
 import {teamService, TeamSimple} from '@/services/team'
 import './index.css'
@@ -116,11 +116,13 @@ export default function AppSelectionTable(
   })
 
   // 加载应用类型列表（用于筛选）
-  const {data: appTypesResponse} = useQuery({
+  const {data: appTypeMap} = useQuery({
     queryKey: ['appTypes'],
     queryFn: async () => {
       const res = await applicationService.getTypes()
-      return res.data?.types || []
+      return new Map<string, ApplicationType>(
+        res.data.types.map(type => [type.value, type])
+      )
     },
     staleTime: 5 * 60 * 1000, // 5分钟
   })
@@ -133,11 +135,11 @@ export default function AppSelectionTable(
   }, [teamsResponse])
 
   const appTypeOptions = useMemo(() => {
-    return appTypesResponse?.map(type => ({
-      label: type.label,
-      value: type.value,
+    return Array.from(appTypeMap?.values() || [], item => ({
+      label: item.label,
+      value: item.value,
     }))
-  }, [appTypesResponse])
+  }, [appTypeMap])
 
   // 当列表数据变化时，更新 appsInfoMap（补充新出现的应用信息）
   useEffect(() => {
@@ -335,7 +337,7 @@ export default function AppSelectionTable(
       dataIndex: 'app_type',
       key: 'app_type',
       width: 80,
-      render: (type: string) => <Tag color="blue">{type}</Tag>,
+      render: (type: string) => <Tag color={appTypeMap?.get(type)?.color || 'blue'}>{type}</Tag>,
     },
     {
       title: t('application.projectAndTeam'),

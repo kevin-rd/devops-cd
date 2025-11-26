@@ -1,5 +1,5 @@
 import { Steps, Tag, Tooltip } from 'antd'
-import { LoadingOutlined, CheckCircleOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { LoadingOutlined, CheckCircleOutlined, PlayCircleOutlined, FastForwardOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
@@ -10,9 +10,10 @@ import './index.css'
 interface BatchTimelineProps {
   batch: Batch
   onAction?: (action: string) => void
+  hasPreApps?: boolean  // 是否有需要预发布的应用
 }
 
-export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction }) => {
+export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, hasPreApps = true }) => {
   const { t } = useTranslation()
   const [isVertical, setIsVertical] = useState(false)
 
@@ -31,14 +32,14 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
   const getCurrentStep = () => {
     if (batch.status === 90) {
       // 已取消 - 返回取消前的最后步骤
-      if (batch.prod_deploy_started_at) return 3
+      if (batch.prod_deploy_started_at) return hasPreApps ? 3 : 2
       if (batch.pre_deploy_started_at) return 2
       if (batch.tagged_at) return 1
       return 0
     }
-    if (batch.status >= 40) return 4 // 已完成
-    if (batch.status >= 32) return 3 // 生产部署完成
-    if (batch.status >= 30) return 3 // 生产待触发/部署中
+    if (batch.status >= 40) return hasPreApps ? 4 : 3 // 已完成
+    if (batch.status >= 32) return hasPreApps ? 3 : 2 // 生产部署完成
+    if (batch.status >= 30) return hasPreApps ? 3 : 2 // 生产待触发/部署中
     if (batch.status >= 22) return 2 // 预发布完成
     if (batch.status >= 20) return 2 // 预发布待触发/部署中
     if (batch.status >= 10) return 1 // 已封板
@@ -54,7 +55,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       if ((batch.status === 20 || batch.status === 21) && stepIndex === 2) {
         return 'process'
       }
-      if ((batch.status === 30 || batch.status === 31) && stepIndex === 3) {
+      if ((batch.status === 30 || batch.status === 31) && stepIndex === (hasPreApps ? 3 : 2)) {
         return 'process'
       }
       return 'finish'
@@ -143,8 +144,8 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       }
     }
 
-    // 预发布步骤 (index 2)
-    if (stepIndex === 2) {
+    // 预发布步骤 (index 2) - 只在有预发布应用时显示
+    if (stepIndex === 2 && hasPreApps) {
       // 如果正在预发布中，显示转圈图标
       if (batch.status === 20 || batch.status === 21) {
         return <LoadingOutlined className="timeline-icon-loading" />
@@ -165,14 +166,15 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       }
     }
 
-    // 生产部署步骤 (index 3)
-    if (stepIndex === 3) {
+    // 生产部署步骤 (index 3 for hasPreApps, index 2 for !hasPreApps)
+    const prodStepIndex = hasPreApps ? 3 : 2
+    if (stepIndex === prodStepIndex) {
       // 如果正在生产部署中，显示转圈图标
       if (batch.status === 30 || batch.status === 31) {
         return <LoadingOutlined className="timeline-icon-loading" />
       }
-      // 如果预发布完成且未开始生产部署，显示可点击的开始图标
-      if (batch.status === 22 && onAction) {
+      // 如果预发布完成且未开始生产部署，或者跳过pre已封板，显示可点击的开始图标
+      if (((hasPreApps && batch.status === 22) || (!hasPreApps && batch.status === 10)) && onAction) {
         return (
           <Tooltip title={t('batch.startProdDeploy')}>
             <PlayCircleOutlined
@@ -192,6 +194,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
 
   const createdTimeInfo = formatCreatedTime(batch.created_at)
 
+  // 构建时间线步骤
   const steps = [
     {
       title: t('batch.timelineCreate'),
@@ -208,7 +211,11 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       description: formatTime(batch.tagged_at),
       subTitle: batch.tagged_at ? t('batch.statusSealed') : '-',
     },
-    {
+  ]
+
+  // 根据是否有预发布应用，动态添加预发布步骤
+  if (hasPreApps) {
+    steps.push({
       title: t('batch.timelinePreDeploy'),
       description: (
         <div className="timeline-step-description">
@@ -222,7 +229,22 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
           {preDeployStatus.text}
         </Tag>
       ) : '-',
-    },
+    })
+  } else {
+    // 没有预发布应用，显示跳过标记
+    steps.push({
+      title: '跳过预发布',
+      description: '所有应用直接部署到生产',
+      subTitle: (
+        <Tag color="orange" icon={<FastForwardOutlined />}>
+          已跳过
+        </Tag>
+      ),
+    })
+  }
+
+  // 添加生产部署步骤
+  steps.push(
     {
       title: t('batch.timelineProdDeploy'),
       description: (
@@ -242,8 +264,8 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction })
       title: t('batch.timelineAccept'),
       description: formatTime(batch.final_accepted_at),
       subTitle: batch.final_accepted_by || '-',
-    },
-  ]
+    }
+  )
 
   return (
     <div className="batch-timeline">

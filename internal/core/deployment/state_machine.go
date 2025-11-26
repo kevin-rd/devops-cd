@@ -3,7 +3,6 @@ package deployment
 import (
 	"context"
 	"devops-cd/internal/adapter/deploy"
-	"devops-cd/internal/core/dependency"
 	"devops-cd/internal/model"
 	"fmt"
 	"go.uber.org/zap"
@@ -15,11 +14,10 @@ type StateMachine struct {
 	logger   *zap.Logger
 	deployer deploy.Deployer
 	handlers map[string]Handler
-	resolver *dependency.Resolver
 }
 
-func NewDeploymentStateMachine(db *gorm.DB, logger *zap.Logger, deployer deploy.Deployer, resolver *dependency.Resolver) *StateMachine {
-	sm := &StateMachine{db: db, logger: logger, deployer: deployer, handlers: make(map[string]Handler), resolver: resolver}
+func NewDeploymentStateMachine(db *gorm.DB, logger *zap.Logger, deployer deploy.Deployer) *StateMachine {
+	sm := &StateMachine{db: db, logger: logger, deployer: deployer, handlers: make(map[string]Handler)}
 	sm.registerHandlers()
 	return sm
 }

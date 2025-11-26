@@ -1,10 +1,10 @@
 import {memo, useCallback, useMemo} from 'react'
-import {Badge} from 'antd'
+import {Badge, Space} from 'antd'
 import {Handle, Position} from 'reactflow'
 import type {ReleaseApp} from '@/types/release_app.ts'
+import {AppStatus} from "@/types/release_app.ts";
 import '@/styles/status-theme.css'
 import styles from './AppNode.module.css'
-import {AppStatus} from "@/types/release_app.ts";
 
 interface AppNodeData {
   releaseApp: ReleaseApp
@@ -28,7 +28,7 @@ const APP_TYPE_COLORS: Record<string, string> = {
 
 const AppNode = memo(({data}: AppNodeProps) => {
   const {releaseApp, isIsolated, onNodeClick} = data
-  const {app_name, app_type, status} = releaseApp
+  const {id, app_name, app_type, status} = releaseApp
 
   // 获取应用类型颜色
   const ribbonColor = app_type ? (APP_TYPE_COLORS[app_type.toLowerCase()] || APP_TYPE_COLORS.default) : APP_TYPE_COLORS.default
@@ -105,7 +105,10 @@ const AppNode = memo(({data}: AppNodeProps) => {
       />
 
       <div className={styles.content}>
-        <div className={styles.appName} title={app_name}>{app_name}</div>
+        <Space className={styles.appName} title={app_name}>
+          <span style={{fontSize: 12, color: '#999'}}>#{id}</span>
+          <span>{app_name}</span>
+        </Space>
       </div>
 
       <Handle

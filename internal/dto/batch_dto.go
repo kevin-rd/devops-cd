@@ -163,6 +163,7 @@ type ReleaseAppResponse struct {
 	// 发布信息
 	ReleaseNotes *string `json:"release_notes,omitempty"` // 应用级发布说明
 	IsLocked     bool    `json:"is_locked"`               // 是否已锁定（封板后为true）
+	SkipPreEnv   bool    `json:"skip_pre_env"`            // 是否跳过预发布环境（封板时从app_env_configs计算得出）
 	Reason       string  `json:"reason,omitempty"`
 	Status       int8    `json:"status"`
 
@@ -279,6 +280,7 @@ type ReleaseAppStatusResponse struct {
 	AppID         int64          `json:"app_id"`                    // 应用 ID
 	Status        int8           `json:"status"`                    // 应用发布状态
 	IsLocked      bool           `json:"is_locked"`                 // 是否已锁定
+	SkipPreEnv    bool           `json:"skip_pre_env"`              // 是否跳过预发布环境
 	BuildID       *int64         `json:"build_id,omitempty"`        // 构建 ID
 	LatestBuildID *int64         `json:"latest_build_id,omitempty"` // 最新构建 ID
 	RecentBuilds  []BuildSummary `json:"recent_builds,omitempty"`   // 最近的构建记录

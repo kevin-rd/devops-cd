@@ -1,4 +1,4 @@
-package dependency
+package release_app
 
 import (
 	"context"
@@ -163,16 +163,6 @@ func (r *Resolver) CheckRelease(ctx context.Context, release *model.ReleaseApp, 
 	}
 
 	return result, nil
-}
-
-// CheckDeployment 检查 Deployment 的依赖是否满足
-func (r *Resolver) CheckDeployment(ctx context.Context, dep *model.Deployment) (*Result, error) {
-	var release model.ReleaseApp
-	if err := r.db.WithContext(ctx).First(&release, dep.ReleaseID).Error; err != nil {
-		return nil, fmt.Errorf("查询部署关联的 ReleaseApp 失败: %w", err)
-	}
-
-	return r.CheckRelease(ctx, &release, dep.Environment)
 }
 
 type dependencyEntry struct {

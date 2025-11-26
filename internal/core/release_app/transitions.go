@@ -50,9 +50,10 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 			Handler:     ManualTriggerPreDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
-		// 手动触发Prod发布
+		{},
+		// 手动触发Prod发布(包括没有Pre环境的情况)
 		{
-			From:        []int8{constants.ReleaseAppStatusPreDeployed},
+			From:        []int8{constants.ReleaseAppStatusTagged, constants.ReleaseAppStatusPreDeployed},
 			To:          constants.ReleaseAppStatusProdCanTrigger,
 			Handler:     ManualTriggerProdDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
@@ -149,6 +150,10 @@ func (h ManualTriggerPreDeploy) Handle(release *model.ReleaseApp, from int8, opt
 		return fmt.Errorf("[Pre]发布失败: 批次未封板")
 	}
 
+	if release.BuildID == nil || release.TargetTag == nil {
+		return fmt.Errorf("目标版本为空, 无法进行[Pre]发布")
+	}
+
 	release.Status = constants.ReleaseAppStatusPreCanTrigger
 
 	return nil
@@ -169,6 +174,24 @@ func (h ManualTriggerProdDeploy) Handle(release *model.ReleaseApp, from int8, op
 	}
 	if batch.Status < constants.BatchStatusSealed {
 		return fmt.Errorf("[Prod]发布失败: 批次未封板")
+	}
+
+	// 检查build
+	if release.BuildID == nil || release.TargetTag == nil {
+		return fmt.Errorf("目标版本为空, 无法进行[Prod]发布")
+	}
+
+	if release.Status == constants.ReleaseAppStatusTagged {
+		// -> 无预发布情况
+		// 检查该应用 是否无预发布环境
+		if !release.SkipPreEnv {
+			return fmt.Errorf("[Prod]发布失败: 请先进行预发布")
+		}
+	} else if release.Status == constants.ReleaseAppStatusPreDeployed {
+		// -> 预发布完成情况
+	} else {
+		// -> 未知状态
+		return fmt.Errorf("[Prod]发布失败: 批次状态异常")
 	}
 
 	release.Status = constants.ReleaseAppStatusProdCanTrigger

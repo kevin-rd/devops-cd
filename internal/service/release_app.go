@@ -34,6 +34,7 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		// 发布信息
 		ReleaseNotes: release.ReleaseNotes,
 		IsLocked:     release.IsLocked,
+		SkipPreEnv:   release.SkipPreEnv,
 		Reason:       release.Reason,
 		Status:       release.Status,
 

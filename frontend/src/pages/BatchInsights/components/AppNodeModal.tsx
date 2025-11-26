@@ -1,6 +1,6 @@
 import {Button, Descriptions, message, Modal, Popconfirm, Select, Space, Spin, Tag} from 'antd'
 import {useEffect, useState} from 'react'
-import {RocketOutlined} from '@ant-design/icons'
+import {CheckCircleOutlined, FastForwardOutlined, RocketOutlined} from '@ant-design/icons'
 import type {BuildSummary} from '@/types'
 import {AppStatus, AppStatusLabel, ReleaseApp} from '@/types/release_app.ts';
 import {batchService} from '@/services/batch'
@@ -88,7 +88,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
 
     // batch已封板状态, release可以提前Pre
     if (batch.status >= BatchStatus.Sealed && batch.status < BatchStatus.PreWaiting) {
-      if (releaseApp.status === AppStatus.Tagged) {
+      if (!releaseApp.skip_pre_env && releaseApp.status === AppStatus.Tagged) {
         return (
           <Popconfirm title="确认提前发布" description={releaseApp.app_name + " => " + releaseApp.target_tag}
                       disabled={triggering} onConfirm={() => handleTriggerDeploy('manual_trigger_pre')}>
@@ -99,7 +99,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
     }
     // batch已经开始预发布, release可以提前Prod
     if (batch.status >= BatchStatus.Sealed && batch.status < BatchStatus.ProdWaiting) {
-      if (releaseApp.status == AppStatus.PreDeployed) {
+      if (releaseApp.status == AppStatus.PreDeployed || (releaseApp.skip_pre_env && releaseApp.status === AppStatus.Tagged)) {
         return (
           <Popconfirm title="确认提前发布" description={releaseApp.app_name + " => " + releaseApp.target_tag}
                       onConfirm={() => handleTriggerDeploy("manual_trigger_prod")}>
@@ -119,7 +119,6 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
         )
       }
     }
-
   }
 
 
@@ -167,7 +166,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
       <Modal
         title={
           <Space>
-            <span style={{color: '#999', fontSize: 13}}>#{displayData.id}</span>
+            <span style={{color: '#999', fontSize: 13, userSelect: 'none'}}>#{displayData.id}</span>
             <span>{displayData.app_name}</span>
             {displayData.app_type && <Tag color="blue">{displayData.app_type}</Tag>}
             {hasNewTag && <Tag color="orange">有新版本</Tag>}
@@ -190,20 +189,29 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
       >
         <Spin spinning={loading}>
           {/* 基本信息 */}
-          <Descriptions column={2} size="small" bordered>
-            <Descriptions.Item label="应用名称" span={2}>
-              {displayData.app_name}
+          <Descriptions column={12} size="small" bordered>
+            <Descriptions.Item label="应用名称" span={8}>
+              <Space>
+                <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{displayData.app_id}</span>
+                <span>{displayData.app_name}</span>
+              </Space>
             </Descriptions.Item>
-            <Descriptions.Item label="之前版本">
+            <Descriptions.Item label="发布策略" span={4}>
+              <Tag color={displayData.skip_pre_env ? 'orange' : 'blue'}
+                   icon={displayData.skip_pre_env ? <FastForwardOutlined/> : <CheckCircleOutlined/>}>
+                {displayData.skip_pre_env ? '跳过预发布' : '正常发布'}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="之前版本" span={8}>
               <Tag>{displayData.previous_deployed_tag || '-'}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="当前状态">
+            <Descriptions.Item label="当前状态" span={4}>
               <Tag>{getStatusText(displayData.status)}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="目标版本" span={2}>
+            <Descriptions.Item label="目标版本" span={12}>
               <Space>
                 {displayData.build_id && (
-                  <span style={{fontSize: 12, color: '#999'}}>#{displayData.build_id}</span>
+                  <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{displayData.build_id}</span>
                 )}
                 {displayData.target_tag || '-'}
                 <span style={{color: '#999'}}>{displayData.commit_message}</span>
@@ -211,13 +219,17 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
             </Descriptions.Item>
 
             {/* 最新 Build 信息 - 根据 recent_builds 数量显示不同的UI */}
-            <Descriptions.Item label="最新Build" span={2}>
+            <Descriptions.Item label="最新Build" span={12}>
               {displayData.recent_builds && displayData.recent_builds.length > 0 && (
                 <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
                   {displayData.recent_builds.length === 1 ? (
                     // 只有一个 recent_build，直接显示
                     <>
-                      <span style={{fontSize: 12, color: '#999'}}>#{displayData.recent_builds[0].id}</span>
+                      <span style={{
+                        fontSize: 12,
+                        color: '#999',
+                        userSelect: 'none'
+                      }}>#{displayData.recent_builds[0].id}</span>
                       <Tag color="red">{displayData.recent_builds[0].image_tag}</Tag>
                       <span style={{color: '#ff4d4f'}}>有新版本可用</span>
                     </>
@@ -233,9 +245,9 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
                         {displayData.recent_builds.map((build: BuildSummary) => (
                           <Select.Option key={build.id} value={build.id}>
                             <Space>
-                              <span style={{fontSize: 12, color: '#999'}}>#{build.id}</span>
+                              <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{build.id}</span>
                               <Tag color="blue">{build.image_tag}</Tag>
-                              <span style={{fontSize: 12, color: '#666'}}>
+                              <span style={{fontSize: 12, color: '#666', userSelect: 'none'}}>
                               {build.commit_message?.substring(0, 30)}
                                 {(build.commit_message?.length || 0) > 30 ? '...' : ''}
                             </span>
@@ -265,14 +277,8 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
             </Descriptions.Item>
           </Descriptions>
 
-          {/* 提交信息 */}
-          <Descriptions
-            title="提交信息"
-            column={1}
-            size="small"
-            bordered
-            style={{marginTop: 16}}
-          >
+          {/* 提交信息 todo */}
+          <Descriptions title="提交信息" column={1} size="small" bordered style={{marginTop: 16}}>
             <Descriptions.Item label="Commit SHA">
               <code>{displayData.commit_sha?.substring(0, 8) || '-'}</code>
             </Descriptions.Item>
@@ -286,13 +292,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
 
           {/* 部署信息 */}
           {(displayData.last_deploy_at || displayData.last_deploy_error) && (
-            <Descriptions
-              title="部署信息"
-              column={1}
-              size="small"
-              bordered
-              style={{marginTop: 16}}
-            >
+            <Descriptions title="部署信息" column={1} size="small" bordered style={{marginTop: 16}}>
               {displayData.last_deploy_at && (
                 <Descriptions.Item label="上次部署时间">
                   {displayData.last_deploy_at}

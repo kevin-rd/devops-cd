@@ -5,7 +5,6 @@ import (
 	"devops-cd/internal/adapter/deploy"
 	"devops-cd/internal/adapter/notification"
 	"devops-cd/internal/core/batch"
-	"devops-cd/internal/core/dependency"
 	"devops-cd/internal/core/deployment"
 	"devops-cd/internal/core/release_app"
 	"devops-cd/internal/model"
@@ -42,7 +41,7 @@ func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) 
 	// deployService := deploy.NewK8sDeployer( deploy.NewMockK8sDeployClient(), notification.NewLogNotifier(logger), db, nil, logger)
 	deployService := deploy.NewMockDeployer()
 
-	depCfg := dependency.Config{}
+	depCfg := release_app.Config{}
 	if coreCfg != nil && len(coreCfg.AppTypes) > 0 {
 		depCfg.AppTypeDepends = make(map[string][]string, len(coreCfg.AppTypes))
 		for appType, appTypeCfg := range coreCfg.AppTypes {
@@ -54,7 +53,7 @@ func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) 
 			depCfg.AppTypeDepends[appType] = deps
 		}
 	}
-	resolver := dependency.NewResolver(db, logger, depCfg)
+	resolver := release_app.NewResolver(db, logger, depCfg)
 
 	return &CoreEngine{
 		db:       db,
@@ -64,7 +63,7 @@ func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) 
 
 		batchSM:      batch.NewBatchStateMachine(db, logger),
 		releaseSM:    release_app.NewReleaseStateMachine(db, logger, resolver),
-		deploymentSM: deployment.NewDeploymentStateMachine(db, logger, deployService, resolver),
+		deploymentSM: deployment.NewDeploymentStateMachine(db, logger, deployService),
 
 		batchTask: make(map[int64]context.CancelFunc, 10),
 	}
@@ -164,8 +163,7 @@ func (e *CoreEngine) batchWork(ctx context.Context, batchId int64) {
 
 			// 2. 执行 releases
 			var releases []model.ReleaseApp
-			if err := e.db.Where("batch_id = ? AND status > ?", b.ID, constants.ReleaseAppStatusPending).
-				Find(&releases).Error; err != nil {
+			if err := e.db.Where("batch_id = ? AND status > ?", b.ID, constants.ReleaseAppStatusPending).Find(&releases).Error; err != nil {
 				e.logger.Error("查询 ReleaseApp 失败", zap.Error(err))
 				continue
 			}

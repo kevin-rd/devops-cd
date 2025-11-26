@@ -4,6 +4,7 @@ import {Button, Card, Checkbox, Empty, Input, message, Modal, Segmented, Select,
 import {
   CheckCircleOutlined,
   EditOutlined,
+  FastForwardOutlined,
   LeftOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
@@ -97,6 +98,20 @@ export default function BatchDetail() {
       map.set(app.app_id, app)
     })
     return map
+  }, [batch?.apps])
+
+  // 计算应用统计信息
+  const appStatistics = useMemo(() => {
+    const apps = batch?.apps || []
+    const preApps = apps.filter(app => !app.skip_pre_env)
+    const skipPreApps = apps.filter(app => app.skip_pre_env)
+    return {
+      total: apps.length,
+      preAppsCount: preApps.length,
+      skipPreCount: skipPreApps.length,
+      hasPreApps: preApps.length > 0,
+      allSkipPre: apps.length > 0 && skipPreApps.length === apps.length,
+    }
   }, [batch?.apps])
 
 
@@ -355,15 +370,29 @@ export default function BatchDetail() {
       action: BatchActionRequest['action']
     }> = []
 
-    // 已封板：可以开始预发布
+    // 已封板：根据是否有pre应用决定显示哪个按钮
     if (batch.status === 10) {
-      actions.push({
-        key: 'start_pre_deploy',
-        label: t('batch.startPreDeploy'),
-        icon: <PlayCircleOutlined/>,
-        type: 'primary',
-        action: 'start_pre_deploy',
-      })
+      if (appStatistics.hasPreApps) {
+        // 有需要pre的应用，显示"开始预发布"按钮
+        actions.push({
+          key: 'start_pre_deploy',
+          label: `${t('batch.startPreDeploy')} (${appStatistics.preAppsCount} 个应用)`,
+          icon: <PlayCircleOutlined/>,
+          type: 'primary',
+          action: 'start_pre_deploy',
+        })
+      }
+
+      if (appStatistics.allSkipPre) {
+        // 所有应用都跳过pre，显示"直接开始生产部署"按钮
+        actions.push({
+          key: 'start_prod_deploy',
+          label: `${t('batch.startProdDeploy')} (跳过预发布)`,
+          icon: <FastForwardOutlined/>,
+          type: 'primary',
+          action: 'start_prod_deploy',
+        })
+      }
     }
 
     // 预发布中：可以完成预发布
@@ -489,7 +518,21 @@ export default function BatchDetail() {
       key: 'app_type',
       width: 100,
       render: (type: string) => (
-        <Tag color="blue">{type}</Tag>
+        <Tag color={batch?.app_type_configs?.[type]?.color || 'blue'}>{type}</Tag>
+      ),
+    },
+    {
+      title: '发布策略',
+      dataIndex: 'skip_pre_env',
+      key: 'skip_pre_env',
+      width: 120,
+      render: (skipPre: boolean) => (
+        <Tag
+          color={skipPre ? 'orange' : 'blue'}
+          icon={skipPre ? <FastForwardOutlined/> : <CheckCircleOutlined/>}
+        >
+          {skipPre ? '直接Prod' : 'Pre+Prod'}
+        </Tag>
       ),
     },
     {
@@ -813,7 +856,29 @@ export default function BatchDetail() {
                 </div>
                 <div className="batch-info-item">
                   <span className="batch-info-label">{t('batch.totalApps')}:</span>
-                  <span className="batch-info-value">{batch.total_apps || batch.apps?.length || 0} 个应用</span>
+                  <span className="batch-info-value">
+                    {appStatistics.total} 个应用
+                    {appStatistics.total > 0 && (
+                      <span style={{marginLeft: 8, fontSize: 12, color: '#8c8c8c'}}>
+                        (
+                        {appStatistics.hasPreApps && (
+                          <span>
+                            <Tag color="blue" style={{margin: '0 4px'}}>
+                              {appStatistics.preAppsCount} 需预发布
+                            </Tag>
+                          </span>
+                        )}
+                        {appStatistics.skipPreCount > 0 && (
+                          <span>
+                            <Tag color="orange" style={{margin: '0 4px'}}>
+                              {appStatistics.skipPreCount} 跳过预发布
+                            </Tag>
+                          </span>
+                        )}
+                        )
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
             ) : (
@@ -821,6 +886,7 @@ export default function BatchDetail() {
               <div className="batch-timeline-wrapper">
                 <BatchTimeline
                   batch={batch}
+                  hasPreApps={appStatistics.hasPreApps}
                   onAction={(action) => handleAction(action as BatchActionRequest['action'])}
                 />
               </div>

@@ -81,3 +81,21 @@ src/
 - 圆角元素
 - Mac 风格
 
+## 前后端接口
+- Repo页面
+  - Repo视图
+    - Main: /api/v1/repositories?page=1&page_size=20&with_applications=true 
+  - App视图
+    - Main: /api/v1/applications?page=1&page_size=20
+  - Options: /api/v1/projects & /api/v1/teams
+- Batch页面
+  - Batch列表: /api/v1/batches?page=1&page_size=20&start_time=2025-10-26T16%3A00%3A00.000Z&end_time=2025-11-26T15%3A59%3A59.999Z
+  - Batch详情: /api/v1/batch?id=31&app_page=1&app_page_size=20
+    - 单个Release详情: /api/v1/release_app?id=84
+  - AppSelection组件: /api/v1/application_builds?page=1&page_size=20&project_id=1
+- Project管理页
+  - Main: /api/v1/projects?page=1&page_size=10&keyword=&with_teams=true
+- Repo源管理页
+  - Main: /api/v1/repo-sources?page=1&page_size=10
+- 通用:
+  - 应用类型: /api/v1/application/types

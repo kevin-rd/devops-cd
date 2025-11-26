@@ -2,8 +2,8 @@ package release_app
 
 import (
 	"context"
-	"devops-cd/internal/core/dependency"
 	"devops-cd/internal/model"
+	"devops-cd/pkg/constants"
 	"fmt"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -13,12 +13,12 @@ type ReleaseStateMachine struct {
 	db       *gorm.DB
 	logger   *zap.Logger
 	handlers map[int8]Handler
-	resolver *dependency.Resolver
+	resolver *Resolver
 
 	transitions map[int8]map[int8]StateTransition
 }
 
-func NewReleaseStateMachine(db *gorm.DB, logger *zap.Logger, resolver *dependency.Resolver) *ReleaseStateMachine {
+func NewReleaseStateMachine(db *gorm.DB, logger *zap.Logger, resolver *Resolver) *ReleaseStateMachine {
 	sm := &ReleaseStateMachine{
 		db:          db,
 		logger:      logger,
@@ -38,6 +38,9 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	// 1. 查询当前的handler
 	handler, ok := sm.handlers[release.Status]
 	if !ok {
+		if release.Status <= constants.ReleaseAppStatusTagged {
+			return
+		}
 		sm.logger.Warn("未知 ReleaseApp 状态", zap.Int64("release_id", release.ID), zap.Int8("status", release.Status))
 		return
 	}

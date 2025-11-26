@@ -34,6 +34,7 @@ export interface ReleaseApp {
   release_notes?: string
   status: number
   is_locked: boolean
+  skip_pre_env: boolean  // 是否跳过预发布环境
   reason?: string
   pre_deploy_status?: string
   prod_deploy_status?: string

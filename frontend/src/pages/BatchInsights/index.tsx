@@ -567,7 +567,11 @@ export default function BatchInsights() {
                 title={<TimelineCardTitle batch={mergedBatchDetail}/>}
                 extra={renderActionButtons(mergedBatchDetail)}
               >
-                <BatchTimeline batch={mergedBatchDetail} onAction={handleTimelineAction}/>
+                <BatchTimeline 
+                  batch={mergedBatchDetail} 
+                  hasPreApps={releaseApps.some(app => !app.skip_pre_env)}
+                  onAction={handleTimelineAction}
+                />
               </Card>
 
               <Card className={styles.graphSection}
