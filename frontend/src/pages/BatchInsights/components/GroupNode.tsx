@@ -1,5 +1,5 @@
-import { memo } from 'react'
-import type { NodeProps } from 'reactflow'
+import {memo} from 'react'
+import type {NodeProps} from 'reactflow'
 import styles from './GroupNode.module.css'
 
 interface GroupNodeData {
@@ -8,7 +8,7 @@ interface GroupNodeData {
   height: number
 }
 
-const GroupNode = memo(({ data }: NodeProps<GroupNodeData>) => {
+const GroupNode = memo(({}: NodeProps<GroupNodeData>) => {
   return (
     <div className={styles.group}>
     </div>

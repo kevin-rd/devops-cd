@@ -53,8 +53,8 @@
   --status-border-width-thin: 1px;
   
   /* ========== 边框圆角 ========== */
-  --status-border-radius: 6px;
-  --status-border-radius-inner: 4px;
+  --status-border-radius: 10px;
+  --status-border-radius-inner: 6px;
   
   /* ========== 动画参数 ========== */
   --status-animation-duration: 1.5s;

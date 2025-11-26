@@ -1,5 +1,5 @@
 import {memo, useCallback, useMemo} from 'react'
-import {Badge, Space} from 'antd'
+import {Badge} from 'antd'
 import {Handle, Position} from 'reactflow'
 import type {ReleaseApp} from '@/types/release_app.ts'
 import {AppStatus} from "@/types/release_app.ts";
@@ -104,11 +104,9 @@ const AppNode = memo(({data}: AppNodeProps) => {
         style={{opacity: 0}}
       />
 
-      <div className={styles.content}>
-        <Space className={styles.appName} title={app_name}>
-          <span style={{fontSize: 12, color: '#999'}}>#{id}</span>
-          <span>{app_name}</span>
-        </Space>
+      <div className={styles.content} title={app_name}>
+        <span style={{fontSize: 12, color: '#999'}}>#{id}</span>
+        <span className={styles.appName}>{app_name}</span>
       </div>
 
       <Handle
