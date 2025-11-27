@@ -40,7 +40,7 @@ import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
 import type {BatchActionRequest, BatchQueryParams, BuildSummary} from '@/types'
 import './index.css'
-import {Batch} from "@/types/batch.ts";
+import {Batch, BatchStatus} from "@/types/batch.ts";
 import {ReleaseApp} from "@/types/release_app.ts";
 
 const {RangePicker} = DatePicker
@@ -147,7 +147,11 @@ export default function BatchList() {
       await Promise.all(
         expandedRowKeys.map(async (id) => {
           const pagination = batchAppPagination[id] || {page: 1, pageSize: 20}
-          const res = await batchService.get(id, pagination.page, pagination.pageSize)
+          // 获取批次列表信息以判断状态
+          const batch = batches.find((b) => b.id === id)
+          // 封板后（status >= 10）不需要构建记录
+          const withoutRecentBuilds = !!batch && batch.status >= BatchStatus.Sealed
+          const res = await batchService.get(id, pagination.page, pagination.pageSize, !withoutRecentBuilds)
           detailsMap[id] = res.data as Batch
         })
       )

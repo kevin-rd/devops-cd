@@ -24,7 +24,7 @@ func Init(cfg *config.DatabaseConfig) error {
 	// 配置GORM
 	gormConfig := &gorm.Config{
 		Logger: logger.New(logger2.GetWriter(), logger.Config{
-			SlowThreshold: 500 * time.Millisecond,
+			SlowThreshold: 200 * time.Millisecond,
 			LogLevel:      logLevel,
 			Colorful:      true,
 		}).LogMode(logLevel),

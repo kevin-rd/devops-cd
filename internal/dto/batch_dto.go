@@ -37,9 +37,10 @@ func (q *BatchListQuery) GetPageSize() int {
 
 // BatchGetRequest 获取批次详情请求
 type BatchGetRequest struct {
-	ID          int64 `json:"id" form:"id" binding:"required"`
-	AppPage     int   `json:"app_page" form:"app_page"`           // 应用列表页码，默认1
-	AppPageSize int   `json:"app_page_size" form:"app_page_size"` // 应用列表每页数量，默认20
+	ID               int64 `json:"id" form:"id" binding:"required"`
+	AppPage          int   `json:"app_page" form:"app_page"`                     // 应用列表页码，默认1
+	AppPageSize      int   `json:"app_page_size" form:"app_page_size"`           // 应用列表每页数量，默认20
+	WithRecentBuilds *bool `json:"with_recent_builds" form:"with_recent_builds"` // 是否包含最近构建记录，默认true
 }
 
 // GetAppPage 获取应用页码（默认为1）
@@ -59,6 +60,14 @@ func (q *BatchGetRequest) GetAppPageSize() int {
 		return 50
 	}
 	return q.AppPageSize
+}
+
+// GetWithRecentBuilds 获取是否包含构建记录（默认为true）
+func (q *BatchGetRequest) GetWithRecentBuilds() bool {
+	if q.WithRecentBuilds == nil {
+		return true
+	}
+	return *q.WithRecentBuilds
 }
 
 // BatchResponse 批次响应
@@ -173,7 +182,7 @@ type ReleaseAppResponse struct {
 
 	// 依赖信息
 	DefaultDependsOn []int64 `json:"default_depends_on"`
-	TempDependsOn    []int64 `json:"temp_depends_on"`
+	TempDependsOn    []int64 `json:"temp_depends_on,omitempty"`
 
 	// 最近的构建记录（自上次部署以来，最多15条）
 	RecentBuilds []BuildSummary `json:"recent_builds,omitempty"`

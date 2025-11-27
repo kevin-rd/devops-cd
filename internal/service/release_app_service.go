@@ -27,9 +27,9 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		BuildID: release.BuildID,
 
 		// 版本信息
-		LatestBuildID:       release.LatestBuildID,
 		PreviousDeployedTag: release.PreviousDeployedTag,
 		TargetTag:           release.TargetTag,
+		LatestBuildID:       release.LatestBuildID,
 
 		// 发布信息
 		ReleaseNotes: release.ReleaseNotes,
@@ -52,8 +52,8 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		releaseResp.DefaultDependsOn = release.Application.DefaultDependsOn
 
 		// 1.2 填充仓库信息
+		releaseResp.RepoID = release.Application.RepoID
 		if release.Application.Repository != nil {
-			releaseResp.RepoID = release.Application.RepoID
 			releaseResp.RepoName = release.Application.Repository.Name
 			releaseResp.RepoFullName = release.Application.Repository.Namespace + "/" + release.Application.Repository.Name
 		}
@@ -88,12 +88,13 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 				releaseResp.RecentBuilds = s.toBuildSummaries(builds)
 			}
 		} else {
+			log.Warnf("build_id不存在")
 			// 2.1 加载最近的构建记录
-			if builds, err := s.batchRepo.GetRecentBuilds(release.AppID, 10); err != nil {
-				log.Errorf("查询最近构建失败: %v", err)
-			} else {
-				releaseResp.RecentBuilds = s.toBuildSummaries(builds)
-			}
+			//if builds, err := s.batchRepo.GetRecentBuilds(release.AppID, 10); err != nil {
+			//	log.Errorf("查询最近构建失败: %v", err)
+			//} else {
+			//	releaseResp.RecentBuilds = s.toBuildSummaries(builds)
+			//}
 		}
 	}
 

@@ -132,7 +132,8 @@ export default function BatchInsights() {
     queryKey: ['batch-insights-detail', currentBatchId],
     queryFn: async () => {
       if (!currentBatchId) return undefined
-      const res = await batchService.get(currentBatchId, 1, 200)
+      // BatchInsights 页面主要查看已封板批次，不需要构建记录
+      const res = await batchService.get(currentBatchId, 1, 200, false)
       return res.data as Batch
     },
     enabled: Boolean(currentBatchId),
@@ -579,7 +580,6 @@ export default function BatchInsights() {
                 <DependencyGraph
                   releaseApps={releaseApps}
                   appTypeConfigs={mergedBatchDetail?.app_type_configs}
-                  environment={environment}
                   batch={mergedBatchDetail}
                   onRefresh={() => {
                     refetchTabs()

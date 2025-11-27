@@ -30,12 +30,13 @@ export const batchService = {
     request.get<ApiResponse<PaginatedResponse<Batch>>>('/v1/batches', {params}),
 
   // 获取批次详情（改为 GET 请求，支持应用列表分页）
-  get: (id: number, appPage?: number, appPageSize?: number) =>
+  get: (id: number, appPage?: number, appPageSize?: number, withRecentBuilds?: boolean) =>
     request.get<ApiResponse<Batch>>('/v1/batch', {
       params: {
         id,
         app_page: appPage,
-        app_page_size: appPageSize
+        app_page_size: appPageSize,
+        with_recent_builds: withRecentBuilds
       }
     }),
 

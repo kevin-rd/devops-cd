@@ -66,7 +66,8 @@ export default function BatchDetail() {
   const {data: batchData, isLoading} = useQuery({
     queryKey: ['batchDetail', id],
     queryFn: async () => {
-      const res = await batchService.get(Number(id), 1, 200) // 获取所有应用
+      const withoutRecentBuilds = !!batch && batch.status >= BatchStatus.Sealed
+      const res = await batchService.get(Number(id), 1, 200, !withoutRecentBuilds)
       return res.data as Batch
     },
     enabled: !!id,

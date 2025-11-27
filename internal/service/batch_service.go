@@ -20,6 +20,7 @@ import (
 // BatchService 批次服务
 type BatchService struct {
 	batchRepo *repository.BatchRepository
+	buildRepo repository.BuildRepository
 	db        *gorm.DB
 }
 
@@ -27,6 +28,7 @@ type BatchService struct {
 func NewBatchService(db *gorm.DB) *BatchService {
 	return &BatchService{
 		batchRepo: repository.NewBatchRepository(db),
+		buildRepo: repository.NewBuildRepository(db),
 		db:        db,
 	}
 }
@@ -490,7 +492,7 @@ func (s *BatchService) DeleteBatch(batchID int64, operator string) error {
 }
 
 // GetBatch 获取批次详情（返回 DTO，支持应用列表分页）
-func (s *BatchService) GetBatch(batchID int64, appPage, appPageSize int) (*dto.BatchDetailResponse, error) {
+func (s *BatchService) GetBatch(batchID int64, appPage, appPageSize int, withRecentBuilds bool) (*dto.BatchDetailResponse, error) {
 	// 1. 获取批次基本信息
 	batch, err := s.batchRepo.GetByID(batchID)
 	if err != nil {
@@ -504,7 +506,7 @@ func (s *BatchService) GetBatch(batchID int64, appPage, appPageSize int) (*dto.B
 	}
 
 	// 3. 转换为响应格式（包含构建记录）
-	appResponses := s.toReleaseAppResponses(apps)
+	appResponses := s.toReleaseAppResponses(apps, withRecentBuilds)
 
 	// 4. 构建详情响应
 	response := &dto.BatchDetailResponse{
@@ -540,8 +542,8 @@ func (s *BatchService) GetBatch(batchID int64, appPage, appPageSize int) (*dto.B
 	return response, nil
 }
 
-// toReleaseAppResponses 转换 ReleaseApp 列表为 DTO（包含自上次部署以来的构建记录）
-func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto.ReleaseAppResponse {
+// toReleaseAppResponses 转换 ReleaseApp 列表为 DTO（可选包含自上次部署以来的构建记录）
+func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp, withRecentBuilds bool) []dto.ReleaseAppResponse {
 	responses := make([]dto.ReleaseAppResponse, len(releases))
 
 	for i, release := range releases {
@@ -553,9 +555,9 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			BuildID: release.BuildID,
 
 			// 版本信息
-			LatestBuildID:       release.LatestBuildID,
 			PreviousDeployedTag: release.PreviousDeployedTag,
 			TargetTag:           release.TargetTag,
+			LatestBuildID:       release.LatestBuildID,
 
 			// 发布信息
 			ReleaseNotes: release.ReleaseNotes,
@@ -572,6 +574,33 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 		releaseResp.DefaultDependsOn = []int64{}
 		releaseResp.TempDependsOn = release.TempDependsOn
 
+		// 填充应用信息（如果已加载）
+		if release.Application != nil {
+			releaseResp.AppName = release.Application.Name
+			releaseResp.AppType = release.Application.AppType
+			//releaseResp.AppProject = release.Application.Namespace
+			releaseResp.TeamID = release.Application.TeamID
+			releaseResp.DeployedTag = release.Application.DeployedTag // 当前部署的标签
+			releaseResp.DefaultDependsOn = release.Application.DefaultDependsOn
+
+			// 填充仓库信息
+			releaseResp.RepoID = release.Application.RepoID
+			if release.Application.Repository != nil {
+				releaseResp.RepoName = release.Application.Repository.Name
+				releaseResp.RepoFullName = release.Application.Repository.Namespace + "/" + release.Application.Repository.Name
+			}
+
+			// 填充团队信息
+			if release.Application.Team != nil {
+				releaseResp.TeamName = &release.Application.Team.Name
+			}
+
+			// 【可选】填充最近的构建记录
+			if withRecentBuilds {
+				releaseResp.RecentBuilds = s.getRecentBuilds(release.AppID, release.Application.DeployedTag)
+			}
+		}
+
 		// 填充构建信息（如果通过 Preload("Build") 已加载）
 		if release.Build != nil {
 			releaseResp.BuildNumber = &release.Build.BuildNumber
@@ -584,44 +613,6 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 			releaseResp.CommitBranch = &release.Build.CommitBranch
 		}
 
-		// 填充应用信息（如果已加载）
-		if release.Application != nil {
-			releaseResp.AppName = release.Application.Name
-			releaseResp.AppType = release.Application.AppType
-			//releaseResp.AppProject = release.Application.Namespace
-			releaseResp.TeamID = release.Application.TeamID
-			releaseResp.DeployedTag = release.Application.DeployedTag // 当前部署的标签
-			releaseResp.DefaultDependsOn = release.Application.DefaultDependsOn
-
-			// 填充仓库信息
-			if release.Application.Repository != nil {
-				releaseResp.RepoID = release.Application.RepoID
-				releaseResp.RepoName = release.Application.Repository.Name
-				releaseResp.RepoFullName = release.Application.Repository.Namespace + "/" + release.Application.Repository.Name
-			} else {
-				releaseResp.RepoID = release.Application.RepoID
-				releaseResp.RepoName = ""
-				releaseResp.RepoFullName = ""
-			}
-
-			// 填充团队信息
-			if release.Application.Team != nil {
-				releaseResp.TeamName = &release.Application.Team.Name
-			}
-
-			// 【新增】填充最近的构建记录
-			releaseResp.RecentBuilds = s.getRecentBuilds(release)
-		} else {
-			// 如果应用信息未加载，设置默认值
-			releaseResp.AppName = ""
-			releaseResp.AppType = ""
-			releaseResp.AppProject = ""
-			releaseResp.AppStatus = 0
-			releaseResp.RepoID = 0
-			releaseResp.RepoName = ""
-			releaseResp.RepoFullName = ""
-		}
-
 		responses[i] = releaseResp
 	}
 
@@ -629,8 +620,8 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp) []dto
 }
 
 // getRecentBuilds 获取应用最近的构建记录（方案A：基于 deployed_tag，自上次部署以来）
-func (s *BatchService) getRecentBuilds(app *model.ReleaseApp) []dto.BuildSummary {
-	log := logger.Log.With(zap.Int64("app_id", app.AppID)).Sugar()
+func (s *BatchService) getRecentBuilds(appId int64, afterDeployedTag *string) []dto.BuildSummary {
+	log := logger.Log.With(zap.Int64("app_id", appId)).Sugar()
 
 	const buildLimit = 15 // 固定返回15条
 
@@ -638,9 +629,9 @@ func (s *BatchService) getRecentBuilds(app *model.ReleaseApp) []dto.BuildSummary
 	var err error
 
 	// 1. 尝试基于 Application.DeployedTag 查找基准时间
-	if app.Application != nil && app.Application.DeployedTag != nil {
+	if afterDeployedTag != nil {
 		// 查找 deployed_tag 对应的构建记录
-		deployedBuild, err := s.batchRepo.GetBuildByAppIDAndTag(app.AppID, *app.Application.DeployedTag)
+		deployedBuild, err := s.batchRepo.GetBuildByAppIDAndTag(appId, *afterDeployedTag)
 		if err != nil {
 			log.Errorf("查询deployed_tag对应的构建失败: %v", err)
 			// 出错则返回空数组
@@ -649,25 +640,23 @@ func (s *BatchService) getRecentBuilds(app *model.ReleaseApp) []dto.BuildSummary
 
 		if deployedBuild != nil {
 			// 找到了基准构建，查询该时间之后的构建
-			builds, err = s.batchRepo.GetBuildsSinceTime(app.AppID, deployedBuild.BuildCreated, buildLimit)
+			builds, err = s.batchRepo.GetBuildsSinceTime(appId, deployedBuild.BuildCreated, buildLimit)
 			if err != nil {
 				log.Errorf("查询时间后的构建失败: %v", err)
 				return []dto.BuildSummary{}
 			}
 		} else {
 			// deployed_tag 对应的构建不存在，fallback 到最近15条
-			logger.Warn("deployed_tag对应的构建不存在，返回最近15条",
-				zap.Int64("app_id", app.AppID),
-				zap.String("deployed_tag", *app.Application.DeployedTag))
-			builds, err = s.batchRepo.GetRecentBuilds(app.AppID, buildLimit)
+			log.Warn("deployed_tag对应的构建不存在，返回最近15条", zap.String("deployed_tag", *afterDeployedTag))
+			builds, err = s.batchRepo.GetRecentBuilds(appId, buildLimit)
 			if err != nil {
-				log.Errorf("查询最近构建失败", err)
+				log.Errorf("查询最近构建失败: %v", err)
 				return []dto.BuildSummary{}
 			}
 		}
 	} else {
 		// 2. 没有 deployed_tag（新应用），返回最近15条
-		builds, err = s.batchRepo.GetRecentBuilds(app.AppID, buildLimit)
+		builds, err = s.batchRepo.GetRecentBuilds(appId, buildLimit)
 		if err != nil {
 			log.Errorf("查询最近构建失败（新应用）: %v", err)
 			return []dto.BuildSummary{}
@@ -675,25 +664,6 @@ func (s *BatchService) getRecentBuilds(app *model.ReleaseApp) []dto.BuildSummary
 	}
 
 	// 3. 确保当前选中的构建也在列表中（如果存在build_id）
-	if app.BuildID != nil {
-		// 检查当前build_id是否已在列表中
-		currentBuildInList := false
-		for _, build := range builds {
-			if build.ID == *app.BuildID {
-				currentBuildInList = true
-				break
-			}
-		}
-
-		// 如果不在列表中，单独查询并添加到列表开头
-		if !currentBuildInList {
-			var currentBuild model.Build
-			if err := s.db.Where("id = ?", *app.BuildID).First(&currentBuild).Error; err == nil {
-				// 将当前构建添加到列表开头
-				builds = append([]*model.Build{&currentBuild}, builds...)
-			}
-		}
-	}
 
 	// 4. 转换为 DTO
 	return s.toBuildSummaries(builds)

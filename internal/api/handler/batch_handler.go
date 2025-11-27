@@ -338,13 +338,14 @@ func (h *BatchHandler) Delete(c *gin.Context) {
 
 // Get 获取批次详情
 // @Summary 获取批次详情
-// @Description 获取批次详细信息和应用列表（支持应用列表分页）。每个应用会包含自上次部署以来的最近15条成功构建记录。
+// @Description 获取批次详细信息和应用列表（支持应用列表分页）。每个应用默认会包含自上次部署以来的最近15条成功构建记录，可通过 with_recent_builds=false 关闭。
 // @Tags 批次管理
 // @Accept json
 // @Produce json
 // @Param id query int64 true "批次ID"
 // @Param app_page query int false "应用列表页码" default(1)
 // @Param app_page_size query int false "应用列表每页数量" default(20)
+// @Param with_recent_builds query bool false "是否包含最近构建记录" default(true)
 // @Success 200 {object} map[string]interface{} "成功响应"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 500 {object} map[string]interface{} "服务器错误"
@@ -358,7 +359,7 @@ func (h *BatchHandler) Get(c *gin.Context) {
 		return
 	}
 
-	response, err := h.batchService.GetBatch(req.ID, req.GetAppPage(), req.GetAppPageSize())
+	response, err := h.batchService.GetBatch(req.ID, req.GetAppPage(), req.GetAppPageSize(), req.GetWithRecentBuilds())
 	if err != nil {
 		logger.Error("获取批次详情失败", zap.Int64("batch_id", req.ID), zap.Error(err))
 		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())

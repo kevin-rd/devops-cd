@@ -107,10 +107,7 @@ func (r *BatchRepository) List(page, pageSize int, statuses []int8, initiator st
 
 	// 分页查询
 	offset := (page - 1) * pageSize
-	err := query.Order("created_at DESC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&batches).Error
+	err := query.Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&batches).Error
 
 	return batches, total, err
 }

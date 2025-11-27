@@ -40,7 +40,7 @@ export default function BatchEditDrawer({open, batch, onClose, onSuccess}: Batch
     queryKey: ['batchDetail', batch?.id],
     queryFn: async () => {
       if (!batch?.id) return null
-      const res = await batchService.get(batch.id)
+      const res = await batchService.get(batch.id, undefined, undefined, false)
       return res.data
     },
     enabled: open && !!batch,
