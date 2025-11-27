@@ -1,6 +1,6 @@
 import {Button, Descriptions, message, Modal, Popconfirm, Select, Space, Spin, Tag} from 'antd'
 import {useEffect, useState} from 'react'
-import {CheckCircleOutlined, FastForwardOutlined, RocketOutlined} from '@ant-design/icons'
+import {CheckCircleOutlined, FastForwardOutlined, RetweetOutlined, RocketOutlined} from '@ant-design/icons'
 import type {BuildSummary} from '@/types'
 import {AppStatus, AppStatusLabel, ReleaseApp} from '@/types/release_app.ts';
 import {batchService} from '@/services/batch'
@@ -10,13 +10,12 @@ import {Batch, BatchStatus} from "@/types/batch.ts";
 interface AppNodeModalProps {
   visible: boolean
   releaseApp: ReleaseApp | null
-  environment?: 'pre' | 'prod'
   batch: Batch
   onClose: () => void
   onRefresh?: () => void
 }
 
-const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environment, batch, onClose, onRefresh,}) => {
+const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, onClose, onRefresh,}) => {
   const [triggering, setTriggering] = useState(false)
   const [loading, setLoading] = useState(false)
   const [detailData, setDetailData] = useState<ReleaseApp | null>(null)
@@ -56,7 +55,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
   const displayData = detailData || releaseApp
 
   const handleTriggerDeploy = async (action: string) => {
-    if (!batch || !environment) {
+    if (!batch) {
       message.error('缺少批次ID或环境信息')
       return
     }
@@ -87,7 +86,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
     if (!batch || !releaseApp) return null
 
     // batch已封板状态, release可以提前Pre
-    if (batch.status >= BatchStatus.Sealed && batch.status < BatchStatus.PreWaiting) {
+    if (batch.status >= BatchStatus.Sealed && batch.status < BatchStatus.PreTriggered) {
       if (!releaseApp.skip_pre_env && releaseApp.status === AppStatus.Tagged) {
         return (
           <Popconfirm title="确认提前发布" description={releaseApp.app_name + " => " + releaseApp.target_tag}
@@ -98,7 +97,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
       }
     }
     // batch已经开始预发布, release可以提前Prod
-    if (batch.status >= BatchStatus.Sealed && batch.status < BatchStatus.ProdWaiting) {
+    if (batch.status >= BatchStatus.Sealed && batch.status < BatchStatus.ProdTriggered) {
       if (releaseApp.status == AppStatus.PreDeployed || (releaseApp.skip_pre_env && releaseApp.status === AppStatus.Tagged)) {
         return (
           <Popconfirm title="确认提前发布" description={releaseApp.app_name + " => " + releaseApp.target_tag}
@@ -124,7 +123,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
 
   // 重新发布（直接使用选中的 recent_build）
   const handleSwitchVersion = async (buildId: number) => {
-    if (!batch || !environment) {
+    if (!batch) {
       message.error('缺少批次ID或环境信息')
       return
     }
@@ -134,7 +133,6 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
       const response = await batchService.switchVersion({
         batch_id: batch?.id,
         release_app_id: displayData.id,
-        environment,
         operator: user?.username || 'unknown',
         build_id: buildId,
         reason: '用户触发手动发布',
@@ -151,24 +149,17 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
     }
   }
 
+  const hasNewTag = displayData.latest_build_id && displayData.latest_build_id !== displayData.build_id
 
-  const hasNewTag = displayData.latest_build_id &&
-    displayData.latest_build_id !== displayData.build_id
-
-  // 获取状态显示文本
-  const getStatusText = (status: string | number) => {
-    const statusNum = typeof status === 'string' ? parseInt(status, 10) : status
-    return AppStatusLabel[statusNum] || `状态${statusNum}`
-  }
 
   return (
     <>
       <Modal
         title={
           <Space>
+            <span>发布详情</span>
             <span style={{color: '#999', fontSize: 13, userSelect: 'none'}}>#{displayData.id}</span>
-            <span>{displayData.app_name}</span>
-            {displayData.app_type && <Tag color="blue">{displayData.app_type}</Tag>}
+            <span style={{fontWeight: 500}}>{displayData.app_name}</span>
             {hasNewTag && <Tag color="orange">有新版本</Tag>}
           </Space>
         }
@@ -194,84 +185,76 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, environ
               <Space>
                 <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{displayData.app_id}</span>
                 <span>{displayData.app_name}</span>
+                {displayData.app_type && <Tag color="blue">{displayData.app_type}</Tag>}
               </Space>
             </Descriptions.Item>
             <Descriptions.Item label="发布策略" span={4}>
               <Tag color={displayData.skip_pre_env ? 'orange' : 'blue'}
                    icon={displayData.skip_pre_env ? <FastForwardOutlined/> : <CheckCircleOutlined/>}>
-                {displayData.skip_pre_env ? '跳过预发布' : '正常发布'}
+                {displayData.skip_pre_env ? 'only Prod' : 'Pre & Prod'}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="之前版本" span={8}>
-              <Tag>{displayData.previous_deployed_tag || '-'}</Tag>
+            <Descriptions.Item label="之前版本" span={12}>
+              <span style={{fontWeight: 500}}>{displayData.previous_deployed_tag || '-'}</span>
             </Descriptions.Item>
-            <Descriptions.Item label="当前状态" span={4}>
-              <Tag>{getStatusText(displayData.status)}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="目标版本" span={12}>
+
+            <Descriptions.Item label="目标版本" span={8}>
               <Space>
                 {displayData.build_id && (
                   <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{displayData.build_id}</span>
                 )}
-                {displayData.target_tag || '-'}
-                <span style={{color: '#999'}}>{displayData.commit_message}</span>
+                <span style={{fontWeight: 500}}>{displayData.target_tag || '-'}</span>
               </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label="当前状态" span={4}>
+              <Tag color={AppStatusLabel[displayData.status]?.color}>
+                {AppStatusLabel[displayData.status]?.label || `状态${displayData.status}`}
+              </Tag>
             </Descriptions.Item>
 
             {/* 最新 Build 信息 - 根据 recent_builds 数量显示不同的UI */}
             <Descriptions.Item label="最新Build" span={12}>
               {displayData.recent_builds && displayData.recent_builds.length > 0 && (
-                <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                   {displayData.recent_builds.length === 1 ? (
                     // 只有一个 recent_build，直接显示
-                    <>
+                    <Space>
                       <span style={{
                         fontSize: 12,
                         color: '#999',
                         userSelect: 'none'
                       }}>#{displayData.recent_builds[0].id}</span>
-                      <Tag color="red">{displayData.recent_builds[0].image_tag}</Tag>
+                      <span style={{fontWeight: 600}}>{displayData.recent_builds[0].image_tag}</span>
                       <span style={{color: '#ff4d4f'}}>有新版本可用</span>
-                    </>
+                    </Space>
                   ) : (
                     // 多个 recent_builds，显示下拉列表
-                    <>
-                      <Select
-                        value={selectedRecentBuildId}
-                        onChange={setSelectedRecentBuildId}
-                        style={{minWidth: 300}}
-                        placeholder="选择构建版本"
-                      >
-                        {displayData.recent_builds.map((build: BuildSummary) => (
-                          <Select.Option key={build.id} value={build.id}>
-                            <Space>
-                              <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{build.id}</span>
-                              <Tag color="blue">{build.image_tag}</Tag>
-                              <span style={{fontSize: 12, color: '#666', userSelect: 'none'}}>
+                    <Select
+                      value={selectedRecentBuildId}
+                      onChange={setSelectedRecentBuildId}
+                      style={{minWidth: 300}}
+                      placeholder="选择构建版本"
+                    >
+                      {displayData.recent_builds.map((build: BuildSummary) => (
+                        <Select.Option key={build.id} value={build.id}>
+                          <Space>
+                            <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{build.id}</span>
+                            <span style={{fontWeight: 600}}>{build.image_tag}</span>
+                            <span style={{fontSize: 12, color: '#666', userSelect: 'none'}}>
                               {build.commit_message?.substring(0, 30)}
-                                {(build.commit_message?.length || 0) > 30 ? '...' : ''}
+                              {(build.commit_message?.length || 0) > 30 ? '...' : ''}
                             </span>
-                            </Space>
-                          </Select.Option>
-                        ))}
-                      </Select>
-                      {/*<span style={{ color: '#ff4d4f' }}>有新版本可用</span>*/}
-                    </>
+                          </Space>
+                        </Select.Option>
+                      ))}
+                    </Select>
                   )}
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<RocketOutlined/>}
-                    onClick={() => {
-                      if (selectedRecentBuildId) {
-                        handleSwitchVersion(selectedRecentBuildId).then()
-                      } else {
-                        message.warning('请先选择要部署的构建版本')
-                      }
-                    }}
-                    style={{marginLeft: 'auto'}}
-                  >重新发布
-                  </Button>
+                  <Popconfirm title="确认部署新版本?"
+                              onConfirm={() => {
+                                selectedRecentBuildId ? handleSwitchVersion(selectedRecentBuildId).then() : message.warning('请先选择要部署的构建版本').then()
+                              }}>
+                    <Button type="primary" size="small" icon={<RetweetOutlined/>}>切换版本</Button>
+                  </Popconfirm>
                 </div>
               )}
             </Descriptions.Item>

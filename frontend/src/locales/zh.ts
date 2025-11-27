@@ -189,20 +189,20 @@ export default {
       link: '构建链接',
       imageUrl: '镜像地址',
       latestBuild: '最新构建',
-      
+
       // 状态
       statusSuccess: '成功',
       statusFailure: '失败',
       statusError: '错误',
       statusKilled: '已终止',
-      
+
       // 事件
       eventPush: '推送',
       eventTag: '标签',
       eventPullRequest: '拉取请求',
       eventPromote: '晋升',
       eventRollback: '回滚',
-      
+
       // 筛选
       filterByStatus: '按状态筛选',
       filterByEvent: '按事件筛选',
@@ -210,7 +210,7 @@ export default {
       filterByKeyword: '关键字搜索',
       filterByTimeRange: '时间范围',
       clearFilters: '清除筛选',
-      
+
       // 其他
       noData: '暂无构建记录',
       loadingBuilds: '加载构建记录中...',
@@ -238,18 +238,23 @@ export default {
       appList: '应用列表',
       modeAppList: '应用列表',
       modeInsights: '发布详情',
-      
+
       // 状态
       status: '批次状态',
       statusDraft: '草稿',
       statusSealed: '已封板',
-      statusPreDeploying: '预发布中',
-      statusPreDeployed: '预发布完成',
-      statusProdDeploying: '生产部署中',
-      statusProdDeployed: '生产部署完成',
+      statusPreTriggered: 'Pre已触发',
+      statusPreDeploying: 'Pre发布中',
+      statusPreDeployed: 'Pre发布完成',
+      statusPreDeployFailed: 'Pre部署失败',
+      statusPreDeploySkipped: 'Pre部署已跳过',
+      statusProdTriggered: 'Prod已触发',
+      statusProdDeploying: 'Prod部署中',
+      statusProdDeployed: 'Prod部署完成',
+      statusProdDeployFailed: 'Prod部署失败',
       statusCompleted: '已完成',
       statusCancelled: '已取消',
-      
+
       // 审批状态
       approvalStatus: '审批状态',
       approvalPending: '待审批',
@@ -259,7 +264,7 @@ export default {
       approvedBy: '审批人',
       approvedAt: '审批时间',
       rejectReason: '拒绝原因',
-      
+
       // 时间节点
       createdAt: '创建时间',
       taggedAt: '封板时间',
@@ -272,7 +277,7 @@ export default {
       cancelledAt: '取消时间',
       cancelledBy: '取消人',
       cancelReason: '取消原因',
-      
+
       // 操作
       seal: '封板确认',
       startPreDeploy: '开始预发布',
@@ -304,7 +309,7 @@ export default {
       rejectSuccess: '已拒绝',
       rejectReasonPlaceholder: '请输入拒绝原因',
       rejectReasonRequired: '请输入拒绝原因',
-      
+
       // 应用信息
       appName: '应用名称',
       appType: '应用类型',
@@ -323,7 +328,7 @@ export default {
       commitAuthor: '提交作者',
       branch: '分支',
       appReleaseNotes: '应用发布说明',
-      
+
       // 时间线
       timeline: '上线流程',
       timelineCreate: '创建',
@@ -332,8 +337,6 @@ export default {
       timelinePreDeploy: '预发布',
       timelineProdDeploy: '生产部署',
       timelineAccept: '最终验收',
-      preDeployTriggered: '已触发预发布',
-      prodDeployTriggered: '已触发生产部署',
 
       stage: {
         sealed: '封板确认',
@@ -342,14 +345,14 @@ export default {
         prodDeploy: '生产部署',
         prodDeployed: '生产完成',
       },
-      
+
       // 筛选
       filterByStatus: '按状态筛选',
       filterByApproval: '按审批状态筛选',
       filterByInitiator: '按发起人筛选',
       filterByKeyword: '关键字搜索',
       filterByTimeRange: '时间范围',
-      
+
       // 消息
       createSuccess: '批次创建成功',
       deleteSuccess: '批次删除成功',
@@ -360,7 +363,7 @@ export default {
       finishProdDeploySuccess: '生产部署已完成',
       completeSuccess: '批次已完成',
       cancelSuccess: '批次已取消',
-      
+
       // 确认
       sealConfirm: '封板后将锁定所有应用版本，无法修改。确定要封板吗？',
       startPreDeployConfirm: '确定要开始预发布部署吗？',
@@ -368,7 +371,7 @@ export default {
       completeConfirm: '确定要进行最终验收吗？验收后批次将完成。',
       cancelConfirm: '确定要取消这个批次吗？',
       deleteConfirm: '确定要删除这个批次吗？',
-      
+
       // 提示
       noBuildRecord: '该应用没有成功的构建记录',
       appConflict: '该应用已在其他批次中',
@@ -378,7 +381,7 @@ export default {
       noApps: '暂无应用',
       loading: '加载中...',
       batchInfo: '批次信息',
-      
+
       // 创建表单
       step1: '基本信息',
       step2: '选择应用',

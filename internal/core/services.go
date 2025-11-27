@@ -87,12 +87,7 @@ func (e *CoreEngine) NewTag(appID int64, build *model.Build) {
 
 // SwitchVersion 切换版本
 func (e *CoreEngine) SwitchVersion(req *dto.SwitchVersionRequest) (*string, error) {
-	if req.Environment == constants.EnvTypePre {
-		return nil, e.releaseSM.TriggerPre(req.ReleaseAppID, req.BuildID, req.Operator, req.Reason)
-	} else if req.Environment == constants.EnvTypeProd {
-		return nil, e.releaseSM.TriggerProd(req.ReleaseAppID, req.BuildID, req.Operator, req.Reason)
-	}
-	return nil, fmt.Errorf("无效的环境类型: %s", req.Environment)
+	return nil, e.releaseSM.SwitchVersion(req.ReleaseAppID, req.BuildID, req.Operator, req.Reason)
 }
 
 // ManualDeploy 手动部署

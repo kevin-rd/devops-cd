@@ -300,7 +300,6 @@ export interface BatchRejectRequest {
 export interface SwitchVersionRequest {
   batch_id: number
   release_app_id: number
-  environment: 'pre' | 'prod'
   operator: string
   build_id: number
   reason?: string

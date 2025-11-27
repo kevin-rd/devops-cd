@@ -1,10 +1,10 @@
-import { Steps, Tag, Tooltip } from 'antd'
-import { LoadingOutlined, CheckCircleOutlined, PlayCircleOutlined, FastForwardOutlined } from '@ant-design/icons'
+import {Steps, Tag, Tooltip} from 'antd'
+import {CheckCircleOutlined, FastForwardOutlined, LoadingOutlined, PlayCircleOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useTranslation } from 'react-i18next'
-import { useState, useEffect } from 'react'
-import type { Batch } from '@/types/batch.ts'
-import { formatCreatedTime } from '@/utils/time'
+import {useTranslation} from 'react-i18next'
+import {useEffect, useState} from 'react'
+import {Batch, BatchStatus} from '@/types/batch.ts'
+import {formatCreatedTime} from '@/utils/time'
 import './index.css'
 
 interface BatchTimelineProps {
@@ -13,8 +13,8 @@ interface BatchTimelineProps {
   hasPreApps?: boolean  // 是否有需要预发布的应用
 }
 
-export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, hasPreApps = true }) => {
-  const { t } = useTranslation()
+export const BatchTimeline: React.FC<BatchTimelineProps> = ({batch, onAction, hasPreApps = true}) => {
+  const {t} = useTranslation()
   const [isVertical, setIsVertical] = useState(false)
 
   // 检测屏幕宽度，在小屏幕时切换为纵向布局
@@ -22,12 +22,12 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
     const handleResize = () => {
       setIsVertical(window.innerWidth <= 576)
     }
-    
+
     handleResize() // 初始化
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-  
+
   // 根据批次状态计算当前步骤
   const getCurrentStep = () => {
     if (batch.status === 90) {
@@ -79,50 +79,23 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
     return lines.length > 0 ? lines : ['-']
   }
 
-  // 获取生产部署步骤的时间描述（显示开始和完成时间，分两行）
-  const getProdDeployTimeDescription = () => {
-    const lines: string[] = []
-    if (batch.prod_deploy_started_at) {
-      lines.push(`${t('common.start')}: ${formatTime(batch.prod_deploy_started_at)}`)
-    }
-    if (batch.prod_deploy_finished_at) {
-      lines.push(`${t('common.finish')}: ${formatTime(batch.prod_deploy_finished_at)}`)
-    }
-    return lines.length > 0 ? lines : ['-']
-  }
-
   // 获取预发布步骤的状态描述（用于 subTitle，带样式类）
   const getPreDeployStatusText = () => {
     if (batch.pre_deploy_finished_at) {
-      return { text: t('batch.statusCompleted'), className: 'status-tag status-finished' }
+      return {text: t('batch.statusCompleted'), className: 'status-tag status-finished'}
     }
     if (batch.status === 21) {
-      return { text: t('batch.statusPreDeploying'), className: 'status-tag status-processing' }
+      return {text: t('batch.statusPreDeploying'), className: 'status-tag status-pending'}
     }
     if (batch.status === 20) {
-      return { text: t('batch.preDeployTriggered'), className: 'status-tag status-pending' }
+      return {text: t('batch.statusPreTriggered'), className: 'status-tag status-pending'}
     }
-    return { text: '-', className: '' }
+    return {text: '-', className: ''}
   }
 
-  // 获取生产部署步骤的状态描述（用于 subTitle，带样式类）
-  const getProdDeployStatusText = () => {
-    if (batch.prod_deploy_finished_at) {
-      return { text: t('batch.statusCompleted'), className: 'status-tag status-finished' }
-    }
-    if (batch.status === 31) {
-      return { text: t('batch.statusProdDeploying'), className: 'status-tag status-processing' }
-    }
-    if (batch.status === 30) {
-      return { text: t('batch.prodDeployTriggered'), className: 'status-tag status-pending' }
-    }
-    return { text: '-', className: '' }
-  }
 
   const preDeployStatus = getPreDeployStatusText()
-  const prodDeployStatus = getProdDeployStatusText()
   const preDeployTimes = getPreDeployTimeDescription()
-  const prodDeployTimes = getProdDeployTimeDescription()
 
   // 获取自定义图标（用于可点击和进行中状态）
   const getCustomIcon = (stepIndex: number) => {
@@ -147,8 +120,8 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
     // 预发布步骤 (index 2) - 只在有预发布应用时显示
     if (stepIndex === 2 && hasPreApps) {
       // 如果正在预发布中，显示转圈图标
-      if (batch.status === 20 || batch.status === 21) {
-        return <LoadingOutlined className="timeline-icon-loading" />
+      if (batch.status === BatchStatus.PreTriggered || batch.status === BatchStatus.PreDeploying) {
+        return <LoadingOutlined className="timeline-icon-loading"/>
       }
       // 如果已封板且未开始预发布，显示可点击的开始图标
       if (batch.status === 10 && onAction) {
@@ -170,11 +143,11 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
     const prodStepIndex = hasPreApps ? 3 : 2
     if (stepIndex === prodStepIndex) {
       // 如果正在生产部署中，显示转圈图标
-      if (batch.status === 30 || batch.status === 31) {
-        return <LoadingOutlined className="timeline-icon-loading" />
+      if (batch.status === BatchStatus.ProdTriggered || batch.status === BatchStatus.ProdDeploying) {
+        return <LoadingOutlined className="timeline-icon-loading"/>
       }
       // 如果预发布完成且未开始生产部署，或者跳过pre已封板，显示可点击的开始图标
-      if (((hasPreApps && batch.status === 22) || (!hasPreApps && batch.status === 10)) && onAction) {
+      if (((hasPreApps && batch.status === BatchStatus.PreDeployed) || (!hasPreApps && batch.status === BatchStatus.Sealed)) && onAction) {
         return (
           <Tooltip title={t('batch.startProdDeploy')}>
             <PlayCircleOutlined
@@ -201,7 +174,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
       description: (
         <div>
           <div>{formatTime(batch.created_at)}</div>
-          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>{createdTimeInfo.dayInfo}</div>
+          <div style={{fontSize: '12px', color: '#999', marginTop: '4px'}}>{createdTimeInfo.dayInfo}</div>
         </div>
       ),
       subTitle: batch.initiator,
@@ -224,6 +197,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
           ))}
         </div>
       ),
+      // @ts-ignore
       subTitle: preDeployStatus.text !== '-' ? (
         <Tag className={preDeployStatus.className}>
           {preDeployStatus.text}
@@ -235,8 +209,9 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
     steps.push({
       title: '跳过预发布',
       description: '所有应用直接部署到生产',
+      // @ts-ignore
       subTitle: (
-        <Tag color="orange" icon={<FastForwardOutlined />}>
+        <Tag color="orange" icon={<FastForwardOutlined/>}>
           已跳过
         </Tag>
       ),
@@ -244,22 +219,29 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({ batch, onAction, h
   }
 
   // 添加生产部署步骤
-  steps.push(
-    {
+  // @ts-ignore
+  steps.push(batch.status >= BatchStatus.ProdTriggered ? (
+      {
+        title: t('batch.timelineProdDeploy'),
+        subTitle:
+          <Tag className={batch.status === BatchStatus.ProdDeployed ? 'status-tag status-finished' :
+            batch.status === BatchStatus.ProdDeploying ? 'status-tag status-processing' :
+              batch.status === BatchStatus.ProdTriggered ? 'status-tag status-processing' : ''}>
+            {batch.status === BatchStatus.ProdDeployed ? t('batch.statusCompleted') :
+              batch.status === BatchStatus.ProdDeploying ? t('batch.statusProdDeploying') :
+                batch.status === BatchStatus.ProdTriggered ? t('batch.statusProdTriggered') : '-'}
+          </Tag>,
+        description: (
+          <div className="timeline-step-description">
+            <div className="timeline-times">{t('common.start')}: {formatTime(batch.prod_deploy_started_at) || '-'}</div>
+            <div className="timeline-times">{t('common.finish')}: {formatTime(batch.prod_deploy_finished_at) || '-'}</div>
+          </div>
+        ),
+      }) : ({
       title: t('batch.timelineProdDeploy'),
-      description: (
-        <div className="timeline-step-description">
-          {prodDeployTimes.map((line, index) => (
-            <div key={index} className="timeline-times">{line}</div>
-          ))}
-        </div>
-      ),
-      subTitle: prodDeployStatus.text !== '-' ? (
-        <Tag className={prodDeployStatus.className}>
-          {prodDeployStatus.text}
-        </Tag>
-      ) : '-',
-    },
+      subTitle: '-',
+      description: formatTime(batch.prod_deploy_started_at),
+    }),
     {
       title: t('batch.timelineAccept'),
       description: formatTime(batch.final_accepted_at),

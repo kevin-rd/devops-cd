@@ -32,31 +32,19 @@ func (sm *ReleaseStateMachine) ManualDeploy(releaseAppID int64, action, operator
 	)
 }
 
-// SwitchVersion 切换版本
+// SwitchVersion 切换版本, 根据是否有Pre环境触发Pre还是Prod
 func (sm *ReleaseStateMachine) SwitchVersion(releaseAppID, buildID int64, operator, reason string) error {
-	return nil
-}
-
-// TriggerPre 手动触发Pre部署
-func (sm *ReleaseStateMachine) TriggerPre(releaseAppID, buildID int64, operator, reason string) error {
 	// 事务更新
 	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
-		WithStatus(utils.CopyInt8(constants.ReleaseAppStatusPreCanTrigger)),
 		WithSource(TransitionSourceOutside),
-		WithOperator(operator),
-		WithReason(reason),
-		WithData("build_id", buildID),
-	)
-}
-
-// TriggerProd 手动触发Prod部署
-func (sm *ReleaseStateMachine) TriggerProd(releaseAppID, buildID int64, operator, reason string) error {
-	// 事务更新
-	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
-		WithStatus(utils.CopyInt8(constants.ReleaseAppStatusPreCanTrigger)),
-		WithSource(TransitionSourceOutside),
-		WithOperator(operator),
-		WithReason(reason),
+		WithTarget(func(r model.ReleaseApp) int8 {
+			if r.SkipPreEnv {
+				return constants.ReleaseAppStatusProdCanTrigger
+			} else {
+				return constants.ReleaseAppStatusPreCanTrigger
+			}
+		}),
+		WithOperatorAndReason(operator, reason),
 		WithData("build_id", buildID),
 	)
 }

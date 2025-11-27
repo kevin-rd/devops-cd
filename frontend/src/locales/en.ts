@@ -242,10 +242,15 @@ export default {
       status: 'Batch Status',
       statusDraft: 'Draft',
       statusSealed: 'Sealed',
-      statusPreDeploying: 'Pre-deploying',
-      statusPreDeployed: 'Pre-deploy Finished',
+      statusPreTriggered: 'Pre Triggered',
+      statusPreDeploying: 'Pre Deploying',
+      statusPreDeployed: 'Pre Finished',
+      statusPreDeployFailed: 'Pre Failed',
+      statusPreDeploySkipped: 'Pre Skipped',
+      statusProdTriggered: 'Prod Triggered',
       statusProdDeploying: 'Prod Deploying',
-      statusProdDeployed: 'Prod Deploy Finished',
+      statusProdDeployed: 'Prod Finished',
+      statusProdDeployFailed: 'Prod Failed',
       statusCompleted: 'Completed',
       statusCancelled: 'Cancelled',
 
@@ -309,8 +314,6 @@ export default {
       timelinePreDeploy: 'Pre-deploy',
       timelineProdDeploy: 'Prod Deploy',
       timelineAccept: 'Final Acceptance',
-      preDeployTriggered: 'Pre-deploy Triggered',
-      prodDeployTriggered: 'Prod Deploy Triggered',
 
       stage: {
         sealed: 'Sealed',

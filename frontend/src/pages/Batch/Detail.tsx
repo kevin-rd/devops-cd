@@ -26,7 +26,7 @@ import AppSelectionTable from '@/components/AppSelectionTable'
 import '@/styles/status-theme.css'
 import './Detail.css'
 import {ReleaseApp} from "@/types/release_app.ts";
-import {Batch} from "@/types/batch.ts";
+import {Batch, BatchStatus} from "@/types/batch.ts";
 
 type DependencyOption = {
   label: ReactNode
@@ -750,16 +750,16 @@ export default function BatchDetail() {
   // 根据批次状态获取对应的CSS类名（用于卡片样式）
   const getStatusClassName = () => {
     const status = Number(batch.status)
-    if (status === 0) return 'status-draft'
-    if (status === 10) return 'status-sealed'
-    if (status === 20) return 'status-pre-waiting'
-    if (status === 21) return 'status-pre-deploying'
-    if (status === 22) return 'status-pre-deployed'
-    if (status === 30) return 'status-prod-waiting'
-    if (status === 31) return 'status-prod-deploying'
-    if (status === 32) return 'status-prod-deployed'
-    if (status === 40) return 'status-completed'
-    if (status === 90) return 'status-cancelled'
+    if (status === BatchStatus.Draft) return 'status-draft'
+    if (status === BatchStatus.Sealed) return 'status-sealed'
+    if (status === BatchStatus.PreTriggered) return 'status-pre-deploying' // 不是用waiting css
+    if (status === BatchStatus.PreDeploying) return 'status-pre-deploying'
+    if (status === BatchStatus.PreDeployed) return 'status-pre-deployed'
+    if (status === BatchStatus.ProdTriggered) return 'status-prod-deploying' // 不使用waiting css
+    if (status === BatchStatus.ProdDeploying) return 'status-prod-deploying'
+    if (status === BatchStatus.ProdDeployed) return 'status-prod-deployed'
+    if (status === BatchStatus.Completed) return 'status-completed'
+    if (status === BatchStatus.Cancelled) return 'status-cancelled'
     return ''
   }
 
@@ -965,12 +965,8 @@ export default function BatchDetail() {
             />
           ) : (
             /* 发布详情模式：显示应用依赖图 */
-            <DependencyGraph
-              releaseApps={batch.apps || []}
-              appTypeConfigs={batch.app_type_configs}
-              environment="prod"
-              batch={batch}
-              onRefresh={() => queryClient.invalidateQueries({queryKey: ['batchDetail', id]})}
+            <DependencyGraph releaseApps={batch.apps || []} batch={batch} appTypeConfigs={batch.app_type_configs}
+                             onRefresh={() => queryClient.invalidateQueries({queryKey: ['batchDetail', id]})}
             />
           )}
         </Card>

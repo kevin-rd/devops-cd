@@ -68,20 +68,28 @@ type TransitionOption func(*transitionOptions)
 type transitionOptions struct {
 	operator   string
 	reason     string
-	to         *int8
+	getTarget  func(r model.ReleaseApp) int8
 	source     int8
 	data       map[string]interface{}
 	sideEffect func(r *model.ReleaseApp)
 }
 
+// WithStatus 设置目标状态
 func WithStatus(to *int8) TransitionOption {
 	return func(o *transitionOptions) {
 		if to != nil {
-			val := *to
-			o.to = &val
+			o.getTarget = func(r model.ReleaseApp) int8 {
+				return *to
+			}
 		}
 	}
 }
+func WithTarget(f func(r model.ReleaseApp) int8) TransitionOption {
+	return func(o *transitionOptions) {
+		o.getTarget = f
+	}
+}
+
 func WithSource(source int8) TransitionOption {
 	return func(o *transitionOptions) {
 		o.source = source
@@ -98,6 +106,12 @@ func WithOperator(operator string) TransitionOption {
 }
 func WithReason(reason string) TransitionOption {
 	return func(o *transitionOptions) { o.reason = reason }
+}
+func WithOperatorAndReason(operator, reason string) TransitionOption {
+	return func(o *transitionOptions) {
+		o.operator = operator
+		o.reason = reason
+	}
 }
 func WithData(key string, value interface{}) TransitionOption {
 	return func(o *transitionOptions) {
@@ -138,8 +152,8 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.
 			option.sideEffect(release)
 		}
 
-		if option.to != nil {
-			to = *option.to
+		if option.getTarget != nil {
+			to = option.getTarget(*release)
 
 			// 2. 检查是否允许
 			h, ok := sm.canTransition(old, to, option.source)

@@ -64,17 +64,22 @@ export enum AppStatus {
   ProdFailed = 34,
 }
 
-export const AppStatusLabel: Record<number, string> = {
-  [AppStatus.Pending]: '待处理',
-  [AppStatus.Tagged]: '已确认版本',
-  [AppStatus.PreWaiting]: '预发布等待',
-  [AppStatus.PreCanTrigger]: '预发布可触发',
-  [AppStatus.PreTriggered]: '预发布已触发',
-  [AppStatus.PreDeployed]: '预发布完成',
-  [AppStatus.PreFailed]: '预发布失败',
-  [AppStatus.ProdWaiting]: '生产等待',
-  [AppStatus.ProdCanTrigger]: '生产可触发',
-  [AppStatus.ProdTriggered]: '生产已触发',
-  [AppStatus.ProdDeployed]: '生产完成',
-  [AppStatus.ProdFailed]: '生产失败',
+export interface LabelValue {
+  label: string
+  color?: string
+}
+
+export const AppStatusLabel: Record<number, LabelValue> = {
+  [AppStatus.Pending]: {label: '初始化', color: 'gray'},
+  [AppStatus.Tagged]: {label: '已确认版本', color: 'blue'},
+  [AppStatus.PreWaiting]: {label: 'Pre等待', color: 'blue'},
+  [AppStatus.PreCanTrigger]: {label: 'Pre可触发部署', color: 'green'},
+  [AppStatus.PreTriggered]: {label: 'Pre部署中', color: 'yellow'},
+  [AppStatus.PreDeployed]: {label: 'Pre完成', color: 'green'},
+  [AppStatus.PreFailed]: {label: 'Pre失败', color: 'red'},
+  [AppStatus.ProdWaiting]: {label: 'Prod等待', color: 'blue'},
+  [AppStatus.ProdCanTrigger]: {label: 'Prod可触发部署', color: 'green'},
+  [AppStatus.ProdTriggered]: {label: 'Prod已触发', color: 'yellow'},
+  [AppStatus.ProdDeployed]: {label: 'Prod完成', color: 'green'},
+  [AppStatus.ProdFailed]: {label: 'Prod失败', color: 'red'},
 }

@@ -120,6 +120,7 @@ func (e *CoreEngine) ScanBatches() {
 		return
 	}
 
+	// todo: 拼接字符串
 	ids := lo.Map(batches, func(b model.Batch, i int) int64 { return b.ID })
 	e.logger.Debug(fmt.Sprintf("[BatchScaner] 待处理的Batch %v个: %v", len(batches), ids))
 

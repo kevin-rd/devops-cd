@@ -55,13 +55,7 @@ func (sm *StateMachine) HandlePreWaiting(ctx context.Context, batch *model.Batch
 		return 0, nil, fmt.Errorf("更新发布记录状态失败: %w", result.Error)
 	}
 
-	// 如果批次中没有需要 pre 的应用,直接跳到 prod
-	if result.RowsAffected == 0 {
-		sm.logger.Info(fmt.Sprintf("Batch:%s -> 无需预发布的应用,直接跳转到生产部署", batchName))
-		return constants.BatchStatusProdWaiting, nil, nil
-	}
-
-	sm.logger.Info(fmt.Sprintf("Batch:%s -> %d 条发布记录更新为 PreWaiting", batchName, result.RowsAffected))
+	sm.logger.Info(fmt.Sprintf("Batch:%s === %d 条ReleaseApp更新为 PreWaiting", batchName, result.RowsAffected))
 	return constants.BatchStatusPreDeploying, nil, nil
 }
 

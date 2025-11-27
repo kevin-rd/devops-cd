@@ -35,12 +35,21 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 		// 重新预发布
 		{
 			From: []int8{
-				constants.ReleaseAppStatusTagged,
-				constants.ReleaseAppStatusPreWaiting, constants.ReleaseAppStatusPreCanTrigger, constants.ReleaseAppStatusPreTriggered, constants.ReleaseAppStatusPreDeployed,
-				constants.ReleaseAppStatusProdWaiting, constants.ReleaseAppStatusProdCanTrigger, constants.ReleaseAppStatusProdTriggered, constants.ReleaseAppStatusProdDeployed,
+				// PreWaiting&PreCanTrigger时不允许重新预发布, 防止并发问题, PreTriggered是否允许先待定
+				constants.ReleaseAppStatusPreTriggered, constants.ReleaseAppStatusPreDeployed, constants.ReleaseAppStatusPreFailed,
+				constants.ReleaseAppStatusProdTriggered, constants.ReleaseAppStatusProdDeployed, constants.ReleaseAppStatusProdFailed,
 			},
 			To:          constants.ReleaseAppStatusPreCanTrigger, // 跳过依赖检查
 			Handler:     SwitchVersionPreDeploy{sm: sm},
+			AllowSource: TransitionSourceOutside,
+		},
+		// 重新Prod发布(该App没有Pre环境)
+		{
+			From: []int8{
+				constants.ReleaseAppStatusProdTriggered, constants.ReleaseAppStatusProdDeployed, constants.ReleaseAppStatusProdFailed,
+			},
+			To:          constants.ReleaseAppStatusProdCanTrigger,
+			Handler:     SwitchVersionProdDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
 		// 提前Pre发布
@@ -50,7 +59,7 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 			Handler:     ManualTriggerPreDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
-		{},
+		// 提前Prod发布(Pre发布完成或没有Pre环境)
 		// 手动触发Prod发布(包括没有Pre环境的情况)
 		{
 			From:        []int8{constants.ReleaseAppStatusTagged, constants.ReleaseAppStatusPreDeployed},
@@ -116,23 +125,73 @@ func (h SwitchVersionPreDeploy) Handle(release *model.ReleaseApp, from int8, opt
 	if batch.Status >= constants.BatchStatusPreDeployed && batch.Status < constants.BatchStatusProdWaiting ||
 		batch.Status >= constants.BatchStatusProdDeployed && batch.Status < constants.BatchStatusFinalAccepted {
 		// 可以进行
-	} else
-	// 2. Batch未开始预发布时, 应用可能会提前预发布, 并重新发版
-	if batch.Status == constants.BatchStatusSealed {
-
 	} else {
 		return fmt.Errorf("当前批次状态不允许手动重新预发布")
 	}
 
-	// 2. 更新release_app状态
-	release.BuildID = release.LatestBuildID
-	release.TargetTag = &latestBuild.ImageTag
+	// 2. 获取build_id并更新
+	targetBuild, ok := options.data["build_id"].(int64)
+	if !ok || targetBuild == 0 {
+		return fmt.Errorf("未指定目标构建")
+	}
+
+	var build model.Build
+	if err := h.sm.db.First(&build, targetBuild).Error; err != nil {
+		return fmt.Errorf("查询Build记录失败: %w", err)
+	}
+
+	release.BuildID = &build.ID
+	release.TargetTag = &build.ImageTag
 	// 重新发布时不需要检查依赖关系?
 	release.Status = constants.ReleaseAppStatusPreCanTrigger
 
 	return nil
 }
 func (h SwitchVersionPreDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
+}
+
+// SwitchVersionProdDeploy 当App没有预发布环境, 直接切换Prod
+type SwitchVersionProdDeploy struct {
+	sm *ReleaseStateMachine
+}
+
+func (h SwitchVersionProdDeploy) Handle(release *model.ReleaseApp, from int8, options *transitionOptions) error {
+	var batch model.Batch
+	if err := h.sm.db.First(&batch, release.BatchID).Error; err != nil {
+		return err
+	}
+
+	// 1. 检查状态
+	if !release.SkipPreEnv {
+		return fmt.Errorf("当前App有预发布环境, 不允许直接Prod发布")
+	}
+
+	if batch.Status >= constants.BatchStatusPreDeployed && batch.Status <= constants.BatchStatusProdWaiting ||
+		batch.Status >= constants.BatchStatusProdDeployed && batch.Status <= constants.BatchStatusFinalAccepted {
+		// Pre/Prod已完成时才可以手动重新Prod发布
+	} else {
+		return fmt.Errorf("当前Batch Status: %v 不允许手动重新Prod发布", batch.Status)
+	}
+
+	// 重新发布时不需要检查依赖关系?
+	targetBuild, ok := options.data["build_id"].(int64)
+	if !ok || targetBuild == 0 {
+		return fmt.Errorf("未指定build_id")
+	}
+
+	var build model.Build
+	if err := h.sm.db.First(&build, targetBuild).Error; err != nil {
+		return fmt.Errorf("查询Build记录失败: %w", err)
+	}
+
+	release.BuildID = &build.ID
+	release.TargetTag = &build.ImageTag
+	release.Status = constants.ReleaseAppStatusProdCanTrigger
+
+	return nil
+}
+
+func (h SwitchVersionProdDeploy) After(release *model.ReleaseApp, from int8, options *transitionOptions) {
 }
 
 // ManualTriggerPreDeploy 手动触发Pre发布

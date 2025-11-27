@@ -1,13 +1,8 @@
-import { useMemo, useCallback, useEffect, useRef, useState } from 'react'
-import ReactFlow, {
-  Node,
-  Edge,
-  MiniMap,
-  MarkerType,
-} from 'reactflow'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import ReactFlow, {Edge, MarkerType, MiniMap, Node,} from 'reactflow'
 import dagre from 'dagre'
-import { Empty } from 'antd'
-import type { AppTypeConfigInfo } from '@/types'
+import {Empty} from 'antd'
+import type {AppTypeConfigInfo} from '@/types'
 import AppNode from './AppNode'
 import GroupNode from './GroupNode'
 import AppNodeModal from './AppNodeModal'
@@ -19,7 +14,6 @@ import {ReleaseApp} from "@/types/release_app.ts";
 interface DependencyGraphProps {
   releaseApps: ReleaseApp[]
   appTypeConfigs?: Record<string, AppTypeConfigInfo>
-  environment?: 'pre' | 'prod'
   batch: Batch
   onRefresh?: () => void
 }
@@ -170,7 +164,7 @@ dagreGraph.setDefaultEdgeLabel(() => ({}))
  * - 保持布局稳定（节点ID作为唯一标识）
  */
 const getLayoutedElements = (nodes: Node[], edges: Edge[], appTypeLevels: Map<string, number>) => {
-  if (nodes.length === 0) return { nodes: [], edges }
+  if (nodes.length === 0) return {nodes: [], edges}
 
   dagreGraph.setGraph({
     rankdir: 'TB',
@@ -231,12 +225,12 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], appTypeLevels: Map<st
     },
   }))
 
-  return { nodes: normalizedNodes, edges }
+  return {nodes: normalizedNodes, edges}
 }
 
 // 计算图的实际高度和宽度
 const calculateGraphDimensions = (nodes: Node[]): { width: number; height: number } => {
-  if (nodes.length === 0) return { width: 800, height: 400 }
+  if (nodes.length === 0) return {width: 800, height: 400}
 
   let maxX = 0
   let maxY = 0
@@ -262,7 +256,7 @@ const adjustNodesToWidth = (
   appTypeConfigs?: Record<string, AppTypeConfigInfo>,
 ): { nodes: Node[]; layers: LayerLayout[]; totalHeight: number } => {
   if (nodes.length === 0) {
-    return { nodes, layers: [], totalHeight: TOP_PADDING + nodeHeight }
+    return {nodes, layers: [], totalHeight: TOP_PADDING + nodeHeight}
   }
 
   const safeWidth = Math.max(containerWidth, MIN_CONTAINER_WIDTH)
@@ -419,10 +413,10 @@ const adjustNodesToWidth = (
 
       // 计算每个节点应该的 preferredX（基于其依赖节点的位置）
       const nodePreferredX = new Map<string, number>()
-      
+
       subLayerNodes.forEach((nodeData) => {
         let preferredX = nodeData.dagreX
-        
+
         // 如果有来自上一个子层的依赖，尽量靠近它们
         if (subLayerIndex > 0 && nodeData.incomingEdges.length > 0) {
           const parentXs = nodeData.incomingEdges
@@ -431,12 +425,12 @@ const adjustNodesToWidth = (
               return sourcePos ? sourcePos.x : null
             })
             .filter((x): x is number => x !== null)
-          
+
           if (parentXs.length > 0) {
             preferredX = parentXs.reduce((sum, x) => sum + x, 0) / parentXs.length
           }
         }
-        
+
         nodePreferredX.set(nodeData.id, preferredX)
       })
 
@@ -448,19 +442,19 @@ const adjustNodesToWidth = (
       subLayerNodes.sort((a, b) => {
         const aHasDeps = a.outgoing > 0
         const bHasDeps = b.outgoing > 0
-        
+
         if (aHasDeps !== bHasDeps) {
           return bHasDeps ? 1 : -1 // 有依赖的排前面
         }
-        
+
         if (a.outgoing !== b.outgoing) {
           return b.outgoing - a.outgoing // 出度大的排前面
         }
-        
+
         if (a.appType !== b.appType) {
           return (a.appType || '').localeCompare(b.appType || '')
         }
-        
+
         return (nodePreferredX.get(a.id) ?? a.dagreX) - (nodePreferredX.get(b.id) ?? b.dagreX)
       })
 
@@ -468,7 +462,7 @@ const adjustNodesToWidth = (
       // 1. 入度大的放在前面的行（上面），出度大的放在后面的行（下面）
       // 2. 优化边与节点的交叉
       const numRows = Math.ceil(subLayerNodes.length / effectiveMaxPerRow)
-      const rows: typeof subLayerNodes[] = Array.from({ length: numRows }, () => [])
+      const rows: typeof subLayerNodes[] = Array.from({length: numRows}, () => [])
 
       // 按综合得分分配到不同行
       // 入度大的优先放前面的行，出度大的优先放后面的行
@@ -476,24 +470,24 @@ const adjustNodesToWidth = (
         // 计算节点应该在的行：入度大 -> 前面，出度大 -> 后面
         // score 越小越靠前
         const score = nodeData.outgoing - nodeData.incoming
-        
+
         // 归一化到 [0, numRows-1]
         const allScores = subLayerNodes.map((n) => n.outgoing - n.incoming)
         const minScore = Math.min(...allScores)
         const maxScore = Math.max(...allScores)
-        
+
         let targetRow = 0
         if (maxScore > minScore) {
           const normalizedScore = (score - minScore) / (maxScore - minScore)
           targetRow = Math.floor(normalizedScore * (numRows - 1))
         }
-        
+
         // 找到目标行或最近的未满行
         let assignedRow = targetRow
         while (assignedRow < numRows && rows[assignedRow].length >= effectiveMaxPerRow) {
           assignedRow++
         }
-        
+
         // 如果所有后面的行都满了，往前找
         if (assignedRow >= numRows) {
           assignedRow = targetRow
@@ -501,7 +495,7 @@ const adjustNodesToWidth = (
             assignedRow--
           }
         }
-        
+
         // 如果还是没找到，放到第一个有空间的行
         if (assignedRow < 0 || assignedRow >= numRows) {
           assignedRow = rows.findIndex((row) => row.length < effectiveMaxPerRow)
@@ -509,13 +503,13 @@ const adjustNodesToWidth = (
             assignedRow = 0 // 降级到第一行
           }
         }
-        
+
         rows[assignedRow].push(nodeData)
       })
 
       // 为每行的节点计算位置，并考虑边-节点交叉优化
       const tempPositions = new Map<string, { x: number; y: number }>()
-      
+
       rows.forEach((rowNodes, rowIndex) => {
         if (rowNodes.length === 0) return
 
@@ -524,7 +518,7 @@ const adjustNodesToWidth = (
         const y = currentY + rowIndex * (nodeHeight + ROW_GAP)
 
         rowNodes.forEach((nodeData) => {
-          tempPositions.set(nodeData.id, { x: currentX, y })
+          tempPositions.set(nodeData.id, {x: currentX, y})
           currentX += nodeWidth + nodesep
         })
       })
@@ -535,7 +529,7 @@ const adjustNodesToWidth = (
       edges.forEach((edge) => {
         const sourcePos = finalPositions.get(edge.source) || tempPositions.get(edge.source)
         const targetPos = finalPositions.get(edge.target) || tempPositions.get(edge.target)
-        
+
         if (sourcePos && targetPos) {
           edgeLines.push({
             sourceId: edge.source,
@@ -602,7 +596,7 @@ const adjustNodesToWidth = (
               }
             })
 
-            tempPositions.set(nodeData.id, { x: bestX, y: pos.y })
+            tempPositions.set(nodeData.id, {x: bestX, y: pos.y})
           }
         })
       })
@@ -678,11 +672,14 @@ const adjustNodesToWidth = (
     ? Math.max(...layerLayouts.map((layer) => layer.bottom)) + LAYER_EXTRA_PADDING
     : TOP_PADDING + nodeHeight
 
-  return { nodes: positionedNodes, layers: layerLayouts, totalHeight }
+  return {nodes: positionedNodes, layers: layerLayouts, totalHeight}
 }
 
 // 构建图数据
-const buildGraphData = (releaseApps: ReleaseApp[], onNodeClick?: (releaseApp: ReleaseApp) => void): { nodes: Node[]; edges: Edge[] } => {
+const buildGraphData = (releaseApps: ReleaseApp[], onNodeClick?: (releaseApp: ReleaseApp) => void): {
+  nodes: Node[];
+  edges: Edge[]
+} => {
   const nodes: Node[] = []
   const edges: Edge[] = []
   const appIdToIndex = new Map<number, number>()
@@ -718,7 +715,7 @@ const buildGraphData = (releaseApps: ReleaseApp[], onNodeClick?: (releaseApp: Re
     nodes.push({
       id: String(app.app_id),
       type: 'appNode',
-      position: { x: 0, y: 0 }, // 初始位置，后续由 dagre 计算
+      position: {x: 0, y: 0}, // 初始位置，后续由 dagre 计算
       data: {
         releaseApp: app,
         isIsolated,
@@ -784,7 +781,7 @@ const buildGraphData = (releaseApps: ReleaseApp[], onNodeClick?: (releaseApp: Re
     })
   })
 
-  return { nodes, edges }
+  return {nodes, edges}
 }
 
 const buildLayerGroupNodes = (layers: LayerLayout[]): Node[] => {
@@ -795,7 +792,7 @@ const buildLayerGroupNodes = (layers: LayerLayout[]): Node[] => {
     return {
       id: `layer-${layer.level}`,
       type: 'groupNode',
-      position: { x: layer.left, y: layer.top },
+      position: {x: layer.left, y: layer.top},
       data: {
         label: layer.label,
         width,
@@ -908,7 +905,7 @@ const computeAppTypeLevels = (
   return levels
 }
 
-export default function DependencyGraph({ releaseApps, appTypeConfigs, environment, batch, onRefresh }: DependencyGraphProps) {
+export default function DependencyGraph({releaseApps, appTypeConfigs, batch, onRefresh}: DependencyGraphProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [containerWidth, setContainerWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth : 1200))
   const [selectedReleaseApp, setSelectedReleaseApp] = useState<ReleaseApp | null>(null)
@@ -939,13 +936,13 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs, environme
     setModalVisible(true)
   }, [])
 
-  const { nodes, edges, layoutHeight } = useMemo(() => {
+  const {nodes, edges, layoutHeight} = useMemo(() => {
     if (releaseApps.length === 0) {
-      return { nodes: [], edges: [], layoutHeight: TOP_PADDING + nodeHeight }
+      return {nodes: [], edges: [], layoutHeight: TOP_PADDING + nodeHeight}
     }
 
-    const { nodes: baseNodes, edges: baseEdges } = buildGraphData(releaseApps, handleNodeClick)
-    const { nodes: layoutedNodes, edges } = getLayoutedElements(baseNodes, baseEdges, appTypeLevels)
+    const {nodes: baseNodes, edges: baseEdges} = buildGraphData(releaseApps, handleNodeClick)
+    const {nodes: layoutedNodes, edges} = getLayoutedElements(baseNodes, baseEdges, appTypeLevels)
     const {
       nodes: positionedNodes,
       layers,
@@ -986,7 +983,7 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs, environme
   if (releaseApps.length === 0) {
     return (
       <div className={styles.emptyContainer}>
-        <Empty description="暂无应用数据" />
+        <Empty description="暂无应用数据"/>
       </div>
     )
   }
@@ -1014,7 +1011,7 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs, environme
             zoomOnPinch={false}
             zoomOnDoubleClick={false}
             preventScrolling={false}
-            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            defaultViewport={{x: 0, y: 0, zoom: 1}}
             translateExtent={translateExtent}
             defaultEdgeOptions={{
               type: 'smoothstep',
@@ -1039,7 +1036,6 @@ export default function DependencyGraph({ releaseApps, appTypeConfigs, environme
       <AppNodeModal
         visible={modalVisible}
         releaseApp={selectedReleaseApp}
-        environment={environment}
         batch={batch}
         onClose={() => {
           setModalVisible(false)

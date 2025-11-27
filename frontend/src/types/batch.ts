@@ -38,10 +38,10 @@ export interface Batch {
 export enum BatchStatus {
   Draft = 0,  // 草稿/准备中
   Sealed = 10, // 已封板
-  PreWaiting = 20, // 预发布已触发
+  PreTriggered = 20, // 预发布已触发
   PreDeploying = 21, // 预发布部署中
   PreDeployed = 22, // 预发布已部署完成, 验收中
-  ProdWaiting = 30, // 生产已触发
+  ProdTriggered = 30, // 生产已触发
   ProdDeploying = 31, // 生产部署中
   ProdDeployed = 32, // 生产已部署完成, 验收中
   Completed = 40, // 已完成
