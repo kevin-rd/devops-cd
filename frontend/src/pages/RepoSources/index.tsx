@@ -64,8 +64,8 @@ const RepoSourcesPage: React.FC = () => {
     },
   })
 
-  const sources = response?.data || []
-  const total = response?.total || 0
+  const sources = response?.data?.items || []
+  const total = response?.data?.total || 0
 
   // 查询所有项目（用于下拉选择）
   const {data: projectsResponse} = useQuery<ApiResponse<ProjectSimple[]>>({

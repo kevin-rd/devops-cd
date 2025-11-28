@@ -105,15 +105,15 @@ export default function BatchList() {
     queryKey: ['batchList', params],
     queryFn: async () => {
       const res = await batchService.list(params)
-      // 后端返回格式: { code: 200, message: "success", data: [...], total: 2, page: 1, size: 20 }
-      // res 本身就是这个对象（经过 axios 拦截器处理）
+      // 后端返回格式: { code: 200, message: "success", data: { items: [...], total: 2, page: 1, page_size: 20 } }
+      // res.data 是一个包含 items, total, page, page_size 的对象
 
-      // data 是数组，total/page/size 在根级别
+      const pageData = res.data as any
       return {
-        items: Array.isArray(res.data) ? res.data : [],
-        total: (res as any).total || 0,
-        page: (res as any).page || 1,
-        page_size: (res as any).size || (res as any).page_size || 20,
+        items: Array.isArray(pageData?.items) ? pageData.items : [],
+        total: pageData?.total || 0,
+        page: pageData?.page || 1,
+        page_size: pageData?.page_size || 20,
       }
     },
     placeholderData: (previousData) => previousData,
@@ -125,15 +125,15 @@ export default function BatchList() {
       const batches = data.items || []
       const hasDeployingBatches = batches.some(
         (batch: Batch) =>
-          batch.status === 20 || // 预发布待触发
-          batch.status === 21 || // 预发布中
-          batch.status === 30 || // 生产部署待触发
-          batch.status === 31    // 生产部署中
+          batch.status === BatchStatus.PreTriggered || batch.status === BatchStatus.PreDeploying || // 预发布中
+          batch.status === BatchStatus.ProdTriggered || batch.status === BatchStatus.ProdDeploying    // 生产部署中
       )
 
       return hasDeployingBatches ? 5_000 : 30_000 // 如果有部署中的批次，每5秒刷新一次
     },
-    refetchIntervalInBackground: false, // 即使页面不在焦点也继续轮询
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
 
   const batches = batchResponse?.items || []

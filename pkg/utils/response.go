@@ -14,16 +14,6 @@ type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// PageResponse 分页响应结构
-type PageResponse struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
-	Total   int64       `json:"total"`
-	Page    int         `json:"page"`
-	Size    int         `json:"size"`
-}
-
 // Success 成功响应
 func Success(c *gin.Context, data interface{}) {
 	c.JSON(200, Response{
@@ -39,18 +29,6 @@ func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 		Code:    errors.CodeSuccess,
 		Message: message,
 		Data:    data,
-	})
-}
-
-// PageSuccess 分页成功响应
-func PageSuccess(c *gin.Context, data interface{}, total int64, page, size int) {
-	c.JSON(200, PageResponse{
-		Code:    errors.CodeSuccess,
-		Message: "success",
-		Data:    data,
-		Total:   total,
-		Page:    page,
-		Size:    size,
 	})
 }
 

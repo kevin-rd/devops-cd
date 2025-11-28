@@ -86,12 +86,10 @@ export default function BatchInsights() {
     queryKey: ['batch-insights-tabs'],
     queryFn: async () => {
       const res = await batchService.list({page: 1, page_size: BATCH_PAGE_SIZE})
-      const raw = res.data as any
-      if (Array.isArray(raw)) {
-        return raw as Batch[]
-      }
-      if (raw && Array.isArray(raw.items)) {
-        return raw.items as Batch[]
+      const pageData = res.data as any
+      // 后端返回格式已统一为 { code: 200, message: "success", data: { items: [...], total, page, page_size } }
+      if (pageData && Array.isArray(pageData.items)) {
+        return pageData.items as Batch[]
       }
       return [] as Batch[]
     },

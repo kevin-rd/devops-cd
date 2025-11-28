@@ -66,8 +66,8 @@ const ProjectPage: React.FC = () => {
     },
   })
 
-  const projects = response?.data || []
-  const total = response?.total || 0
+  const projects = response?.data?.items || []
+  const total = response?.data?.total || 0
 
   // 创建/更新项目
   const mutation = useMutation({

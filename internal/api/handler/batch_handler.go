@@ -402,7 +402,7 @@ func (h *BatchHandler) List(c *gin.Context) {
 		return
 	}
 
-	utils.PageSuccess(c, responses, total, param.Page, param.PageSize)
+	utils.Success(c, dto.NewPageResponse(responses, total, param.Page, param.PageSize))
 }
 
 // GetStatus 获取批次状态（轻量级，用于状态轮询）

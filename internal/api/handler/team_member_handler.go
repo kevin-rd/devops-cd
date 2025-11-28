@@ -52,7 +52,7 @@ func (h *TeamMemberHandler) ListMembers(c *gin.Context) {
 		return
 	}
 
-	utils.PageSuccess(c, members, total, req.GetPage(), req.GetPageSize())
+	utils.Success(c, dto.NewPageResponse(members, total, req.GetPage(), req.GetPageSize()))
 }
 
 // UpdateRole 更新团队成员角色

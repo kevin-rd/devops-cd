@@ -128,7 +128,7 @@ func (h *ClusterHandler) List(c *gin.Context) {
 		return
 	}
 
-	utils.PageSuccess(c, data, total, req.Page, req.PageSize)
+	utils.Success(c, dto.NewPageResponse(data, total, req.Page, req.PageSize))
 }
 
 // Delete 删除集群

@@ -106,7 +106,7 @@ func (h *ProjectHandler) List(c *gin.Context) {
 		return
 	}
 
-	utils.PageSuccess(c, projects, total, query.GetPage(), query.GetPageSize())
+	utils.Success(c, dto.NewPageResponse(projects, total, query.GetPage(), query.GetPageSize()))
 }
 
 // Update 更新项目

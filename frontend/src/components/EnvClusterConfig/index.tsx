@@ -30,11 +30,11 @@ const EnvClusterConfig: React.FC<EnvClusterConfigProps> = ({
 }) => {
   const [config, setConfig] = useState<Record<string, string[]>>(value)
 
-  // 获取集群列表
+  // 获取集群列表（获取所有启用的集群，传大的 page_size）
   const {data: clustersResponse, isLoading: clustersLoading} = useQuery({
     queryKey: ['clusters'],
     queryFn: async () => {
-      return await getClusters({status: 1})
+      return await getClusters({status: 1, page: 1, page_size: 1000})
     },
   })
 
@@ -49,8 +49,8 @@ const EnvClusterConfig: React.FC<EnvClusterConfigProps> = ({
     enabled: !!projectId && !project,  // 只有在没有 project 时才启用
   })
 
-  // 后端返回格式: {code, message, data: [...], total, page, size}
-  const allClusters: Cluster[] = (clustersResponse?.data as any) || []
+  // 后端返回格式: {code, message, data: {items: [...], total, page, page_size}}
+  const allClusters: Cluster[] = clustersResponse?.data?.items || []
   
   // 项目允许的环境集群配置
   // 优先级：allowedOptions > 传入的 project.allowed_env_clusters > API 查询结果

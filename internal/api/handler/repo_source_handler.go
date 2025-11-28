@@ -36,7 +36,7 @@ func (h *RepoSourceHandler) List(c *gin.Context) {
 		return
 	}
 
-	utils.PageSuccess(c, items, total, query.GetPage(), query.GetPageSize())
+	utils.Success(c, dto.NewPageResponse(items, total, query.GetPage(), query.GetPageSize()))
 }
 
 func (h *RepoSourceHandler) Create(c *gin.Context) {

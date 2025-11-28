@@ -1,5 +1,5 @@
 import request from '../utils/request';
-import { ApiResponse } from '../types';
+import { ApiResponse, PaginatedResponse } from '../types';
 
 /**
  * 集群接口
@@ -43,7 +43,7 @@ export interface ClusterListRequest {
  * 获取集群列表
  */
 export const getClusters = (params?: ClusterListRequest) => {
-  return request.get<ApiResponse<Cluster[]>>('/v1/clusters', { params });
+  return request.get<ApiResponse<PaginatedResponse<Cluster>>>('/v1/clusters', { params });
 };
 
 /**
