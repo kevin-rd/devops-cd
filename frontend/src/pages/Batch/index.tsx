@@ -40,7 +40,7 @@ import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
 import type {BatchActionRequest, BatchQueryParams, BuildSummary} from '@/types'
 import './index.css'
-import {Batch, BatchStatus} from "@/types/batch.ts";
+import {Batch, BatchAction, BatchStatus} from "@/types/batch.ts";
 import {ReleaseApp} from "@/types/release_app.ts";
 
 const {RangePicker} = DatePicker
@@ -107,8 +107,7 @@ export default function BatchList() {
       const res = await batchService.list(params)
       // 后端返回格式: { code: 200, message: "success", data: { items: [...], total: 2, page: 1, page_size: 20 } }
       // res.data 是一个包含 items, total, page, page_size 的对象
-
-      const pageData = res.data as any
+      const pageData = res.data
       return {
         items: Array.isArray(pageData?.items) ? pageData.items : [],
         total: pageData?.total || 0,
@@ -158,7 +157,7 @@ export default function BatchList() {
       return detailsMap
     },
     enabled: expandedRowKeys.length > 0,
-    staleTime: 1_000,
+    staleTime: 2_000,
     // 不再在这里轮询，改用下面的轻量级状态轮询
   })
 
@@ -170,10 +169,8 @@ export default function BatchList() {
     return expandedRowKeys.some((id) => {
       const batch = batchDetailsMap[id]
       return batch && (
-        batch.status === 20 || // 预发布待触发
-        batch.status === 21 || // 预发布中
-        batch.status === 30 || // 生产部署待触发
-        batch.status === 31    // 生产部署中
+        batch.status === BatchStatus.PreTriggered || batch.status === BatchStatus.PreDeploying || // 预发布中
+        batch.status === BatchStatus.ProdTriggered || batch.status === BatchStatus.ProdDeploying    // 生产部署中
       )
     })
   }, [expandedRowKeys, batchDetailsMap])
@@ -290,13 +287,32 @@ export default function BatchList() {
     mutationFn: (data: BatchActionRequest) => batchService.action(data),
     onSuccess: (_, req) => {
       message.success(t('batch.actionSuccess'))
+
+      queryClient.setQueryData(['batchList', params], (old: any) => {
+        return {
+          ...old,
+          items: old.items.map((b: Batch) => b.id === req.batch_id ? {
+            ...b,
+            status:
+              req.action === BatchAction.Seal ? BatchStatus.Sealed :
+                req.action === BatchAction.StartPreDeploy ? BatchStatus.PreTriggered :
+                  req.action === BatchAction.StartProdDeploy ? BatchStatus.ProdTriggered :
+                    req.action === BatchAction.Cancel ? BatchStatus.Cancelled :
+                      req.action === BatchAction.Complete ? BatchStatus.Completed :
+                        b.status
+          } : b),
+        }
+      })
+
       // 使用部分匹配来刷新所有相关查询
       queryClient.invalidateQueries({queryKey: ['batchList']})
-      queryClient.invalidateQueries({queryKey: ['batchDetails']})
+      // queryClient.invalidateQueries({queryKey: ['batchDetails']})
 
-      if (req.action === 'seal') {
+      if (req.action === BatchAction.Seal) {
+        queryClient.invalidateQueries({queryKey: ['batchDetail', req.batch_id]})
         navigate(`/batch/${req.batch_id}/detail`)
-      } else if (req.action === 'start_pre_deploy' || req.action === 'start_prod_deploy') {
+      } else if (req.action === BatchAction.StartPreDeploy || req.action === BatchAction.StartProdDeploy) {
+        queryClient.invalidateQueries({queryKey: ['batchDetail', req.batch_id]})
         navigate(`/batch/${req.batch_id}/detail?tab=graph`)
       } else {
         refetch()
@@ -320,7 +336,7 @@ export default function BatchList() {
   // 处理批次操作
   const handleAction = (batchId: number, action: string) => {
     setCurrentBatchId(batchId)
-    if (action === 'cancel') {
+    if (action === BatchAction.Cancel) {
       setCancelModalVisible(true)
     } else {
       Modal.confirm({
@@ -346,7 +362,7 @@ export default function BatchList() {
     if (currentBatchId) {
       actionMutation.mutate({
         batch_id: currentBatchId,
-        action: 'cancel',
+        action: BatchAction.Cancel,
         operator: user?.username || 'unknown',
         reason: cancelReason,
       })
@@ -522,7 +538,7 @@ export default function BatchList() {
             icon={<CheckCircleOutlined/>}
             onClick={(e) => {
               e.stopPropagation()
-              handleAction(record.id, 'prod_acceptance')
+              handleAction(record.id, BatchAction.Complete)
             }}
           >
             {t('batch.prodAcceptance')}
@@ -534,7 +550,7 @@ export default function BatchList() {
           danger
           onClick={(e) => {
             e.stopPropagation()
-            handleAction(record.id, 'cancel')
+            handleAction(record.id, BatchAction.Cancel)
           }}
           disabled={record.status >= 40 || record.status === 90}
         >

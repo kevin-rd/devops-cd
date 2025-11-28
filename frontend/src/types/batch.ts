@@ -48,3 +48,11 @@ export enum BatchStatus {
   FinalAccepted = 40,
   Cancelled = 90, // 已取消
 }
+
+export enum BatchAction {
+  Seal = 'seal',
+  StartPreDeploy = 'start_pre_deploy',
+  StartProdDeploy = 'start_prod_deploy',
+  Complete = 'complete',
+  Cancel = 'cancel',
+}

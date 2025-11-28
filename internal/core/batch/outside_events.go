@@ -12,11 +12,11 @@ type Event struct {
 }
 
 var events = map[string]Event{
-	"seal":              {To: constants.BatchStatusSealed},
-	"cancel":            {To: constants.BatchStatusCancelled},
-	"start_pre_deploy":  {To: constants.BatchStatusPreWaiting},
-	"start_prod_deploy": {To: constants.BatchStatusProdWaiting},
-	"complete":          {To: constants.BatchStatusCompleted},
+	constants.BatchActionSeal:      {To: constants.BatchStatusSealed},
+	constants.BatchActionCancel:    {To: constants.BatchStatusCancelled},
+	constants.BatchActionStartPre:  {To: constants.BatchStatusPreWaiting},
+	constants.BatchActionStartProd: {To: constants.BatchStatusProdWaiting},
+	constants.BatchActionComplete:  {To: constants.BatchStatusCompleted},
 }
 
 func (sm *StateMachine) initActions() {

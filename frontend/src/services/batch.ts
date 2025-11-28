@@ -1,12 +1,12 @@
 import request from '@/utils/request'
 import {
   ApiResponse,
+  BackendPaginatedResponse,
   BatchActionRequest,
   BatchApproveRequest,
   BatchQueryParams,
   BatchRejectRequest,
   CreateBatchRequest,
-  PaginatedResponse,
   ReleaseDependenciesResponse,
   SwitchVersionRequest,
   TriggerDeployRequest,
@@ -27,7 +27,7 @@ export const batchService = {
 
   // 获取批次列表（改为 GET 请求）
   list: (params?: BatchQueryParams) =>
-    request.get<ApiResponse<PaginatedResponse<Batch>>>('/v1/batches', {params}),
+    request.get<BackendPaginatedResponse<Batch>>('/v1/batches', {params}),
 
   // 获取批次详情（改为 GET 请求，支持应用列表分页）
   get: (id: number, appPage?: number, appPageSize?: number, withRecentBuilds?: boolean) =>
