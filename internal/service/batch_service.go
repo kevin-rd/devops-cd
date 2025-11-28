@@ -729,7 +729,8 @@ func (s *BatchService) toBatchResponse(batch *model.Batch, appCount int64) dto.B
 		Status:         batch.Status,
 		StatusName:     getStatusName(batch.Status),
 		ApprovalStatus: batch.ApprovalStatus,
-		AppCount:       appCount,
+		//AppCount:       appCount,
+		AppCount: batch.AppsCount,
 
 		// 审批信息
 		ApprovedBy:   batch.ApprovedBy,
@@ -795,16 +796,9 @@ type BatchWithAppCount struct {
 }
 
 // ListBatches 查询批次列表（返回 DTO）
-func (s *BatchService) ListBatches(page, pageSize int, statuses []int8, initiator string, approvalStatus *string, createdAtStart, createdAtEnd *time.Time, keyword string) ([]dto.BatchResponse, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 50 {
-		pageSize = 50
-	}
-
+func (s *BatchService) ListBatches(req dto.BatchListParam) ([]dto.BatchResponse, int64, error) {
 	// 查询批次列表
-	batches, total, err := s.batchRepo.List(page, pageSize, statuses, initiator, approvalStatus, createdAtStart, createdAtEnd, keyword)
+	batches, total, err := s.batchRepo.List(req)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -812,12 +806,7 @@ func (s *BatchService) ListBatches(page, pageSize int, statuses []int8, initiato
 	// 为每个批次查询应用数量并转换为 DTO
 	responses := make([]dto.BatchResponse, len(batches))
 	for i, batch := range batches {
-		appCount, err := s.batchRepo.GetAppCountByBatchID(batch.ID)
-		if err != nil {
-			// 如果查询失败，设置为0
-			appCount = 0
-		}
-		responses[i] = s.toBatchResponse(batch, appCount)
+		responses[i] = s.toBatchResponse(batch, 0)
 	}
 
 	return responses, total, nil

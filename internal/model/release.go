@@ -37,6 +37,8 @@ type Batch struct {
 	CancelledAt     *time.Time `json:"cancelled_at"`                     // 取消时间
 	CancelledBy     *string    `gorm:"size:50" json:"cancelled_by"`      // 取消人
 	CancelReason    *string    `gorm:"type:text" json:"cancel_reason"`   // 取消原因
+
+	AppsCount int64 `gorm:"column:apps_count;->" json:"apps_count"`
 }
 
 // TableName 指定表名

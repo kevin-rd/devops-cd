@@ -2,11 +2,9 @@ package handler
 
 import (
 	"fmt"
-	"net/http"
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"net/http"
 
 	"devops-cd/internal/core"
 	"devops-cd/internal/dto"
@@ -396,42 +394,15 @@ func (h *BatchHandler) List(c *gin.Context) {
 		return
 	}
 
-	// 解析时间参数
-	var createdAtStart, createdAtEnd *time.Time
-	if req.CreatedAtStart != nil && *req.CreatedAtStart != "" {
-		t, err := time.Parse(time.RFC3339, *req.CreatedAtStart)
-		if err != nil {
-			utils.ErrorWithDetail(c, http.StatusBadRequest, "created_at_start 格式错误", "请使用 RFC3339 格式，例如：2025-01-01T00:00:00Z")
-			return
-		}
-		createdAtStart = &t
-	}
-	if req.CreatedAtEnd != nil && *req.CreatedAtEnd != "" {
-		t, err := time.Parse(time.RFC3339, *req.CreatedAtEnd)
-		if err != nil {
-			utils.ErrorWithDetail(c, http.StatusBadRequest, "created_at_end 格式错误", "请使用 RFC3339 格式，例如：2025-12-31T23:59:59Z")
-			return
-		}
-		createdAtEnd = &t
-	}
-
-	responses, total, err := h.batchService.ListBatches(
-		req.GetPage(),
-		req.GetPageSize(),
-		req.Status,
-		req.Initiator,
-		req.ApprovalStatus,
-		createdAtStart,
-		createdAtEnd,
-		req.Keyword,
-	)
+	param := req.ToParam()
+	responses, total, err := h.batchService.ListBatches(param)
 	if err != nil {
 		logger.Error("查询批次列表失败", zap.Error(err))
 		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.PageSuccess(c, responses, total, req.GetPage(), req.GetPageSize())
+	utils.PageSuccess(c, responses, total, param.Page, param.PageSize)
 }
 
 // GetStatus 获取批次状态（轻量级，用于状态轮询）

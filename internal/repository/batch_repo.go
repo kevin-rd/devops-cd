@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"devops-cd/internal/dto"
 	"time"
 
 	"go.uber.org/zap"
@@ -58,65 +59,57 @@ func (r *BatchRepository) Delete(id int64) error {
 	return r.db.Delete(&model.Batch{}, id).Error
 }
 
-// BatchWithCount 批次及应用数量
-type BatchWithCount struct {
-	Batch    *model.Batch
-	AppCount int64
-}
-
 // List 分页查询批次列表
-func (r *BatchRepository) List(page, pageSize int, statuses []int8, initiator string, approvalStatus *string, createdAtStart, createdAtEnd *time.Time, keyword string) ([]*model.Batch, int64, error) {
+func (r *BatchRepository) List(req dto.BatchListParam) ([]*model.Batch, int64, error) {
 	var batches []*model.Batch
 	var total int64
 
-	query := r.db.Model(&model.Batch{})
+	// Where 条件
+	applyFilters := func(query *gorm.DB) *gorm.DB {
+		// 条件过滤
+		if len(req.Statuses) > 0 {
+			query = query.Where("status IN ?", req.Statuses)
+		}
+		if req.Initiator != nil && *req.Initiator != "" {
+			query = query.Where("initiator = ?", *req.Initiator)
+		}
 
-	// 条件过滤
-	if len(statuses) > 0 {
-		query = query.Where("status IN ?", statuses)
-	}
-	if initiator != "" {
-		query = query.Where("initiator = ?", initiator)
+		// 新增：审批状态过滤
+		if req.ApprovalStatus != nil && *req.ApprovalStatus != "" {
+			query = query.Where("approval_status = ?", *req.ApprovalStatus)
+		}
+
+		// 新增：时间范围过滤
+		if req.CreatedAtStart != nil {
+			query = query.Where("release_batches.created_at >= ?", *req.CreatedAtStart)
+		}
+		if req.CreatedAtEnd != nil {
+			query = query.Where("release_batches.created_at <= ?", *req.CreatedAtEnd)
+		}
+
+		// 新增：关键字模糊搜索（批次编号、发起人、发布说明）
+		if req.Keyword != nil && *req.Keyword != "" {
+			query = query.Where(
+				"batch_number LIKE ? OR initiator LIKE ? OR release_notes LIKE ?",
+				"%"+*req.Keyword+"%", "%"+*req.Keyword+"%", "%"+*req.Keyword+"%",
+			)
+		}
+		return query
 	}
 
-	// 新增：审批状态过滤
-	if approvalStatus != nil && *approvalStatus != "" {
-		query = query.Where("approval_status = ?", *approvalStatus)
-	}
-
-	// 新增：时间范围过滤
-	if createdAtStart != nil {
-		query = query.Where("created_at >= ?", *createdAtStart)
-	}
-	if createdAtEnd != nil {
-		query = query.Where("created_at <= ?", *createdAtEnd)
-	}
-
-	// 新增：关键字模糊搜索（批次编号、发起人、发布说明）
-	if keyword != "" {
-		query = query.Where(
-			"batch_number LIKE ? OR initiator LIKE ? OR release_notes LIKE ?",
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%",
-		)
-	}
-
-	// 统计总数
-	if err := query.Count(&total).Error; err != nil {
+	// 统计总数// 统计总数
+	if err := applyFilters(r.db.Model(&model.Batch{})).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
 	// 分页查询
-	offset := (page - 1) * pageSize
-	err := query.Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&batches).Error
+	offset := (req.Page - 1) * req.PageSize
+	err := applyFilters(r.db.Model(&model.Batch{})).
+		Select(`release_batches.*, COALESCE(COUNT(release_apps.id), 0) AS apps_count`).
+		Joins(`LEFT JOIN release_apps ON release_apps.batch_id = release_batches.id`).
+		Group(`release_batches.created_at, release_batches.id`).
+		Order("release_batches.created_at DESC").Limit(req.PageSize).Offset(offset).Scan(&batches).Error
 
 	return batches, total, err
-}
-
-// GetAppCountByBatchID 获取批次的应用数量
-func (r *BatchRepository) GetAppCountByBatchID(batchID int64) (int64, error) {
-	var count int64
-	err := r.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batchID).Count(&count).Error
-	return count, err
 }
 
 // ================== ReleaseApp 相关 ==================
