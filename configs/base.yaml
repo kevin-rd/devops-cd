@@ -49,9 +49,6 @@ log:
   max_backups: 10
   max_age: 30      # days
 
-git:
-  work_dir: /tmp/devops-cd-git  # Git临时工作目录
-
 core:
   scan_interval: 10s  # 批次扫描间隔
   deploy:
@@ -107,7 +104,7 @@ core:
     base_url: "http://k8s-deploy-service:8080"  # K8s部署服务地址
     api_key: ""                                  # API密钥
 
-# 代码库同步配置（仓库源改为在 UI 中维护）
+# 代码库同步配置
 repo:
   # 秒 分 时 日 月 周，用于触发所有启用的仓库源扫描
   cron: "30 18 15 * * *"

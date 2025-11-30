@@ -16,7 +16,6 @@ type Config struct {
 	Auth     AuthConfig     `mapstructure:"auth"`
 	Crypto   CryptoConfig   `mapstructure:"crypto"`
 	Log      LogConfig      `mapstructure:"log"`
-	Git      GitConfig      `mapstructure:"git"`
 	Core     CoreConfig     `mapstructure:"core"`
 	Repo     RepoConfig     `mapstructure:"repo"`
 	DB       interface{}    // 数据库连接,运行时注入
@@ -97,11 +96,6 @@ type LogConfig struct {
 	MaxSize    int    `mapstructure:"max_size"` // MB
 	MaxBackups int    `mapstructure:"max_backups"`
 	MaxAge     int    `mapstructure:"max_age"` // days
-}
-
-// GitConfig Git配置
-type GitConfig struct {
-	WorkDir string `mapstructure:"work_dir"` // Git工作目录,用于临时克隆
 }
 
 // CoreConfig Core模块配置
