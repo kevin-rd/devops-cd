@@ -6,8 +6,10 @@ import (
 	"gorm.io/datatypes"
 )
 
-// RepoSyncSource 存储 Git 仓库同步源配置（按 namespace 粒度）
-type RepoSyncSource struct {
+const RepoSourceTableName = "repo_sources"
+
+// RepoSource 存储 Git 仓库同步源配置（按 namespace 粒度）
+type RepoSource struct {
 	BaseModelWithSoftDelete
 
 	Platform         string            `gorm:"size:20;not null" json:"platform"`
@@ -29,6 +31,6 @@ type RepoSyncSource struct {
 	DefaultTeam    *Team    `gorm:"foreignKey:DefaultTeamID" json:"default_team,omitempty"`
 }
 
-func (RepoSyncSource) TableName() string {
-	return "repo_sync_sources"
+func (RepoSource) TableName() string {
+	return RepoSourceTableName
 }

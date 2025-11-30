@@ -10,12 +10,12 @@ import (
 )
 
 type RepoSyncSourceRepository interface {
-	Create(source *model.RepoSyncSource) error
-	Update(source *model.RepoSyncSource) error
+	Create(source *model.RepoSource) error
+	Update(source *model.RepoSource) error
 	Delete(id int64) error
-	GetByID(id int64) (*model.RepoSyncSource, error)
-	List(page, pageSize int, keyword, platform, baseURL, namespace string, enabled *bool) ([]*model.RepoSyncSource, int64, error)
-	ListEnabled() ([]*model.RepoSyncSource, error)
+	GetByID(id int64) (*model.RepoSource, error)
+	List(page, pageSize int, keyword, platform, baseURL, namespace string, enabled *bool) ([]*model.RepoSource, int64, error)
+	ListEnabled() ([]*model.RepoSource, error)
 	UpdateSyncResult(id int64, status string, message *string) error
 }
 
@@ -27,14 +27,14 @@ func NewRepoSyncSourceRepository(db *gorm.DB) RepoSyncSourceRepository {
 	return &repoSyncSourceRepository{db: db}
 }
 
-func (r *repoSyncSourceRepository) Create(source *model.RepoSyncSource) error {
+func (r *repoSyncSourceRepository) Create(source *model.RepoSource) error {
 	if err := r.db.Create(source).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "创建仓库源失败", err)
 	}
 	return nil
 }
 
-func (r *repoSyncSourceRepository) Update(source *model.RepoSyncSource) error {
+func (r *repoSyncSourceRepository) Update(source *model.RepoSource) error {
 	if err := r.db.Save(source).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新仓库源失败", err)
 	}
@@ -42,14 +42,14 @@ func (r *repoSyncSourceRepository) Update(source *model.RepoSyncSource) error {
 }
 
 func (r *repoSyncSourceRepository) Delete(id int64) error {
-	if err := r.db.Delete(&model.RepoSyncSource{}, id).Error; err != nil {
+	if err := r.db.Delete(&model.RepoSource{}, id).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除仓库源失败", err)
 	}
 	return nil
 }
 
-func (r *repoSyncSourceRepository) GetByID(id int64) (*model.RepoSyncSource, error) {
-	var source model.RepoSyncSource
+func (r *repoSyncSourceRepository) GetByID(id int64) (*model.RepoSource, error) {
+	var source model.RepoSource
 	if err := r.db.Preload("DefaultProject").Preload("DefaultTeam").First(&source, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -59,13 +59,13 @@ func (r *repoSyncSourceRepository) GetByID(id int64) (*model.RepoSyncSource, err
 	return &source, nil
 }
 
-func (r *repoSyncSourceRepository) List(page, pageSize int, keyword, platform, baseURL, namespace string, enabled *bool) ([]*model.RepoSyncSource, int64, error) {
+func (r *repoSyncSourceRepository) List(page, pageSize int, keyword, platform, baseURL, namespace string, enabled *bool) ([]*model.RepoSource, int64, error) {
 	var (
-		sources []*model.RepoSyncSource
+		sources []*model.RepoSource
 		total   int64
 	)
 
-	query := r.db.Model(&model.RepoSyncSource{})
+	query := r.db.Model(&model.RepoSource{})
 
 	if keyword != "" {
 		query = query.Where("(base_url LIKE ? OR namespace LIKE ?)", "%"+keyword+"%", "%"+keyword+"%")
@@ -96,8 +96,8 @@ func (r *repoSyncSourceRepository) List(page, pageSize int, keyword, platform, b
 	return sources, total, nil
 }
 
-func (r *repoSyncSourceRepository) ListEnabled() ([]*model.RepoSyncSource, error) {
-	var sources []*model.RepoSyncSource
+func (r *repoSyncSourceRepository) ListEnabled() ([]*model.RepoSource, error) {
+	var sources []*model.RepoSource
 	if err := r.db.Preload("DefaultProject").Preload("DefaultTeam").
 		Where("enabled = ?", true).Find(&sources).Error; err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询启用的仓库源失败", err)
@@ -116,7 +116,7 @@ func (r *repoSyncSourceRepository) UpdateSyncResult(id int64, status string, mes
 		updates["last_message"] = nil
 	}
 
-	if err := r.db.Model(&model.RepoSyncSource{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+	if err := r.db.Model(&model.RepoSource{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新同步结果失败", err)
 	}
 	return nil

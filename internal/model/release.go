@@ -4,6 +4,9 @@ import (
 	"time"
 )
 
+const BatchTableName = "release_batches"
+const BatchReleaseAppTableName = "release_apps"
+
 // Batch 发布批次
 type Batch struct {
 	BaseModel
@@ -43,10 +46,10 @@ type Batch struct {
 
 // TableName 指定表名
 func (Batch) TableName() string {
-	return "release_batches"
+	return BatchTableName
 }
 
-// ReleaseApp 批次中的应用发布记录（简约版）
+// ReleaseApp 批次中的应用发布记录
 type ReleaseApp struct {
 	ID      int64 `gorm:"primaryKey" json:"id"`
 	BatchID int64 `gorm:"index;not null" json:"batch_id"`
@@ -80,5 +83,5 @@ type ReleaseApp struct {
 
 // TableName 指定表名
 func (ReleaseApp) TableName() string {
-	return "release_apps"
+	return BatchReleaseAppTableName
 }

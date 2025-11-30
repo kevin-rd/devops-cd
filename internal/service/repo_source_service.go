@@ -57,7 +57,7 @@ func (s *RepoSourceService) Create(req *dto.CreateRepoSyncSourceRequest) (*dto.R
 		enabled = *req.Enabled
 	}
 
-	source := &model.RepoSyncSource{
+	source := &model.RepoSource{
 		Platform:         req.Platform,
 		BaseURL:          req.BaseURL,
 		Namespace:        req.Namespace,
@@ -120,7 +120,7 @@ func (s *RepoSourceService) Delete(id int64) error {
 	return s.repo.Delete(id)
 }
 
-func (s *RepoSourceService) toResponse(source *model.RepoSyncSource) *dto.RepoSyncSourceResponse {
+func (s *RepoSourceService) toResponse(source *model.RepoSource) *dto.RepoSyncSourceResponse {
 	hasToken := source.AuthTokenEnc != ""
 
 	resp := &dto.RepoSyncSourceResponse{
@@ -170,7 +170,7 @@ func (s *RepoSourceService) validateTeamProject(teamID *int64, projectID *int64)
 	return nil
 }
 
-func (s *RepoSourceService) GetByID(id int64) (*model.RepoSyncSource, error) {
+func (s *RepoSourceService) GetByID(id int64) (*model.RepoSource, error) {
 	return s.repo.GetByID(id)
 }
 

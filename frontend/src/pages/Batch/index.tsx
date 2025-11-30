@@ -466,6 +466,7 @@ export default function BatchList() {
   const renderActionButtons = (record: Batch) => {
     // 如果批次已取消，不显示任何操作按钮
     if (record.status === 90) {
+      // todo: 显示取消时间、原因等
       return null
     }
 

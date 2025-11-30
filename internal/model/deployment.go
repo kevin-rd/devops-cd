@@ -1,0 +1,43 @@
+package model
+
+import "time"
+
+const DeploymentTableName = "deployments"
+
+// Deployment 部署记录（批次部署追踪）
+type Deployment struct {
+	ID        int64 `gorm:"primaryKey" json:"id"`
+	BatchID   int64 `gorm:"column:batch_id;not null" json:"batch_id"`
+	AppID     int64 `gorm:"column:app_id;not null" json:"app_id"`
+	ReleaseID int64 `gorm:"column:release_id;not null" json:"release_id"`
+
+	// 部署信息
+	DeploymentName string `gorm:"size:100;not null" json:"deployment_name"`
+	Environment    string `gorm:"size:20;not null" json:"environment"` // pre/prod
+	Cluster        string `gorm:"size:100;not null" json:"cluster"`
+
+	ImageURL string  `gorm:"size:500" json:"image_url"`
+	ImageTag string  `gorm:"size:100" json:"image_tag"`
+	TaskID   *string `gorm:"size:100" json:"task_id"` // K8s部署任务ID
+
+	// 状态追踪
+	Status        string `gorm:"size:20;not null;default:pending" json:"status"` // pending/running/success/failed
+	RetryCount    int    `gorm:"default:0" json:"retry_count"`
+	MaxRetryCount int    `gorm:"default:3" json:"max_retry_count"`
+
+	// 错误信息
+	ErrorMessage *string `gorm:"type:text" json:"error_message"`
+
+	// 时间追踪
+	StartedAt  *time.Time `json:"started_at"`
+	FinishedAt *time.Time `json:"finished_at"`
+
+	// 系统字段
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// TableName 指定表名
+func (Deployment) TableName() string {
+	return DeploymentTableName
+}

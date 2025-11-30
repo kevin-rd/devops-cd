@@ -68,7 +68,7 @@ func (s *RepoSyncService) SyncAllSources() error {
 }
 
 // SyncFromSource 从单个源同步代码库
-func (s *RepoSyncService) SyncFromSource(source *model.RepoSyncSource) (int, int, error) {
+func (s *RepoSyncService) SyncFromSource(source *model.RepoSource) (int, int, error) {
 	s.logger.Info("开始同步代码库源",
 		zap.Int64("source_id", source.ID),
 		zap.String("platform", source.Platform),
@@ -99,7 +99,7 @@ func (s *RepoSyncService) SyncFromSource(source *model.RepoSyncSource) (int, int
 	return successCount, failedCount, nil
 }
 
-func (s *RepoSyncService) syncRepository(repoInfo *api.RepositoryInfo, source *model.RepoSyncSource) error {
+func (s *RepoSyncService) syncRepository(repoInfo *api.RepositoryInfo, source *model.RepoSource) error {
 	repo := &model.Repository{
 		Namespace:   repoInfo.Owner,
 		Name:        repoInfo.Name,
@@ -189,7 +189,7 @@ func (s *RepoSyncService) TestSourceConnection(id int64) error {
 	return nil
 }
 
-func (s *RepoSyncService) buildGitClient(source *model.RepoSyncSource) (*git.Client, error) {
+func (s *RepoSyncService) buildGitClient(source *model.RepoSource) (*git.Client, error) {
 	token, err := utils.DecryptSecret(s.aesKey, source.AuthTokenEnc)
 	if err != nil {
 		return nil, err
