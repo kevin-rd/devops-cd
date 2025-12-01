@@ -54,6 +54,76 @@ func (q *BatchListQuery) ToParam() BatchListParam {
 	return param
 }
 
+// =========== Create Batch Request ===========
+
+// CreateBatchApp 批次中的应用
+type CreateBatchApp struct {
+	AppID        int64   `json:"app_id" binding:"required"` // 应用ID
+	ReleaseNotes *string `json:"release_notes"`             // 应用级发布说明（可选）
+}
+
+// CreateBatchRequest 创建批次请求
+type CreateBatchRequest struct {
+	BatchNumber  string           `json:"batch_number" binding:"required"` // 批次编号/标题，用户填写
+	ProjectID    int64            `json:"project_id" binding:"required"`   // 关联的项目ID
+	ReleaseNotes *string          `json:"release_notes"`                   // 批次级发布说明（可选）
+	Apps         []CreateBatchApp `json:"apps"`                            // 应用列表（允许为空，封板时校验）
+}
+
+type CreateBatchParam struct {
+	BatchNumber  string
+	ReleaseNotes *string
+	Apps         []CreateBatchApp
+
+	ProjectID int64
+	Operator  string
+	CanCreate func(username string, projectId int64) bool
+}
+
+func (q *CreateBatchRequest) ToParam() CreateBatchParam {
+	return CreateBatchParam{
+		BatchNumber:  q.BatchNumber,
+		ReleaseNotes: q.ReleaseNotes,
+		Apps:         q.Apps,
+		ProjectID:    q.ProjectID,
+	}
+}
+
+// =========== Update Batch Request ===========
+
+// UpdateBatchRequest 更新批次请求
+type UpdateBatchRequest struct {
+	BatchID int64 `json:"batch_id" binding:"required"`
+	// Operator     string           `json:"operator" binding:"required"`
+	BatchNumber  *string          `json:"batch_number"`
+	ReleaseNotes *string          `json:"release_notes"`
+	AddApps      []CreateBatchApp `json:"add_apps"` // 新增应用
+	RemoveAppIDs []int64          `json:"remove_app_ids"`
+}
+
+type UpdateBatchParam struct {
+	BatchID      int64
+	BatchNumber  *string
+	ReleaseNotes *string
+	AddApps      []CreateBatchApp
+	RemoveAppIDs []int64
+
+	Operator  string
+	CanUpdate func(username string, projectId int64) bool
+}
+
+func (q *UpdateBatchRequest) ToParam() UpdateBatchParam {
+	return UpdateBatchParam{
+		BatchID:      q.BatchID,
+		BatchNumber:  q.BatchNumber,
+		ReleaseNotes: q.ReleaseNotes,
+		AddApps:      q.AddApps,
+		RemoveAppIDs: q.RemoveAppIDs,
+	}
+}
+
+// =========== Get Batch Request ===========
+
 // BatchGetRequest 获取批次详情请求
 type BatchGetRequest struct {
 	ID               int64 `json:"id" form:"id" binding:"required"`

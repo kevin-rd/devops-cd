@@ -4,6 +4,7 @@ import (
 	"devops-cd/internal/api/handler"
 	"devops-cd/internal/api/middleware"
 	"devops-cd/internal/core"
+	"devops-cd/internal/pkg/auth"
 	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/repository"
 	"devops-cd/internal/service"
@@ -50,6 +51,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	projectRepo := repository.NewProjectRepository(db)
 	teamRepo := repository.NewTeamRepository(db)
 	teamMemberRepo := repository.NewTeamMemberRepository(db)
+	authz = service.NewAuthorizationService(userRepo, teamMemberRepo)
 
 	// 初始化Service
 	ldapService := service.NewLDAPService(&cfg.Auth.LDAP)
@@ -193,10 +195,10 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 			groupBatches := authed.Group("/batches")
 			{
 				// 写操作（POST/PUT）
-				groupBatch.POST("", batchHandler.Create)                       // 创建批次
-				groupBatch.PUT("", batchHandler.Update)                        // 更新批次
-				groupBatch.POST("/delete", batchHandler.Delete)                // 软删除
-				groupBatch.PUT("/release_app", releaseAppHandler.UpdateBuilds) // 更新发布应用（构建版本等）
+				groupBatch.POST("", ProjectAuthWrapper(batchHandler.Create, auth.PermBatchCreate)) // 创建批次
+				groupBatch.PUT("", ProjectAuthWrapper(batchHandler.Update, auth.PermBatchUpdate))  // 更新批次
+				groupBatch.POST("/delete", batchHandler.Delete)                                    // 软删除
+				groupBatch.PUT("/release_app", releaseAppHandler.UpdateBuilds)                     // 更新发布应用（构建版本等）
 
 				// 读操作（GET）
 				groupBatch.GET("", batchHandler.Get)              // 获取详情（query: id）

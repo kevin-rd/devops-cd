@@ -44,7 +44,3 @@ CREATE TABLE `clusters` (
   INDEX `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='集群元数据表';
 
--- 插入默认集群
-INSERT INTO `clusters` (`name`, `display_name`, `description`, `status`)
-  VALUES ('default', '默认集群', '系统默认集群', 1);
-

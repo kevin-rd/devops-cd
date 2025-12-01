@@ -305,7 +305,7 @@ export default function BatchList() {
       })
 
       // 使用部分匹配来刷新所有相关查询
-      queryClient.invalidateQueries({queryKey: ['batchList']})
+      // queryClient.invalidateQueries({queryKey: ['batchList']})
       // queryClient.invalidateQueries({queryKey: ['batchDetails']})
 
       if (req.action === BatchAction.Seal) {
@@ -315,7 +315,7 @@ export default function BatchList() {
         queryClient.invalidateQueries({queryKey: ['batchDetail', req.batch_id]})
         navigate(`/batch/${req.batch_id}/detail?tab=graph`)
       } else {
-        refetch()
+        queryClient.invalidateQueries({queryKey: ['batchList']})
       }
     },
     onError: () => {

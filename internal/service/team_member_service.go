@@ -1,6 +1,7 @@
 package service
 
 import (
+	"devops-cd/internal/pkg/auth"
 	"strings"
 	"time"
 
@@ -10,7 +11,29 @@ import (
 	pkgErrors "devops-cd/pkg/errors"
 )
 
-const defaultTeamMemberRole = "member"
+func normalizeRoles(input []string, defaultRole string) model.StringList {
+	roleSet := make(map[string]struct{})
+	for _, r := range input {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+		roleSet[r] = struct{}{}
+	}
+
+	// 如果没有传任何有效角色，使用默认角色
+	if len(roleSet) == 0 && defaultRole != "" {
+		roleSet[defaultRole] = struct{}{}
+	}
+
+	roles := make(model.StringList, 0, len(roleSet))
+	for r := range roleSet {
+		roles = append(roles, r)
+	}
+	return roles
+}
+
+const defaultTeamMemberRole = string(auth.RoleMember)
 
 type TeamMemberService interface {
 	Add(req *dto.TeamMemberAddRequest) (*dto.TeamMemberResponse, error)
@@ -48,15 +71,12 @@ func (s *teamMemberService) Add(req *dto.TeamMemberAddRequest) (*dto.TeamMemberR
 		return nil, err
 	}
 
-	role := defaultTeamMemberRole
-	if req.Role != nil && strings.TrimSpace(*req.Role) != "" {
-		role = strings.TrimSpace(*req.Role)
-	}
+	roles := normalizeRoles(req.Roles, defaultTeamMemberRole)
 
 	member := &model.TeamMember{
 		TeamID: req.TeamID,
 		UserID: req.UserID,
-		Role:   role,
+		Roles:  roles,
 	}
 
 	if err := s.repo.Create(member); err != nil {
@@ -86,10 +106,7 @@ func (s *teamMemberService) UpdateRole(id int64, req *dto.TeamMemberUpdateRoleRe
 		return nil, err
 	}
 
-	member.Role = strings.TrimSpace(req.Role)
-	if member.Role == "" {
-		member.Role = defaultTeamMemberRole
-	}
+	member.Roles = normalizeRoles(req.Roles, defaultTeamMemberRole)
 
 	if err := s.repo.Update(member); err != nil {
 		return nil, err
@@ -111,7 +128,7 @@ func (s *teamMemberService) toResponse(member *model.TeamMember) *dto.TeamMember
 		ID:        member.ID,
 		TeamID:    member.TeamID,
 		UserID:    member.UserID,
-		Role:      member.Role,
+		Roles:     []string(member.Roles),
 		CreatedAt: member.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: member.UpdatedAt.Format(time.RFC3339),
 	}

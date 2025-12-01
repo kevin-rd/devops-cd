@@ -33,23 +33,8 @@ func NewBatchService(db *gorm.DB) *BatchService {
 	}
 }
 
-// CreateBatchRequest 创建批次请求
-type CreateBatchRequest struct {
-	BatchNumber  string           `json:"batch_number" binding:"required"` // 批次编号/标题，用户填写
-	ProjectID    int64            `json:"project_id" binding:"required"`   // 关联的项目ID
-	Initiator    string           `json:"initiator" binding:"required"`    // 发起人
-	ReleaseNotes *string          `json:"release_notes"`                   // 批次级发布说明（可选）
-	Apps         []CreateBatchApp `json:"apps"`                            // 应用列表（允许为空，封板时校验）
-}
-
-// CreateBatchApp 批次中的应用
-type CreateBatchApp struct {
-	AppID        int64   `json:"app_id" binding:"required"` // 应用ID
-	ReleaseNotes *string `json:"release_notes"`             // 应用级发布说明（可选）
-}
-
 // CreateBatch 创建批次
-func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error) {
+func (s *BatchService) CreateBatch(req *dto.CreateBatchParam) (*model.Batch, error) {
 	// 1. 验证项目是否存在
 	var project model.Project
 	if err := s.db.First(&project, req.ProjectID).Error; err != nil {
@@ -75,12 +60,12 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 		logger.Info("创建空批次（无应用）",
 			zap.String("batch_number", req.BatchNumber),
 			zap.Int64("project_id", req.ProjectID),
-			zap.String("initiator", req.Initiator))
+			zap.String("initiator", req.Operator))
 
 		batch := &model.Batch{
 			BatchNumber:    req.BatchNumber,
 			ProjectID:      req.ProjectID,
-			Initiator:      req.Initiator,
+			Initiator:      req.Operator,
 			ReleaseNotes:   req.ReleaseNotes,
 			Status:         constants.BatchStatusDraft,      // 草稿状态
 			ApprovalStatus: constants.ApprovalStatusPending, // 待审批
@@ -139,7 +124,7 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 		batch = &model.Batch{
 			BatchNumber:    req.BatchNumber,
 			ProjectID:      req.ProjectID,
-			Initiator:      req.Initiator,
+			Initiator:      req.Operator,
 			ReleaseNotes:   req.ReleaseNotes,
 			Status:         constants.BatchStatusDraft,      // 草稿状态
 			ApprovalStatus: constants.ApprovalStatusPending, // 待审批
@@ -193,22 +178,16 @@ func (s *BatchService) CreateBatch(req *CreateBatchRequest) (*model.Batch, error
 	return batch, nil
 }
 
-// UpdateBatchRequest 更新批次请求
-type UpdateBatchRequest struct {
-	BatchID      int64            `json:"batch_id" binding:"required"`
-	Operator     string           `json:"operator" binding:"required"`
-	BatchNumber  *string          `json:"batch_number"`
-	ReleaseNotes *string          `json:"release_notes"`
-	AddApps      []CreateBatchApp `json:"add_apps"` // 新增应用
-	RemoveAppIDs []int64          `json:"remove_app_ids"`
-}
-
 // UpdateBatch 更新批次（通用）
-func (s *BatchService) UpdateBatch(req *UpdateBatchRequest) (*model.Batch, map[string]interface{}, error) {
+func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map[string]interface{}, error) {
 	// 1. 获取批次
 	batch, err := s.batchRepo.GetByID(req.BatchID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("批次不存在: %w", err)
+	}
+
+	if req.CanUpdate != nil && req.CanUpdate(req.Operator, batch.ProjectID) {
+		return nil, nil, fmt.Errorf("无权限更新批次")
 	}
 
 	// 2. 检查批次状态（只能修改未封板的批次）

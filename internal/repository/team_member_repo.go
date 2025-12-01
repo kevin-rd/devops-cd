@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
@@ -12,6 +13,7 @@ type TeamMemberRepository interface {
 	Update(member *model.TeamMember) error
 	FindByID(id int64) (*model.TeamMember, error)
 	FindByTeamAndUser(teamID, userID int64) (*model.TeamMember, error)
+	FindByProjectAndUser(projectID, userID int64) (*model.TeamMember, error)
 	ListByTeam(teamID int64, page, pageSize int, keyword string) ([]*model.TeamMember, int64, error)
 	Delete(id int64) error
 }
@@ -54,7 +56,19 @@ func (r *teamMemberRepository) FindByTeamAndUser(teamID, userID int64) (*model.T
 	var member model.TeamMember
 	err := r.db.Where("team_id = ? AND user_id = ? AND deleted_at IS NULL", teamID, userID).First(&member).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkgErrors.ErrRecordNotFound
+		}
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询团队成员失败", err)
+	}
+	return &member, nil
+}
+
+func (r *teamMemberRepository) FindByProjectAndUser(projectID, userID int64) (*model.TeamMember, error) {
+	var member model.TeamMember
+	err := r.db.Where("project_id = ? AND user_id = ? AND deleted_at IS NULL", projectID, userID).First(&member).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, pkgErrors.ErrRecordNotFound
 		}
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询团队成员失败", err)

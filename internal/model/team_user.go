@@ -2,6 +2,10 @@ package model
 
 import "time"
 
+const UserTableName = "users"
+const TeamTableName = "teams"
+const TeamMemberTableName = "team_members"
+
 // User 本地用户模型
 type User struct {
 	BaseStatus
@@ -10,11 +14,15 @@ type User struct {
 	Email       *string    `gorm:"size:100" json:"email"`
 	DisplayName *string    `gorm:"size:100" json:"display_name"`
 	LastLoginAt *time.Time `json:"last_login_at"`
+	SystemRoles StringList `gorm:"column:system_roles;type:json" json:"system_roles"`
+
+	TeamMembers []TeamMember `gorm:"foreignKey:UserID;references:ID" json:"team_members,omitempty"`
+	//Teams       []Team       `gorm:"foreignKey:many2many:team_members;joinForeignKey:userid,joinReferences:team_id" json:"teams,omitempty"`
 }
 
 // TableName 指定表名
 func (User) TableName() string {
-	return "users"
+	return UserTableName
 }
 
 // Team 团队模型
@@ -27,20 +35,20 @@ type Team struct {
 }
 
 func (Team) TableName() string {
-	return "teams"
+	return TeamTableName
 }
 
 // TeamMember 团队成员
 type TeamMember struct {
 	BaseStatus
-	TeamID int64  `gorm:"column:team_id;not null;index" json:"team_id"`
-	UserID int64  `gorm:"column:user_id;not null;index" json:"user_id"`
-	Role   string `gorm:"size:20;not null;default:'member'" json:"role"`
+	TeamID int64      `gorm:"column:team_id;not null;index" json:"team_id"`
+	UserID int64      `gorm:"column:user_id;not null;index" json:"user_id"`
+	Roles  StringList `gorm:"column:roles;type:json" json:"roles"`
 
 	Team *Team `gorm:"foreignKey:TeamID" json:"team,omitempty"`
 	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
 func (TeamMember) TableName() string {
-	return "team_members"
+	return TeamMemberTableName
 }

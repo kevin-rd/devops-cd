@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
@@ -11,6 +12,7 @@ import (
 type UserRepository interface {
 	Create(user *model.User) error
 	FindByUsername(username string) (*model.User, error)
+	FindWithTeams(username string) (*model.User, error)
 	FindByID(id int64) (*model.User, error)
 	Update(user *model.User) error
 	UpdateLastLogin(id int64) error
@@ -37,7 +39,18 @@ func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	var user model.User
 	err := r.db.Where("username = ? AND deleted_at IS NULL", username).First(&user).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkgErrors.ErrRecordNotFound
+		}
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询用户失败", err)
+	}
+	return &user, nil
+}
+
+func (r *userRepository) FindWithTeams(username string) (*model.User, error) {
+	var user model.User
+	if err := r.db.Where("username = ? AND deleted_at IS NULL", username).Preload("TeamMembers").First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, pkgErrors.ErrRecordNotFound
 		}
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询用户失败", err)

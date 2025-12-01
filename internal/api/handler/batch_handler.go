@@ -1,6 +1,7 @@
 package handler
 
 import (
+	pkgErrors "devops-cd/pkg/errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -161,14 +162,26 @@ func (h *BatchHandler) Reject(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{} "服务器错误"
 // @Security BearerAuth
 // @Router /api/v1/batch [post]
-func (h *BatchHandler) Create(c *gin.Context) {
-	var req service.CreateBatchRequest
+func (h *BatchHandler) Create(c *gin.Context, canAccess func(username string, projectId int64) bool) {
+	var req dto.CreateBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
-	batch, err := h.batchService.CreateBatch(&req)
+	param := req.ToParam()
+	param.Operator = c.GetString("username")
+	param.ProjectID = req.ProjectID
+	param.CanCreate = canAccess
+
+	// 检查权限
+	username := c.GetString("username")
+	if !canAccess(username, req.ProjectID) {
+		utils.Error(c, pkgErrors.ErrForbidden)
+		return
+	}
+
+	batch, err := h.batchService.CreateBatch(&param)
 	if err != nil {
 		// 处理应用冲突错误
 		if conflictErr, ok := err.(*service.AppConflictError); ok {
@@ -235,14 +248,18 @@ func (h *BatchHandler) Create(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{} "服务器错误"
 // @Security BearerAuth
 // @Router /api/v1/batch [put]
-func (h *BatchHandler) Update(c *gin.Context) {
-	var req service.UpdateBatchRequest
+func (h *BatchHandler) Update(c *gin.Context, canAccess func(username string, projectId int64) bool) {
+	var req dto.UpdateBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
-	batch, updatedFields, err := h.batchService.UpdateBatch(&req)
+	param := req.ToParam()
+	param.Operator = c.GetString("username")
+	param.CanUpdate = canAccess
+
+	batch, updatedFields, err := h.batchService.UpdateBatch(&param)
 	if err != nil {
 		// 处理批次已封板错误
 		if sealedErr, ok := err.(*service.BatchSealedError); ok {

@@ -35,8 +35,26 @@ CREATE TABLE IF NOT EXISTS `teams` (
     `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间'
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='团队表';
 
+
 -- =====================================================
--- 3. 项目表 (projects)
+-- 3. 团队成员表 (team_members)
+-- =====================================================
+CREATE TABLE `team_members` (
+  `id` bigint NOT NULL COMMENT '主键ID',
+  `team_id` bigint NOT NULL COMMENT '团队ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `roles` json NOT NULL DEFAULT (_utf8mb4'[]') COMMENT '该用户在当前团队拥有的角色列表',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `updated_at` datetime(3) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+  KEY `idx_team_id` (`team_id`),
+  KEY `idx_user_id` (`user_id`),
+  CONSTRAINT `fk_team_members_team_id` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_team_members_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='团队成员关系表（支持一人多团队、多角色）';
+
+
+-- =====================================================
+-- 4. 项目表 (projects)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `projects` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -53,7 +71,7 @@ CREATE TABLE IF NOT EXISTS `projects` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目表';
 
 -- =====================================================
--- 4. 初始化数据
+-- 5. 初始化数据
 -- =====================================================
 
 -- 插入默认本地管理员用户 (密码: admin123, 需要使用bcrypt加密)
