@@ -22,14 +22,16 @@ type ProjectService interface {
 }
 
 type projectService struct {
-	repo     repository.ProjectRepository
-	teamRepo repository.TeamRepository
+	repo          repository.ProjectRepository
+	teamRepo      repository.TeamRepository
+	envConfigRepo repository.ProjectEnvConfigRepository
 }
 
-func NewProjectService(repo repository.ProjectRepository, teamRepo repository.TeamRepository) ProjectService {
+func NewProjectService(repo repository.ProjectRepository, teamRepo repository.TeamRepository, envConfigRepo repository.ProjectEnvConfigRepository) ProjectService {
 	return &projectService{
-		repo:     repo,
-		teamRepo: teamRepo,
+		repo:          repo,
+		teamRepo:      teamRepo,
+		envConfigRepo: envConfigRepo,
 	}
 }
 
@@ -53,28 +55,25 @@ func (s *projectService) Create(req *dto.CreateProjectRequest) (*dto.ProjectResp
 		OwnerName:   req.OwnerName,
 	}
 
-	// 处理 allowed_env_clusters
-	if req.AllowedEnvClusters != nil {
-		jsonData, err := json.Marshal(req.AllowedEnvClusters)
-		if err != nil {
-			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "环境集群配置格式错误", err)
-		}
-		jsonStr := string(jsonData)
-		project.AllowedEnvClusters = &jsonStr
-	}
-
-	// 处理 default_env_clusters
-	if req.DefaultEnvClusters != nil {
-		jsonData, err := json.Marshal(req.DefaultEnvClusters)
-		if err != nil {
-			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "默认环境集群配置格式错误", err)
-		}
-		jsonStr := string(jsonData)
-		project.DefaultEnvClusters = &jsonStr
-	}
-
 	if err := s.repo.Create(project); err != nil {
 		return nil, err
+	}
+
+	// 处理环境配置：将 map 格式转换为 project_env_configs 表记录
+	if req.AllowedEnvClusters != nil || req.DefaultEnvClusters != nil {
+		envConfigs, err := s.convertMapToEnvConfigs(project.ID, req.AllowedEnvClusters, req.DefaultEnvClusters)
+		if err != nil {
+			// 回滚项目创建
+			_ = s.repo.Delete(project.ID)
+			return nil, err
+		}
+		if len(envConfigs) > 0 {
+			if err := s.envConfigRepo.BatchCreate(envConfigs); err != nil {
+				// 回滚项目创建
+				_ = s.repo.Delete(project.ID)
+				return nil, err
+			}
+		}
 	}
 
 	if s.shouldCreateDefaultTeam(req) {
@@ -201,26 +200,29 @@ func (s *projectService) Update(id int64, req *dto.UpdateProjectRequest) (*dto.P
 	if req.OwnerName != nil {
 		project.OwnerName = req.OwnerName
 	}
-	if req.AllowedEnvClusters != nil {
-		jsonData, err := json.Marshal(req.AllowedEnvClusters)
-		if err != nil {
-			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "环境集群配置格式错误", err)
-		}
-		jsonStr := string(jsonData)
-		project.AllowedEnvClusters = &jsonStr
-	}
-	if req.DefaultEnvClusters != nil {
-		jsonData, err := json.Marshal(req.DefaultEnvClusters)
-		if err != nil {
-			return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "默认环境集群配置格式错误", err)
-		}
-		jsonStr := string(jsonData)
-		project.DefaultEnvClusters = &jsonStr
-	}
 
-	// 保存更新
+	// 保存项目基本信息
 	if err := s.repo.Update(project); err != nil {
 		return nil, err
+	}
+
+	// 处理环境配置更新：如果提供了环境配置，先删除旧的，再创建新的
+	if req.AllowedEnvClusters != nil || req.DefaultEnvClusters != nil {
+		// 删除该项目的所有环境配置
+		if err := s.envConfigRepo.DeleteByProjectID(id); err != nil {
+			return nil, err
+		}
+
+		// 创建新的环境配置
+		envConfigs, err := s.convertMapToEnvConfigs(id, req.AllowedEnvClusters, req.DefaultEnvClusters)
+		if err != nil {
+			return nil, err
+		}
+		if len(envConfigs) > 0 {
+			if err := s.envConfigRepo.BatchCreate(envConfigs); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return s.toResponse(project), nil
@@ -250,18 +252,15 @@ func (s *projectService) toResponse(project *model.Project) *dto.ProjectResponse
 		UpdatedAt:   project.UpdatedAt.Format(time.RFC3339),
 	}
 
-	// 解析 allowed_env_clusters
-	if project.AllowedEnvClusters != nil && *project.AllowedEnvClusters != "" {
-		var allowedEnvClusters map[string][]string
-		if err := json.Unmarshal([]byte(*project.AllowedEnvClusters), &allowedEnvClusters); err == nil {
+	// 从 project_env_configs 表读取环境配置并转换为 map 格式
+	envConfigs, err := s.envConfigRepo.FindByProjectID(project.ID)
+	if err == nil && len(envConfigs) > 0 {
+		allowedEnvClusters, defaultEnvClusters := s.convertEnvConfigsToMap(envConfigs)
+		// 即使 map 中有空数组的环境配置，也要返回（只要 map 不为空）
+		if len(allowedEnvClusters) > 0 {
 			resp.AllowedEnvClusters = &allowedEnvClusters
 		}
-	}
-
-	// 解析 default_env_clusters
-	if project.DefaultEnvClusters != nil && *project.DefaultEnvClusters != "" {
-		var defaultEnvClusters map[string][]string
-		if err := json.Unmarshal([]byte(*project.DefaultEnvClusters), &defaultEnvClusters); err == nil {
+		if len(defaultEnvClusters) > 0 {
 			resp.DefaultEnvClusters = &defaultEnvClusters
 		}
 	}
@@ -291,7 +290,7 @@ func (s *projectService) shouldCreateDefaultTeam(req *dto.CreateProjectRequest) 
 // GetAvailableEnvClusters 获取项目可用的环境集群配置
 func (s *projectService) GetAvailableEnvClusters(projectID int64, env string) (*dto.ProjectAvailableEnvClustersResponse, error) {
 	// 查询项目
-	project, err := s.repo.FindByID(projectID)
+	_, err := s.repo.FindByID(projectID)
 	if err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeNotFound, "项目不存在", err)
 	}
@@ -301,17 +300,17 @@ func (s *projectService) GetAvailableEnvClusters(projectID int64, env string) (*
 		AvailableClusters:  []string{},
 	}
 
-	// 解析 allowed_env_clusters
-	if project.AllowedEnvClusters != nil && *project.AllowedEnvClusters != "" {
-		if err := json.Unmarshal([]byte(*project.AllowedEnvClusters), &resp.AllowedEnvClusters); err != nil {
-			return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "解析环境集群配置失败", err)
-		}
-	}
+	// 从 project_env_configs 表读取环境配置
+	envConfigs, err := s.envConfigRepo.FindByProjectID(projectID)
+	if err == nil && len(envConfigs) > 0 {
+		allowedEnvClusters, _ := s.convertEnvConfigsToMap(envConfigs)
+		resp.AllowedEnvClusters = allowedEnvClusters
 
-	// 如果指定了环境,返回该环境下可用的集群列表
-	if env != "" {
-		if clusters, ok := resp.AllowedEnvClusters[env]; ok {
-			resp.AvailableClusters = clusters
+		// 如果指定了环境,返回该环境下可用的集群列表
+		if env != "" {
+			if clusters, ok := allowedEnvClusters[env]; ok {
+				resp.AvailableClusters = clusters
+			}
 		}
 	}
 
@@ -359,4 +358,99 @@ func (s *projectService) contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// convertMapToEnvConfigs 将 map 格式的环境集群配置转换为 project_env_configs 表记录
+// allowedEnvClusters: {"pre": ["cluster-a"], "prod": ["cluster-b"]}
+// defaultEnvClusters: {"pre": ["cluster-a"]}
+// 注意：即使某个环境的 clusters 为空数组 []，也会创建记录并保存空数组，不会删除该环境配置
+func (s *projectService) convertMapToEnvConfigs(projectID int64, allowedEnvClusters, defaultEnvClusters *map[string][]string) ([]*model.ProjectEnvConfig, error) {
+	var envConfigs []*model.ProjectEnvConfig
+
+	// 收集所有环境（从 allowedEnvClusters 中获取）
+	envSet := make(map[string]bool)
+	if allowedEnvClusters != nil {
+		for env := range *allowedEnvClusters {
+			envSet[env] = true
+		}
+	}
+	if defaultEnvClusters != nil {
+		for env := range *defaultEnvClusters {
+			envSet[env] = true
+		}
+	}
+
+	// 为每个环境创建一条记录
+	for env := range envSet {
+		config := &model.ProjectEnvConfig{
+			ProjectID: projectID,
+			Env:       env,
+		}
+
+		// 设置 allow_clusters
+		if allowedEnvClusters != nil {
+			if clusters, ok := (*allowedEnvClusters)[env]; ok {
+				allowClustersJSON, err := json.Marshal(clusters)
+				if err != nil {
+					return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "环境集群配置格式错误", err)
+				}
+				config.AllowClusters = string(allowClustersJSON)
+			} else {
+				// 如果没有该环境的 allowed 配置，设置为空数组
+				config.AllowClusters = "[]"
+			}
+		} else {
+			config.AllowClusters = "[]"
+		}
+
+		// 设置 default_clusters
+		if defaultEnvClusters != nil {
+			if clusters, ok := (*defaultEnvClusters)[env]; ok {
+				defaultClustersJSON, err := json.Marshal(clusters)
+				if err != nil {
+					return nil, pkgErrors.Wrap(pkgErrors.CodeBadRequest, "默认环境集群配置格式错误", err)
+				}
+				config.DefaultClusters = string(defaultClustersJSON)
+			} else {
+				// 如果没有该环境的 default 配置，设置为空数组
+				config.DefaultClusters = "[]"
+			}
+		} else {
+			config.DefaultClusters = "[]"
+		}
+
+		// namespace 和 deployment_name_template 暂时设置为空字符串
+		config.Namespace = ""
+		config.DeploymentNameTemplate = ""
+
+		envConfigs = append(envConfigs, config)
+	}
+
+	return envConfigs, nil
+}
+
+// convertEnvConfigsToMap 将 project_env_configs 表记录转换为 map 格式
+// 返回: allowedEnvClusters, defaultEnvClusters
+// 注意：即使 clusters 为空数组 []，也会保留在返回的 map 中，不会过滤掉
+func (s *projectService) convertEnvConfigsToMap(envConfigs []*model.ProjectEnvConfig) (map[string][]string, map[string][]string) {
+	allowedEnvClusters := make(map[string][]string)
+	defaultEnvClusters := make(map[string][]string)
+
+	for _, config := range envConfigs {
+		// 解析 allow_clusters（即使为空数组也要保留）
+		var allowClusters []string
+		if err := json.Unmarshal([]byte(config.AllowClusters), &allowClusters); err == nil {
+			// 即使为空数组也要添加到 map 中
+			allowedEnvClusters[config.Env] = allowClusters
+		}
+
+		// 解析 default_clusters（即使为空数组也要保留）
+		var defaultClusters []string
+		if err := json.Unmarshal([]byte(config.DefaultClusters), &defaultClusters); err == nil {
+			// 即使为空数组也要添加到 map 中
+			defaultEnvClusters[config.Env] = defaultClusters
+		}
+	}
+
+	return allowedEnvClusters, defaultEnvClusters
 }

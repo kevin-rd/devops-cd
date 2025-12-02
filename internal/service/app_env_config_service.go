@@ -28,10 +28,11 @@ type AppEnvConfigService interface {
 }
 
 type appEnvConfigService struct {
-	repo        repository.AppEnvConfigRepository
-	appRepo     repository.ApplicationRepository
-	projectRepo repository.ProjectRepository
-	db          *gorm.DB
+	repo                 repository.AppEnvConfigRepository
+	appRepo              repository.ApplicationRepository
+	projectRepo          repository.ProjectRepository
+	projectEnvConfigRepo repository.ProjectEnvConfigRepository
+	db                   *gorm.DB
 }
 
 func NewAppEnvConfigService(
@@ -40,10 +41,11 @@ func NewAppEnvConfigService(
 	db *gorm.DB,
 ) AppEnvConfigService {
 	return &appEnvConfigService{
-		repo:        repo,
-		appRepo:     appRepo,
-		projectRepo: repository.NewProjectRepository(db),
-		db:          db,
+		repo:                 repo,
+		appRepo:              appRepo,
+		projectRepo:          repository.NewProjectRepository(db),
+		projectEnvConfigRepo: repository.NewProjectEnvConfigRepository(db),
+		db:                   db,
 	}
 }
 
@@ -260,44 +262,29 @@ func (s *appEnvConfigService) toResponse(config *model.AppEnvConfig) *dto.AppEnv
 
 // validateEnvCluster 校验环境和集群是否在项目允许范围内
 func (s *appEnvConfigService) validateEnvCluster(projectID int64, env string, cluster string) error {
-	// 1. 查询项目
-	project, err := s.projectRepo.FindByID(projectID)
+	// 1. 查询项目的环境配置
+	envConfig, err := s.projectEnvConfigRepo.FindByProjectIDAndEnv(projectID, env)
 	if err != nil {
-		return pkgErrors.Wrap(pkgErrors.CodeInternalError, "查询项目失败", err)
+		if err == pkgErrors.ErrRecordNotFound {
+			return pkgErrors.New(pkgErrors.CodeBadRequest,
+				fmt.Sprintf("项目未配置 %s 环境,请先在项目管理中配置", env))
+		}
+		return pkgErrors.Wrap(pkgErrors.CodeInternalError, "查询项目环境配置失败", err)
 	}
 
-	// 2. 如果项目未配置 allowed_env_clusters,则不允许选择(必须先配置)
-	if project.AllowedEnvClusters == nil || *project.AllowedEnvClusters == "" {
-		return pkgErrors.New(pkgErrors.CodeBadRequest,
-			"项目未配置允许的环境集群,请先在项目管理中配置")
-	}
-
-	// 3. 解析 allowed_env_clusters
-	var allowedEnvClusters map[string][]string
-	if err := json.Unmarshal([]byte(*project.AllowedEnvClusters), &allowedEnvClusters); err != nil {
+	// 2. 解析 allow_clusters
+	var allowedClusters []string
+	if err := json.Unmarshal([]byte(envConfig.AllowClusters), &allowedClusters); err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeInternalError, "解析项目环境集群配置失败", err)
 	}
 
-	// 4. 空对象 {} 也不允许
-	if len(allowedEnvClusters) == 0 {
-		return pkgErrors.New(pkgErrors.CodeBadRequest,
-			"项目未配置允许的环境集群,请先在项目管理中配置")
-	}
-
-	// 5. 检查环境是否允许
-	allowedClusters, envExists := allowedEnvClusters[env]
-	if !envExists {
-		return pkgErrors.New(pkgErrors.CodeBadRequest,
-			fmt.Sprintf("项目不允许部署到 %s 环境", env))
-	}
-
-	// 6. 检查集群列表是否为空
+	// 3. 检查集群列表是否为空
 	if len(allowedClusters) == 0 {
 		return pkgErrors.New(pkgErrors.CodeBadRequest,
 			fmt.Sprintf("项目在 %s 环境未配置可用集群", env))
 	}
 
-	// 7. 检查集群是否允许
+	// 4. 检查集群是否允许
 	clusterAllowed := false
 	for _, c := range allowedClusters {
 		if c == cluster {
