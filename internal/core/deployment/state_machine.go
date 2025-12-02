@@ -71,8 +71,8 @@ func (sm *StateMachine) UnifiedUpdate(ctx context.Context, dep_id int64, to stri
 			result = tx.Model(dep).Where("id = ? AND status = ?", dep.ID, old).Save(dep)
 		}
 
-		if result.Error != nil || result.RowsAffected == 0 {
-			return fmt.Errorf("update failed")
+		if result.Error != nil {
+			return fmt.Errorf("update failed: %w", result.Error)
 		}
 
 		sm.logger.Info(fmt.Sprintf("[Deployment SM] Batch:%v ReleaseApp:%v Deployment:%v 状态变更成功: %v -> %v", dep.BatchID, dep.ReleaseID, dep.ID, old, to),

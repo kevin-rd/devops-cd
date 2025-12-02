@@ -25,7 +25,7 @@ func (h HandlerFunc) Handle(ctx context.Context, release *model.ReleaseApp) (nex
 
 func (sm *ReleaseStateMachine) registerHandlers() {
 	sm.handlers[constants.ReleaseAppStatusPreWaiting] = HandlerFunc(sm.HandlePreWaiting)
-	sm.handlers[constants.ReleaseAppStatusPreCanTrigger] = HandlerFunc(sm.HandleCanTrigger)
+	sm.handlers[constants.ReleaseAppStatusPreCanTrigger] = HandlerFunc(sm.HandlePreCanTrigger)
 	sm.handlers[constants.ReleaseAppStatusPreTriggered] = HandlerFunc(sm.HandlePreTriggered)
 	sm.handlers[constants.ReleaseAppStatusPreDeployed] = HandlerFunc(sm.HandlePreDeployed)
 	sm.handlers[constants.ReleaseAppStatusProdWaiting] = HandlerFunc(sm.HandleProdWaiting)
@@ -71,8 +71,8 @@ func (sm *ReleaseStateMachine) HandlePreWaiting(ctx context.Context, release *mo
 	}, nil
 }
 
-// HandleCanTrigger handle PreCanTrigger:11 -> PreTriggered:12, gen deployments record
-func (sm *ReleaseStateMachine) HandleCanTrigger(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+// HandlePreCanTrigger handle PreCanTrigger:11 -> PreTriggered:12, gen deployments record
+func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
 	log := sm.logger.With(zap.Int64("release_id", release.ID))
 
 	// 1. 校验 Build
@@ -89,7 +89,7 @@ func (sm *ReleaseStateMachine) HandleCanTrigger(ctx context.Context, release *mo
 
 	// 2. 加载 App
 	var app model.Application
-	if err := sm.db.First(&app, release.AppID).Error; err != nil {
+	if err := sm.db.Preload("Project").First(&app, release.AppID).Error; err != nil {
 		return 0, nil, fmt.Errorf("app record not found: %w", err)
 	}
 
@@ -103,6 +103,12 @@ func (sm *ReleaseStateMachine) HandleCanTrigger(ctx context.Context, release *mo
 		return 0, nil, fmt.Errorf("应用未配置 Pre 环境")
 	}
 
+	// 3.1 查询project级配置
+	var projectConfigs model.ProjectEnvConfig
+	if err := sm.db.Where("project_id = ? AND env = ?", app.ProjectID, constants.EnvTypePre).First(&projectConfigs).Error; err != nil {
+		return 0, nil, fmt.Errorf("查询项目 Pre 环境配置失败: %w", err)
+	}
+
 	// 4. 为每个集群创建 Deployment
 	var failed []string
 	for _, config := range configs {
@@ -110,16 +116,17 @@ func (sm *ReleaseStateMachine) HandleCanTrigger(ctx context.Context, release *mo
 			BatchID:        release.BatchID,
 			AppID:          release.AppID,
 			ReleaseID:      release.ID,
-			DeploymentName: app.Name,
-			Environment:    constants.EnvTypePre,
-			Cluster:        config.Cluster,
+			Env:            constants.EnvTypePre,
+			ClusterName:    config.Cluster,
+			Namespace:      projectConfigs.Namespace, // todo: 检查空
+			DeploymentName: mustDeploymentName(&app, &projectConfigs, &config),
 			ImageTag:       build.ImageTag,
 			Status:         "pending",
 			RetryCount:     0,
 		}
 
 		// 正确使用 FirstOrCreate
-		result := sm.db.Where("release_id = ? AND environment = ? AND cluster = ?", release.ID, constants.EnvTypePre, config.Cluster).FirstOrCreate(&dep)
+		result := sm.db.Where("release_id = ? AND env = ? AND cluster = ?", release.ID, constants.EnvTypePre, config.Cluster).FirstOrCreate(&dep)
 
 		if result.Error != nil {
 			failed = append(failed, config.Cluster)
@@ -143,7 +150,7 @@ func (sm *ReleaseStateMachine) HandlePreTriggered(ctx context.Context, release *
 
 	// 1. 查询该 ReleaseApp 下的所有 Deployment
 	var deployments []model.Deployment
-	if err := sm.db.Where("release_id = ? AND environment = ?", release.ID, constants.EnvTypePre).Find(&deployments).Error; err != nil {
+	if err := sm.db.Where("release_id = ? AND env = ?", release.ID, constants.EnvTypePre).Find(&deployments).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询Deployment 失败: %w", err)
 	}
 	if len(deployments) == 0 {
@@ -265,8 +272,8 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 			AppID:          release.AppID,
 			ReleaseID:      release.ID,
 			DeploymentName: app.Name,
-			Environment:    constants.EnvTypeProd, // 生产环境
-			Cluster:        config.Cluster,
+			Env:            constants.EnvTypeProd, // 生产环境
+			ClusterName:    config.Cluster,
 			ImageTag:       build.ImageTag,
 			Status:         "pending",
 			RetryCount:     0,

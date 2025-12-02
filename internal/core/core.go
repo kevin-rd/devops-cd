@@ -9,6 +9,7 @@ import (
 	"devops-cd/internal/core/release_app"
 	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/config"
+	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
 	"fmt"
 	"github.com/samber/lo"
@@ -38,8 +39,9 @@ type CoreEngine struct {
 func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) *CoreEngine {
 
 	// 创建部署服务
+	//deployService := deploy.NewMockDeployer()
+	deployService := deploy.NewHelmDeployer(repository.NewConfigRepository(db))
 	// deployService := deploy.NewK8sDeployer( deploy.NewMockK8sDeployClient(), notification.NewLogNotifier(logger), db, nil, logger)
-	deployService := deploy.NewMockDeployer()
 
 	depCfg := release_app.Config{}
 	if coreCfg != nil && len(coreCfg.AppTypes) > 0 {
@@ -185,7 +187,8 @@ func (e *CoreEngine) batchWork(ctx context.Context, batchId int64) {
 
 func (e *CoreEngine) scamDeployment(ctx context.Context, batchID int64) {
 	var deps []model.Deployment
-	if err := e.db.Where("batch_id = ? AND status != ?", batchID, constants.DeploymentStatusSuccess).Find(&deps).Error; err != nil {
+	if err := e.db.Where("batch_id = ? AND status IN ?",
+		batchID, []string{constants.DeploymentStatusPending, constants.DeploymentStatusRunning}).Find(&deps).Error; err != nil {
 		e.logger.Error("扫描 Deployment 失败", zap.Error(err))
 		return
 	}

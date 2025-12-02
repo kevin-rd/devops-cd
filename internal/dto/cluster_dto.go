@@ -12,7 +12,7 @@ type ClusterUpdateRequest struct {
 	Name        *string `json:"name" binding:"omitempty,max=50" example:"cluster-prod-01"`
 	Description *string `json:"description" example:"华东区域生产集群"`
 	Region      *string `json:"region" binding:"omitempty,max=50" example:"cn-east-1"`
-	Status      *int8   `json:"status" binding:"omitempty,oneof=0 1" example:"1"`
+	//Status      *int8   `json:"status" binding:"omitempty,oneof=0 1" example:"1"`
 }
 
 // ClusterResponse 集群响应
@@ -21,9 +21,9 @@ type ClusterResponse struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Region      *string `json:"region"`
-	Status      int8    `json:"status"`
-	CreatedAt   string  `json:"created_at"`
-	UpdatedAt   string  `json:"updated_at"`
+	//Status      int8    `json:"status"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // ClusterListRequest 集群列表请求

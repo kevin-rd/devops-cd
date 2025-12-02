@@ -57,9 +57,8 @@ const (
 
 // DeploymentStatus 部署状态
 const (
-	DeploymentStatusPending             = "pending"
-	DeploymentStatusRunning             = "running"
-	DeploymentStatusSuccess             = "success"
-	DeploymentStatusFailed              = "failed"
-	DeploymentStatusWaitingDependencies = "waiting_dependencies"
+	DeploymentStatusPending = "pending"
+	DeploymentStatusRunning = "running"
+	DeploymentStatusSuccess = "success"
+	DeploymentStatusFailed  = "failed"
 )

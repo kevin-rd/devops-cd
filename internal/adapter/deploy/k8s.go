@@ -59,8 +59,8 @@ func (d *K8sDeployer) Deploy(ctx context.Context, dep *model.Deployment) error {
 	log := d.logger.With(
 		zap.Int64("deployment_id", dep.ID),
 		zap.Int64("app_id", dep.AppID),
-		zap.String("env", dep.Environment),
-		zap.String("cluster", dep.Cluster),
+		zap.String("env", dep.Env),
+		zap.String("cluster", dep.ClusterName),
 	)
 
 	// 1. 检查是否已有 task_id（幂等）
@@ -80,7 +80,7 @@ func (d *K8sDeployer) Deploy(ctx context.Context, dep *model.Deployment) error {
 	appCtx, cancel := context.WithTimeout(ctx, d.config.SingleAppTimeout)
 	defer cancel()
 
-	taskID, err := d.k8sClient.DeployApp(appCtx, dep.Environment, dep.AppID, imageURL, imageTag)
+	taskID, err := d.k8sClient.DeployApp(appCtx, dep.Env, dep.AppID, imageURL, imageTag)
 	if err != nil {
 		if d.notifier != nil {
 			_ = d.notifier.SendAppDeployNotification(appCtx, int64(dep.BatchID), int64(dep.AppID),

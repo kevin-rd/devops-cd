@@ -48,7 +48,7 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	// 2. 执行handle处理
 	nextStatus, updateFunc, err := handler.Handle(ctx, release)
 	if err != nil {
-		log.Errorf("[ReleaseApp SM] Batch:%v ReleaseApp:%v 处理失败: %v", release.BatchID, release.ID, err)
+		log.Errorf("[ReleaseApp SM] Batch:%v ReleaseApp:%v %+v处理失败: %v", release.BatchID, release.ID, handler, err)
 		return
 	}
 

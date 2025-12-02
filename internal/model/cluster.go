@@ -6,10 +6,13 @@ const AppEnvConfigTableName = "app_env_configs"
 // Cluster 集群元数据模型
 // 用途: 管理集群基本信息,不包含连接配置
 type Cluster struct {
-	BaseStatus
+	BaseModel
+
 	Name        string  `gorm:"size:50;not null;uniqueIndex" json:"name"`
 	Description *string `gorm:"type:text" json:"description"`
 	Region      *string `gorm:"size:50" json:"region"`
+
+	Kubeconfig string `gorm:"type:text" json:"kubeconfig,omitempty"`
 }
 
 func (Cluster) TableName() string {

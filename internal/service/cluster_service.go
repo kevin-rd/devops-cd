@@ -38,9 +38,6 @@ func (s *ClusterService) Create(req *dto.ClusterCreateRequest) (*dto.ClusterResp
 		Name:        req.Name,
 		Description: req.Description,
 		Region:      req.Region,
-		BaseStatus: model.BaseStatus{
-			Status: 1,
-		},
 	}
 
 	if err := s.clusterRepo.Create(cluster); err != nil {
@@ -79,9 +76,6 @@ func (s *ClusterService) Update(id int64, req *dto.ClusterUpdateRequest) (*dto.C
 	}
 	if req.Region != nil {
 		cluster.Region = req.Region
-	}
-	if req.Status != nil {
-		cluster.Status = *req.Status
 	}
 
 	// 4. 保存更新
@@ -158,7 +152,6 @@ func (s *ClusterService) toClusterResponse(cluster *model.Cluster) *dto.ClusterR
 		Name:        cluster.Name,
 		Description: cluster.Description,
 		Region:      cluster.Region,
-		Status:      cluster.Status,
 		CreatedAt:   cluster.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:   cluster.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}

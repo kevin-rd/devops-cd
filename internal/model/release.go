@@ -10,6 +10,7 @@ const BatchReleaseAppTableName = "release_apps"
 // Batch 发布批次
 type Batch struct {
 	BaseModel
+
 	BatchNumber  string  `gorm:"size:200;not null" json:"batch_number"` // 用户填写的批次编号/标题
 	ProjectID    int64   `gorm:"index;not null" json:"project_id"`      // 关联的项目ID
 	Initiator    string  `gorm:"size:50" json:"initiator"`
@@ -51,7 +52,8 @@ func (Batch) TableName() string {
 
 // ReleaseApp 批次中的应用发布记录
 type ReleaseApp struct {
-	ID      int64 `gorm:"primaryKey" json:"id"`
+	BaseModel
+
 	BatchID int64 `gorm:"index;not null" json:"batch_id"`
 	AppID   int64 `gorm:"index;not null" json:"app_id"`
 
@@ -70,10 +72,6 @@ type ReleaseApp struct {
 	Status        int8      `gorm:"index;not null;default:0" json:"status"`
 	Reason        string    `gorm:"type:text" json:"reason"`
 	TempDependsOn Int64List `gorm:"column:temp_depends_on;type:json;default:[]" json:"temp_depends_on"` // 批次内临时依赖（JSON 数组，记录应用 ID）
-
-	// 系统字段
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
 
 	// 关联关系（用于 JOIN 查询时获取完整构建信息）
 	Batch       *Batch       `gorm:"foreignKey:BatchID" json:"batch,omitempty"`
