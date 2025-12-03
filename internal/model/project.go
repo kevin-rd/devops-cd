@@ -25,8 +25,7 @@ type ProjectEnvConfig struct {
 	DefaultClusters        string `gorm:"type:json;column:default_clusters;not null" json:"default_clusters"` // JSON格式的默认集群列表
 	Namespace              string `gorm:"size:63;not null;default:''" json:"namespace"`                       // kubernetes命名空间
 	DeploymentNameTemplate string `gorm:"size:255;not null;default:''" json:"deployment_name_template"`       // 部署名称模板
-
-	//ChartRepoURL string `gorm:"size:255;not null;default:''" json:"chart_repo_url"` // Chart仓库URL
+	ChartRepoURL           string `gorm:"size:255;not null;default:''" json:"chart_repo_url"`                 // Chart仓库URL
 }
 
 func (ProjectEnvConfig) TableName() string {

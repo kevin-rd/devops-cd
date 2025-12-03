@@ -52,7 +52,7 @@ interface DirtyFieldsReturn<T> {
  * }
  * ```
  */
-export function useDirtyFields<T extends Record<string, unknown> = Record<string, unknown>>(
+export function useDirtyFields<T extends object = Record<string, unknown>>(
   form: FormInstance,
   options?: UseDirtyFieldsOptions<T>
 ): DirtyFieldsReturn<T> {

@@ -111,6 +111,10 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 				groupProject.PUT("", projectHandler.Update)                                          // 更新项目
 				groupProject.DELETE("/:id", projectHandler.Delete)                                   // 删除项目
 				groupProjects.GET("/available-env-clusters", projectHandler.GetAvailableEnvClusters) // 获取项目可用的环境集群配置
+
+				// 项目环境配置管理（作为项目的附属资源）
+				groupProject.GET("/:id/env", projectHandler.GetEnvConfigs)    // 获取项目的环境配置
+				groupProject.PUT("/:id/env", projectHandler.UpdateEnvConfigs) // 批量更新项目的环境配置
 			}
 
 			// 团队管理

@@ -57,17 +57,16 @@ CREATE TABLE `team_members` (
 -- 4. 项目表 (projects)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `projects` (
-    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL UNIQUE COMMENT '项目名称（英文标识）',
-    `display_name` VARCHAR(100) COMMENT '项目显示名称',
-    `description` TEXT COMMENT '项目描述',
-    `owner_name` VARCHAR(100) COMMENT '项目负责人',
-    `allowed_env_clusters` JSON DEFAULT NULL COMMENT '允许的环境集群配置, 格式: {"env": ["cluster1", "cluster2"]}',
-    `default_env_clusters` JSON DEFAULT NULL COMMENT '默认环境集群, 格式: {"env": ["cluster1", "cluster2"]}, 必须是 allowed_env_clusters 的子集',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `deleted_at` TIMESTAMP NULL,
-    INDEX `idx_deleted_at` (`deleted_at`)
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL COMMENT '项目名称（英文标识）',
+  `description` text COMMENT '项目描述',
+  `owner_name` varchar(100) DEFAULT NULL COMMENT '项目负责人',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_name_deleted_at` (`name`, `deleted_at`),
+  INDEX `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目表';
 
 -- =====================================================

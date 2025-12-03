@@ -46,6 +46,7 @@ CREATE TABLE `project_env_configs` (
   `default_clusters`         JSON            NOT NULL COMMENT '默认集群列表',
   `namespace`                VARCHAR(63)     NOT NULL DEFAULT '' COMMENT 'kubernetes命名空间',
   `deployment_name_template` VARCHAR(255)    NOT NULL DEFAULT '' COMMENT '部署名称模板',
+  `chart_repo_url`           VARCHAR(255)    NOT NULL DEFAULT '' COMMENT 'Chart仓库URL',
   `created_at`               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

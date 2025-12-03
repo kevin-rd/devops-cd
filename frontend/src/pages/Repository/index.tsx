@@ -650,6 +650,7 @@ const RepositoryPage: React.FC = () => {
       dataIndex: 'env_clusters',
       key: 'env_clusters',
       width: 200,
+      hidden: true,
       render: (envClusters: Record<string, string[]>) => {
         if (!envClusters || Object.keys(envClusters).length === 0) {
           return <Tag style={{color: '#999'}}>-</Tag>

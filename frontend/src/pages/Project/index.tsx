@@ -1,73 +1,103 @@
-import React, {useState} from 'react'
+import React, {useMemo, useState} from 'react'
+import type {MenuProps} from 'antd'
 import {
   Button,
   Card,
   Checkbox,
   Form,
   Input,
+  Layout,
+  Menu,
   message,
   Modal,
-  Pagination,
   Popconfirm,
-  Select,
   Space,
-  Table,
   Tabs,
-  Tag,
+  Tooltip,
 } from 'antd'
-import type {ColumnsType} from 'antd/es/table'
 import {
+  AppstoreOutlined,
   DeleteOutlined,
-  EditOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   PlusOutlined,
   ProjectOutlined,
   ReloadOutlined,
   SearchOutlined,
-  TeamOutlined,
 } from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useTranslation} from 'react-i18next'
 import type {CreateProjectRequest, Project} from '@/services/project'
 import {projectService} from '@/services/project'
-import type {CreateTeamRequest, Team} from '@/services/team'
-import {teamService} from '@/services/team'
 import type {BackendPaginatedResponse} from '@/types'
 import EnvClusterConfig from '@/components/EnvClusterConfig'
+import TabBasicInfo from './TabBasicInfo.tsx'
+import TabTeam from './TabTeam.tsx'
+import TabEnvConfig from './TabEnvConfig.tsx'
 import './index.css'
+
+const {Sider, Content} = Layout
 
 const ProjectPage: React.FC = () => {
   const {t} = useTranslation()
   const queryClient = useQueryClient()
   const [form] = Form.useForm()
-  const [teamForm] = Form.useForm()
 
+  // 布局状态
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
+
+  // Modal 状态
   const [modalVisible, setModalVisible] = useState(false)
-  const [teamModalVisible, setTeamModalVisible] = useState(false)
+
+  // 编辑状态
   const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null)
-  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
 
   // 分页和搜索状态
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const pageSize = 10
   const [keyword, setKeyword] = useState('')
 
-  // 查询项目列表
-  const {data: response, isLoading} = useQuery<BackendPaginatedResponse<Project>>({
+  // Tabs 状态
+  const [activeTabKey, setActiveTabKey] = useState('basic')
+
+  // 查询项目列表（简化版，用于左侧列表）
+  const {data: response} = useQuery<BackendPaginatedResponse<Project>>({
     queryKey: ['projects', page, pageSize, keyword],
     queryFn: async () => {
       const res = await projectService.getList({
         page,
         page_size: pageSize,
         keyword,
-        with_teams: true,
+        with_teams: false, // 左侧列表不需要团队信息
       })
       return res as unknown as BackendPaginatedResponse<Project>
     },
   })
 
-  const projects = response?.data?.items || []
+  const projects = useMemo(() => response?.data?.items ?? [], [response])
   const total = response?.data?.total || 0
+
+  // 默认选择第一个项目
+  React.useEffect(() => {
+    if (!selectedProjectId && projects.length > 0) {
+      setSelectedProjectId(projects[0].id)
+    }
+  }, [projects, selectedProjectId])
+
+  // 查询选中项目的详情（包含团队）
+  const {data: projectDetailResponse, isLoading: isLoadingDetail} = useQuery({
+    queryKey: ['project-detail', selectedProjectId],
+    queryFn: async () => {
+      if (!selectedProjectId) return null
+      const res = await projectService.getById(selectedProjectId, true)
+      return res.data
+    },
+    staleTime: 10_000,
+    enabled: !!selectedProjectId,
+  })
+
+  const selectedProject = projectDetailResponse
 
   // 创建/更新项目
   const mutation = useMutation({
@@ -86,6 +116,9 @@ const ProjectPage: React.FC = () => {
       form.resetFields()
       setEditingProject(null)
       queryClient.invalidateQueries({queryKey: ['projects']})
+      if (selectedProjectId) {
+        queryClient.invalidateQueries({queryKey: ['project-detail', selectedProjectId]})
+      }
     },
     onError: () => {
       message.error(
@@ -97,48 +130,15 @@ const ProjectPage: React.FC = () => {
   // 删除项目
   const deleteMutation = useMutation({
     mutationFn: (id: number) => projectService.delete(id),
-    onSuccess: () => {
+    onSuccess: (_, deletedId) => {
       message.success(t('project.deleteSuccess'))
       queryClient.invalidateQueries({queryKey: ['projects']})
+      if (selectedProjectId === deletedId) {
+        setSelectedProjectId(null)
+      }
     },
     onError: () => {
       message.error(t('project.deleteFailed'))
-    },
-  })
-
-  const teamMutation = useMutation({
-    mutationFn: async (values: CreateTeamRequest & { id?: number }) => {
-      if (editingTeam) {
-        return await teamService.update(editingTeam.id, values)
-      }
-      return await teamService.create(values)
-    },
-    onSuccess: () => {
-      message.success(
-        editingTeam ? t('team.updateSuccess') : t('team.createSuccess')
-      )
-      setTeamModalVisible(false)
-      setEditingTeam(null)
-      teamForm.resetFields()
-      queryClient.invalidateQueries({queryKey: ['projects']})
-      queryClient.invalidateQueries({queryKey: ['teams_all']})
-    },
-    onError: () => {
-      message.error(
-        editingTeam ? t('team.updateFailed') : t('team.createFailed')
-      )
-    },
-  })
-
-  const deleteTeamMutation = useMutation({
-    mutationFn: (id: number) => teamService.delete(id),
-    onSuccess: () => {
-      message.success(t('team.deleteSuccess'))
-      queryClient.invalidateQueries({queryKey: ['projects']})
-      queryClient.invalidateQueries({queryKey: ['teams_all']})
-    },
-    onError: () => {
-      message.error(t('team.deleteFailed'))
     },
   })
 
@@ -176,262 +176,181 @@ const ProjectPage: React.FC = () => {
     setPage(1)
   }
 
-  const handleCreateTeam = (project: Project) => {
-    setEditingTeam(null)
-    teamForm.resetFields()
-    teamForm.setFieldsValue({
-      project_id: project.id,
-    })
-    setTeamModalVisible(true)
+
+  const menuSelectedKeys: string[] = selectedProjectId ? [selectedProjectId.toString()] : []
+
+  const projectMenuItems = useMemo<MenuProps['items']>(() => {
+    if (!projects || projects.length === 0) {
+      return []
+    }
+    return projects.map((project) => ({
+      key: project.id.toString(),
+      icon: <AppstoreOutlined/>,
+      label: (
+        <div className="project-menu-item">
+          <div className="project-menu-item-title">{project.name}</div>
+          {project.owner_name && (
+            <div className="project-menu-item-subtitle">{project.owner_name}</div>
+          )}
+        </div>
+      ),
+      title: project.name,
+    }))
+  }, [projects])
+
+  const handleMenuSelect: MenuProps['onSelect'] = ({key}) => {
+    const projectId = Number(key)
+    if (!Number.isNaN(projectId)) {
+      setSelectedProjectId(projectId)
+    }
   }
 
-  const handleEditTeam = (team: Team) => {
-    setEditingTeam(team)
-    teamForm.setFieldsValue({
-      project_id: team.project_id,
-      name: team.name,
-      leader_name: team.leader_name,
-      description: team.description,
-    })
-    setTeamModalVisible(true)
-  }
-
-  const handleTeamSubmit = () => {
-    teamForm.validateFields().then((values) => {
-      const payload = editingTeam
-        ? {...values, id: editingTeam.id}
-        : values
-      teamMutation.mutate(payload as CreateTeamRequest & { id?: number })
-    })
-  }
-
-  // 表格列定义
-  const columns: ColumnsType<Project> = [
+  // tabs
+  const mainTab = [
     {
-      title: t('project.name'),
-      dataIndex: 'name',
-      key: 'name',
-      width: 200,
-      render: (text) => (
-        <Space>
-          <ProjectOutlined style={{color: '#1890ff'}}/>
-          <span className="project-name">{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: t('project.owner'),
-      dataIndex: 'owner_name',
-      key: 'owner_name',
-      width: 150,
-      render: (text) => text ? <Tag color="blue">{text}</Tag> : <span style={{color: '#999'}}>-</span>,
-    },
-    {
-      title: t('common.description'),
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-      render: (text) => text || <span style={{color: '#999'}}>-</span>,
-    },
-    {
-      title: t('project.teamCount'),
-      key: 'team_count',
-      width: 120,
-      render: (_, project) => (
-        <Tag color="geekblue">{project.teams?.length || 0}</Tag>
-      ),
-    },
-    {
-      title: t('common.action'),
-      key: 'action',
-      width: 240,
-      fixed: 'right',
-      render: (_, project) => (
-        <Space size="small" wrap>
-          <Button type="text" size="small" icon={<PlusOutlined/>}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleCreateTeam(project)
-                  }}
-          >Team
-          </Button>
-          <Button type="text" size="small"
-                  icon={<EditOutlined/>}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleEdit(project)
-                  }}
-          >{t('common.edit')}
-          </Button>
-          <Popconfirm
-            title={t('project.deleteConfirm')}
-            onConfirm={() => deleteMutation.mutate(project.id)}
-            onCancel={(e) => e?.stopPropagation()}
-          >
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined/>}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/*{t('common.delete')}*/}
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ]
-
-  const teamColumns: ColumnsType<Team> = [
-    {
-      title: t('team.name'),
-      dataIndex: 'name',
-      key: 'name',
-      width: 200,
-      render: (text) => (
-        <Space>
-          <TeamOutlined style={{color: '#52c41a'}}/>
-          <span>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: t('team.leader'),
-      dataIndex: 'leader_name',
-      key: 'leader_name',
-      width: 160,
-      render: (text) => (text ? <Tag color="purple">{text}</Tag> : <span style={{color: '#999'}}>-</span>),
-    },
-    {
-      title: t('common.description'),
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-      render: (text) => text || <span style={{color: '#999'}}>-</span>,
-    },
-    {
-      title: t('common.action'),
-      key: 'action',
-      width: 160,
-      render: (_, team) => (
-        <Space size="small">
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined/>}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleEditTeam(team)
-            }}
-          >
-            {t('common.edit')}
-          </Button>
-          <Popconfirm
-            title={t('team.deleteConfirm')}
-            onConfirm={() => deleteTeamMutation.mutate(team.id)}
-            onCancel={(e) => e?.stopPropagation()}
-          >
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined/>}
-              onClick={(e) => e.stopPropagation()}
-              loading={deleteTeamMutation.isPending}
-            >
-              {t('common.delete')}
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ]
-
-  const renderTeamTable = (project: Project) => {
-    const teams = project.teams || []
-    return (
-      <Table className="project-team-table"
-             columns={teamColumns}
-             dataSource={teams}
-             rowKey="id"
-             pagination={false}
-             size="small"
-             locale={{
-               emptyText: t('team.noData'),
-             }}
-      />
-    )
-  }
+      key: 'basic',
+      label: '基本信息',
+      children: selectedProject ? (
+        <TabBasicInfo project={selectedProject} onEdit={handleEdit}/>
+      ) : null,
+    }, {
+      key: 'env',
+      label: '环境配置',
+      children: selectedProject ? (
+        <TabEnvConfig projectId={selectedProject.id}/>
+      ) : null,
+    }, {
+      key: 'teams',
+      label: '团队管理',
+      children: selectedProject ? (
+        <TabTeam project={selectedProject}/>
+      ) : null,
+    }]
+  const mainTabContent: Record<string, React.ReactNode> = Object.fromEntries(
+    mainTab.map(({key, children}) => [key, children])
+  )
 
   return (
     <div className="project-page">
-      <Card
-        title={
-          <Space>
-            <ProjectOutlined/>
-            <span>{t('project.title')}</span>
-          </Space>
-        }
-        extra={
-          <Space>
-            <Input.Search
-              placeholder={t('project.searchPlaceholder')}
-              allowClear
-              style={{width: 250}}
-              onSearch={handleSearch}
-              enterButton={<SearchOutlined/>}
-            />
-            <Button
-              icon={<ReloadOutlined/>}
-              onClick={() => queryClient.invalidateQueries({queryKey: ['projects']})}
-            >
-              {t('common.refresh')}
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined/>}
-              onClick={handleCreate}
-            >
-              {t('project.create')}
-            </Button>
-          </Space>
-        }
-      >
-        <Table
-          columns={columns}
-          dataSource={projects}
-          rowKey="id"
-          loading={isLoading}
-          pagination={false}
-          expandable={{
-            expandedRowKeys,
-            onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
-            expandedRowRender: (record) => renderTeamTable(record),
-            rowExpandable: () => true,
-            expandRowByClick: true,
-          }}
-        />
+      <Layout style={{minHeight: 'calc(100vh - 48px)'}}>
+        {/* 左侧项目列表 */}
+        <Sider
+          width={sidebarCollapsed ? 72 : 280}
+          theme="light"
+          collapsible
+          collapsed={sidebarCollapsed}
+          trigger={null}
+          className="project-sider"
+        >
+          <div className="project-sider-body">
+            <div className="project-sider-header">
+              {!sidebarCollapsed && (
+                <Space size="small">
+                  <ProjectOutlined/>
+                  <span className="project-sider-title">项目列表</span>
+                </Space>
+              )}
+              <Button
+                type="text"
+                icon={sidebarCollapsed ? <MenuUnfoldOutlined/> : <MenuFoldOutlined/>}
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              />
+            </div>
 
-        {total > pageSize && (
-          <div style={{marginTop: 16, textAlign: 'right'}}>
-            <Pagination
-              current={page}
-              pageSize={pageSize}
-              total={total}
-              onChange={(page, pageSize) => {
-                setPage(page)
-                setPageSize(pageSize)
-              }}
-              showSizeChanger
-              showQuickJumper
-              showTotal={(total) => `${t('common.total')} ${total} ${t('project.items')}`}
+            {!sidebarCollapsed ? (
+              <div className="project-sider-actions">
+                <Input.Search
+                  placeholder="搜索项目"
+                  allowClear
+                  onSearch={handleSearch}
+                  enterButton={<SearchOutlined/>}
+                />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined/>}
+                  block
+                  onClick={handleCreate}
+                >
+                  新建项目
+                </Button>
+              </div>
+            ) : (
+              <div className="project-sider-actions-collapsed">
+                <Tooltip title="新建项目" placement="right">
+                  <Button
+                    type="primary"
+                    shape="circle"
+                    icon={<PlusOutlined/>}
+                    onClick={handleCreate}
+                  />
+                </Tooltip>
+              </div>
+            )}
+
+            <Menu
+              mode="inline"
+              items={projectMenuItems}
+              selectedKeys={menuSelectedKeys}
+              onSelect={handleMenuSelect}
+              inlineCollapsed={sidebarCollapsed}
+              className="project-menu"
             />
+
+            {!sidebarCollapsed && total > pageSize && (
+              <div className="project-menu-footer">
+                <Button
+                  type="link"
+                  block
+                  onClick={() => setPage(page + 1)}
+                  disabled={page * pageSize >= total}
+                >
+                  加载更多
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-      </Card>
+        </Sider>
 
-      {/* 创建/编辑 Modal */}
+        {/* 右侧项目详情 */}
+        <Content>
+          {selectedProjectId ? (
+            <Card loading={isLoadingDetail}
+                  style={{minWidth: 768}}
+                  title={
+                    <Space>
+                      <span style={{color: '#999', fontSize: 14, userSelect: 'none'}}>#{selectedProject?.id}</span>
+                      <span>{selectedProject?.name}</span>
+                    </Space>
+                  }
+                  extra={
+                    <Popconfirm title="确定要删除该项目吗？" onConfirm={() => deleteMutation.mutate(selectedProjectId)}>
+                      <Button danger icon={<DeleteOutlined/>}>删除项目</Button>
+                    </Popconfirm>
+                  }
+                  tabList={mainTab.map(({key, label}) => ({key, label}))}
+                  activeTabKey={activeTabKey}
+                  tabBarExtraContent={
+                    <Button key="refresh" icon={<ReloadOutlined/>} onClick={() => {
+                      if (selectedProjectId) {
+                        queryClient.invalidateQueries({queryKey: ['project-detail', selectedProjectId]})
+                      }
+                    }}>刷新</Button>}
+                  onTabChange={key => setActiveTabKey(key)}
+            >
+              {mainTabContent[activeTabKey]}
+            </Card>
+          ) : (
+            <Card>
+              <div style={{textAlign: 'center', padding: '80px', color: '#999'}}>
+                <ProjectOutlined style={{fontSize: 64, marginBottom: 16}}/>
+                <p style={{fontSize: 16}}>请从左侧选择一个项目</p>
+              </div>
+            </Card>
+          )}
+        </Content>
+      </Layout>
+
+      {/* 创建/编辑项目 Modal */}
       <Modal
         title={editingProject ? t('project.edit') : t('project.create')}
         open={modalVisible}
@@ -559,62 +478,8 @@ const ProjectPage: React.FC = () => {
           />
         </Form>
       </Modal>
-
-      {/* Team Modal */}
-      <Modal
-        title={editingTeam ? t('team.edit') : t('team.create')}
-        open={teamModalVisible}
-        onOk={handleTeamSubmit}
-        onCancel={() => {
-          setTeamModalVisible(false)
-          setEditingTeam(null)
-          teamForm.resetFields()
-        }}
-        confirmLoading={teamMutation.isPending}
-        width={520}
-      >
-        <Form form={teamForm} layout="vertical">
-          <Form.Item
-            name="project_id"
-            label={t('project.name')}
-            rules={[{required: true, message: t('project.nameRequired')}]}
-          >
-            <Select placeholder={t('project.selectProject')} disabled={!!editingTeam}>
-              {projects.map((project) => (
-                <Select.Option key={project.id} value={project.id}>
-                  {project.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="name"
-            label={t('team.name')}
-            rules={[
-              {required: true, message: t('team.nameRequired')},
-              {max: 100, message: t('team.nameTooLong')},
-            ]}
-          >
-            <Input placeholder="backend-team"/>
-          </Form.Item>
-
-          <Form.Item
-            name="leader_name"
-            label={t('team.leader')}
-            rules={[{max: 100, message: t('team.leaderTooLong')}]}
-          >
-            <Input placeholder="leader"/>
-          </Form.Item>
-
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} placeholder={t('team.descriptionPlaceholder')}/>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   )
 }
 
 export default ProjectPage
-

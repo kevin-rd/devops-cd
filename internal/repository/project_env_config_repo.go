@@ -10,8 +10,10 @@ import (
 type ProjectEnvConfigRepository interface {
 	Create(config *model.ProjectEnvConfig) error
 	Update(config *model.ProjectEnvConfig) error
+	DeleteByID(id int64) error
 	DeleteByProjectID(projectID int64) error
 	DeleteByProjectIDAndEnv(projectID int64, env string) error
+	FindByID(id int64) (*model.ProjectEnvConfig, error)
 	FindByProjectID(projectID int64) ([]*model.ProjectEnvConfig, error)
 	FindByProjectIDAndEnv(projectID int64, env string) (*model.ProjectEnvConfig, error)
 	BatchCreate(configs []*model.ProjectEnvConfig) error
@@ -39,6 +41,13 @@ func (r *projectEnvConfigRepository) Update(config *model.ProjectEnvConfig) erro
 	return nil
 }
 
+func (r *projectEnvConfigRepository) DeleteByID(id int64) error {
+	if err := r.db.Where("id = ?", id).Delete(&model.ProjectEnvConfig{}).Error; err != nil {
+		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除项目环境配置失败", err)
+	}
+	return nil
+}
+
 func (r *projectEnvConfigRepository) DeleteByProjectID(projectID int64) error {
 	if err := r.db.Where("project_id = ?", projectID).Delete(&model.ProjectEnvConfig{}).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除项目环境配置失败", err)
@@ -51,6 +60,18 @@ func (r *projectEnvConfigRepository) DeleteByProjectIDAndEnv(projectID int64, en
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除项目环境配置失败", err)
 	}
 	return nil
+}
+
+func (r *projectEnvConfigRepository) FindByID(id int64) (*model.ProjectEnvConfig, error) {
+	var config model.ProjectEnvConfig
+	err := r.db.Where("id = ?", id).First(&config).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, pkgErrors.ErrRecordNotFound
+		}
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询项目环境配置失败", err)
+	}
+	return &config, nil
 }
 
 func (r *projectEnvConfigRepository) FindByProjectID(projectID int64) ([]*model.ProjectEnvConfig, error) {

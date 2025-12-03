@@ -181,3 +181,59 @@ func (h *ProjectHandler) GetAvailableEnvClusters(c *gin.Context) {
 
 	utils.Success(c, resp)
 }
+
+// GetEnvConfigs 获取项目的环境配置
+// @Summary 获取项目的环境配置
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Param id path int64 true "项目ID"
+// @Success 200 {object} utils.Response{data=[]dto.ProjectEnvConfigResponse}
+// @Router /api/v1/project/{id}/env [get]
+func (h *ProjectHandler) GetEnvConfigs(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+		return
+	}
+
+	configs, err := h.projectService.GetEnvConfigs(id)
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+
+	utils.Success(c, configs)
+}
+
+// UpdateEnvConfigs 批量更新项目的环境配置
+// @Summary 批量更新项目的环境配置
+// @Tags Project
+// @Accept json
+// @Produce json
+// @Param id path int64 true "项目ID"
+// @Param request body dto.UpdateProjectEnvConfigsRequest true "环境配置"
+// @Success 200 {object} utils.Response
+// @Router /api/v1/project/{id}/env [put]
+func (h *ProjectHandler) UpdateEnvConfigs(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+		return
+	}
+
+	var req dto.UpdateProjectEnvConfigsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		return
+	}
+
+	if err := h.projectService.UpdateEnvConfigs(id, req.Configs); err != nil {
+		utils.Error(c, err)
+		return
+	}
+
+	utils.Success(c, nil)
+}

@@ -19,6 +19,9 @@ type ProjectService interface {
 	Update(id int64, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error)
 	Delete(id int64) error
 	GetAvailableEnvClusters(projectID int64, env string) (*dto.ProjectAvailableEnvClustersResponse, error)
+	// 环境配置管理
+	GetEnvConfigs(projectID int64) ([]*dto.ProjectEnvConfigResponse, error)
+	UpdateEnvConfigs(projectID int64, configs map[string]*dto.ProjectEnvConfigRequest) error
 }
 
 type projectService struct {
@@ -453,4 +456,120 @@ func (s *projectService) convertEnvConfigsToMap(envConfigs []*model.ProjectEnvCo
 	}
 
 	return allowedEnvClusters, defaultEnvClusters
+}
+
+// GetEnvConfigs 获取项目的所有环境配置
+func (s *projectService) GetEnvConfigs(projectID int64) ([]*dto.ProjectEnvConfigResponse, error) {
+	// 检查项目是否存在
+	_, err := s.repo.FindByID(projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询环境配置
+	configs, err := s.envConfigRepo.FindByProjectID(projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应格式
+	responses := make([]*dto.ProjectEnvConfigResponse, len(configs))
+	for i, config := range configs {
+		responses[i] = s.toEnvConfigResponse(config)
+	}
+
+	return responses, nil
+}
+
+// UpdateEnvConfigs 批量更新项目的环境配置
+// configs: map[env]ConfigData，如 {"pre": {...}, "prod": {...}}
+func (s *projectService) UpdateEnvConfigs(projectID int64, configs map[string]*dto.ProjectEnvConfigRequest) error {
+	// 检查项目是否存在
+	_, err := s.repo.FindByID(projectID)
+	if err != nil {
+		return err
+	}
+
+	// 查询现有配置
+	existingConfigs, err := s.envConfigRepo.FindByProjectID(projectID)
+	if err != nil {
+		return err
+	}
+
+	// 建立 env -> config 的映射
+	existingMap := make(map[string]*model.ProjectEnvConfig)
+	for _, config := range existingConfigs {
+		existingMap[config.Env] = config
+	}
+
+	// 遍历请求中的配置，执行创建或更新
+	for env, reqConfig := range configs {
+		// 序列化集群列表
+		allowClustersJSON, err := json.Marshal(reqConfig.AllowClusters)
+		if err != nil {
+			return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 allow_clusters 格式错误", env), err)
+		}
+
+		defaultClustersJSON, err := json.Marshal(reqConfig.DefaultClusters)
+		if err != nil {
+			return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 default_clusters 格式错误", env), err)
+		}
+
+		if existing, ok := existingMap[env]; ok {
+			// 更新现有配置
+			existing.AllowClusters = string(allowClustersJSON)
+			existing.DefaultClusters = string(defaultClustersJSON)
+			existing.Namespace = reqConfig.Namespace
+			existing.DeploymentNameTemplate = reqConfig.DeploymentNameTemplate
+			existing.ChartRepoURL = reqConfig.ChartRepoURL
+
+			if err := s.envConfigRepo.Update(existing); err != nil {
+				return err
+			}
+		} else {
+			// 创建新配置
+			newConfig := &model.ProjectEnvConfig{
+				ProjectID:              projectID,
+				Env:                    env,
+				AllowClusters:          string(allowClustersJSON),
+				DefaultClusters:        string(defaultClustersJSON),
+				Namespace:              reqConfig.Namespace,
+				DeploymentNameTemplate: reqConfig.DeploymentNameTemplate,
+				ChartRepoURL:           reqConfig.ChartRepoURL,
+			}
+
+			if err := s.envConfigRepo.Create(newConfig); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// toEnvConfigResponse 转换环境配置为响应格式
+func (s *projectService) toEnvConfigResponse(config *model.ProjectEnvConfig) *dto.ProjectEnvConfigResponse {
+	resp := &dto.ProjectEnvConfigResponse{
+		ID:                     config.ID,
+		ProjectID:              config.ProjectID,
+		Env:                    config.Env,
+		Namespace:              config.Namespace,
+		DeploymentNameTemplate: config.DeploymentNameTemplate,
+		ChartRepoURL:           config.ChartRepoURL,
+		CreatedAt:              config.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:              config.UpdatedAt.Format(time.RFC3339),
+	}
+
+	// 反序列化集群列表
+	var allowClusters []string
+	if err := json.Unmarshal([]byte(config.AllowClusters), &allowClusters); err == nil {
+		resp.AllowClusters = allowClusters
+	}
+
+	var defaultClusters []string
+	if err := json.Unmarshal([]byte(config.DefaultClusters), &defaultClusters); err == nil {
+		resp.DefaultClusters = defaultClusters
+	}
+
+	return resp
 }

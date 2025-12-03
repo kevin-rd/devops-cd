@@ -1,14 +1,145 @@
 .project-page {
-  padding: 24px;
+  height: 100%;
 }
 
-.project-name {
-  font-weight: 500;
-  color: #1890ff;
+.project-page .ant-layout {
+  height: 100%;
+}
+
+.project-page .ant-layout-sider {
+  overflow: auto;
+}
+
+.project-page .ant-layout-content {
+  padding: 12px 16px;
+  overflow: auto;
 }
 
 .project-page .ant-card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.project-sider {
+  background: #f7f9fc !important;
+  border-right: 1px solid #e6ebf5;
+  overflow: hidden !important;
+}
+
+.project-sider .ant-layout-sider-children {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.project-sider.collapsed .ant-layout-sider-children {
+  overflow-x: hidden;
+}
+
+.project-sider-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+
+.project-sider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(30, 72, 154, 0.1);
+}
+
+.project-sider-title {
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.project-sider-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.project-sider-actions .ant-input-search {
+  width: 100%;
+}
+
+.project-sider-actions-collapsed {
+  display: flex;
+  justify-content: center;
+}
+
+.project-menu {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 8px 0;
+  box-shadow: inset 0 0 0 1px rgba(230, 234, 243, 0.8), 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.project-menu .ant-menu-item {
+  margin: 4px 12px;
+  border-radius: 10px;
+  padding-inline: 12px !important;
+}
+
+.project-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #e6f3ff 0%, #f2f8ff 100%) !important;
+  box-shadow: 0 8px 18px rgba(24, 144, 255, 0.2);
+}
+
+.project-menu .ant-menu-item:not(.ant-menu-item-selected):hover {
+  background: rgba(24, 144, 255, 0.08);
+}
+
+.project-menu-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-menu-item-title {
+  font-weight: 600;
+  color: #1e2a4a;
+}
+
+.project-menu-item-subtitle {
+  font-size: 12px;
+  color: #8a94ab;
+}
+
+.project-menu-footer {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.project-detail-tabs {
+}
+
+.project-detail-tabs .ant-tabs-nav {
+  margin-bottom: 16px;
+}
+
+.project-detail-tabs .ant-tabs-tab {
+  padding: 12px 0;
+}
+
+.project-detail-tabs .ant-tabs-content-holder {
+  padding-top: 8px;
+  flex: 1;
+}
+
+.project-detail-tabs .ant-tabs-content {
+  height: 100%;
+}
+
+.project-detail-tabs .ant-tabs-tabpane {
+  height: 100%;
+  overflow: auto;
 }
 
 .project-team-table {
