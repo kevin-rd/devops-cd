@@ -28,8 +28,8 @@ type ClusterResponse struct {
 
 // ClusterListRequest 集群列表请求
 type ClusterListRequest struct {
-	Name     *string `form:"name" example:"prod"`
-	Status   *int8   `form:"status" binding:"omitempty,oneof=0 1" example:"1"`
-	Page     int     `form:"page" example:"1"`
-	PageSize int     `form:"page_size" example:"10"`
+	Name *string `form:"name" example:"prod"`
+	//Status   *int8   `form:"status" binding:"omitempty,oneof=0 1" example:"1"`
+	Page     int `form:"page" example:"1"`
+	PageSize int `form:"page_size" example:"10"`
 }

@@ -50,14 +50,11 @@ func (r *ClusterRepository) List(req *dto.ClusterListRequest) ([]model.Cluster, 
 	var clusters []model.Cluster
 	var total int64
 
-	query := r.db.Model(&model.Cluster{}).Where("deleted_at IS NULL")
+	query := r.db.Model(&model.Cluster{})
 
 	// 过滤条件
 	if req.Name != nil && *req.Name != "" {
 		query = query.Where("name LIKE ?", "%"+*req.Name+"%")
-	}
-	if req.Status != nil {
-		query = query.Where("status = ?", *req.Status)
 	}
 
 	// 计数

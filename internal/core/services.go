@@ -60,7 +60,7 @@ func (e *CoreEngine) NewTag(appID int64, build *model.Build) {
 
 		if release.BuildID == nil || *release.BuildID == *release.LatestBuildID || release.LatestBuildID == nil {
 			// 1.1 如果没有build_id, 或者build_id == latest_build_id
-			if err := e.releaseSM.UpdateStatus(context.TODO(), &release, release_app.WithModelEffects(func(r *model.ReleaseApp) {
+			if err := e.releaseSM.UpdateStatus(context.TODO(), release.ID, release_app.WithModelEffects(func(r *model.ReleaseApp) {
 				r.BuildID = &build.ID
 				r.TargetTag = &build.ImageTag
 				r.LatestBuildID = &build.ID
@@ -75,7 +75,7 @@ func (e *CoreEngine) NewTag(appID int64, build *model.Build) {
 
 	} else if release.Batch.Status >= constants.BatchStatusSealed { // 2. 如果批次已封板, 只更新 latest_build_id
 
-		if err := e.releaseSM.UpdateStatus(context.TODO(), &release, release_app.WithModelEffects(func(r *model.ReleaseApp) {
+		if err := e.releaseSM.UpdateStatus(context.TODO(), release.ID, release_app.WithModelEffects(func(r *model.ReleaseApp) {
 			r.LatestBuildID = &build.ID
 		})); err != nil {
 			log.Errorf("更新发布记录失败: %v", err)

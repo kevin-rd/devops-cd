@@ -24,7 +24,7 @@ func (sm *ReleaseStateMachine) ManualDeploy(releaseAppID int64, action, operator
 		return fmt.Errorf("无效的状态转换动作: %s", action)
 	}
 
-	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
+	return sm.UpdateStatus(context.TODO(), releaseAppID,
 		WithStatus(utils.CopyInt8(e.To)),
 		WithSource(TransitionSourceOutside),
 		WithOperator(operator),
@@ -35,7 +35,7 @@ func (sm *ReleaseStateMachine) ManualDeploy(releaseAppID int64, action, operator
 // SwitchVersion 切换版本, 根据是否有Pre环境触发Pre还是Prod
 func (sm *ReleaseStateMachine) SwitchVersion(releaseAppID, buildID int64, operator, reason string) error {
 	// 事务更新
-	return sm.UpdateStatus(context.TODO(), &model.ReleaseApp{ID: releaseAppID},
+	return sm.UpdateStatus(context.TODO(), releaseAppID,
 		WithSource(TransitionSourceOutside),
 		WithTarget(func(r model.ReleaseApp) int8 {
 			if r.SkipPreEnv {

@@ -55,7 +55,7 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	// 3. 状态更新
 	if nextStatus != nil || updateFunc != nil {
 		log.Debugf("[ReleaseApp SM] [UpdateStatus] Batch:%v ReleaseApp:%v Haandler: %T 状态更新: %v -> %v", release.BatchID, release.ID, handler, release.Status, nextStatus)
-		if err = sm.UpdateStatus(ctx, release, WithStatus(nextStatus), WithModelEffects(updateFunc)); err != nil {
+		if err = sm.UpdateStatus(ctx, release.ID, WithStatus(nextStatus), WithModelEffects(updateFunc)); err != nil {
 			log.Errorf("[ReleaseApp SM] [db] 状态更新失败: %v", err)
 		}
 	}
@@ -131,9 +131,7 @@ func newTransitionOptions(opts ...TransitionOption) *transitionOptions {
 	return option
 }
 
-func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.ReleaseApp, opts ...TransitionOption) error {
-	log := sm.logger.Sugar().With(zap.Int64("batch_id", release.BatchID), zap.Int64("release_id", release.ID))
-
+func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, releaseAppID int64, opts ...TransitionOption) error {
 	option := newTransitionOptions(opts...)
 
 	var old int8
@@ -142,18 +140,21 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.
 
 	err := sm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. 重新加载最新状态
-		if err := tx.First(release, release.ID).Error; err != nil {
+		var rel model.ReleaseApp
+		if err := tx.First(rel, releaseAppID).Error; err != nil {
 			return err
 		}
-		old = release.Status
+		old = rel.Status
+
+		log := sm.logger.Sugar().With(zap.Int64("batch_id", rel.BatchID), zap.Int64("release_id", rel.ID))
 
 		// 3. 应用业务字段更新
 		if option.sideEffect != nil {
-			option.sideEffect(release)
+			option.sideEffect(&rel) // Changed from option.sideEffect(rel) to option.sideEffect(&rel)
 		}
 
 		if option.getTarget != nil {
-			to = option.getTarget(*release)
+			to = option.getTarget(rel)
 
 			// 2. 检查是否允许
 			h, ok := sm.canTransition(old, to, option.source)
@@ -163,20 +164,20 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.
 
 			if h != nil {
 				// 4. 处理强依赖操作, 失败自动回滚
-				if err := h.Handle(release, old, option); err != nil {
+				if err := h.Handle(&rel, old, option); err != nil {
 					return err
 				}
 
 				afterHandler = func() {
-					h.After(release, old, option)
+					h.After(&rel, old, option) // Changed from h.After(rel, old, option) to h.After(&rel, old, option)
 				}
 			}
 
-			release.Status = to
+			rel.Status = to
 		}
 
 		// 5. 条件更新
-		var result = tx.Model(release).Where("id = ?", release.ID).Save(release)
+		var result = tx.Model(rel).Where("id = ?", rel.ID).Save(rel)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -184,7 +185,7 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, release *model.
 			return fmt.Errorf("update failed: status conflict or record not found")
 		}
 
-		log.Infof("Batch:%v ReleaseApp:%v 状态变更成功: %v -> %v", release.BatchID, release.ID, old, to)
+		log.Infof("Batch:%v ReleaseApp:%v 状态变更成功: %v -> %v", rel.BatchID, rel.ID, old, to)
 		return nil
 	})
 
