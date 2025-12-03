@@ -100,9 +100,6 @@ core:
     enabled: true                   # 是否启用通知
     provider: lark                  # 通知渠道: lark/log
     lark_webhook: ""                # Lark Webhook URL
-  k8s:
-    base_url: "http://k8s-deploy-service:8080"  # K8s部署服务地址
-    api_key: ""                                  # API密钥
 
 # 代码库同步配置
 repo:

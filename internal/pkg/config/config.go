@@ -103,7 +103,6 @@ type CoreConfig struct {
 	ScanInterval string                   `mapstructure:"scan_interval"` // 扫描间隔
 	Deploy       DeployConfig             `mapstructure:"deploy"`
 	Notification NotificationConfig       `mapstructure:"notification"`
-	K8s          K8sConfig                `mapstructure:"k8s"`
 	AppTypes     map[string]AppTypeConfig `mapstructure:"app_types"`
 }
 
@@ -141,12 +140,6 @@ type NotificationConfig struct {
 	Enabled     bool   `mapstructure:"enabled"`      // 是否启用
 	Provider    string `mapstructure:"provider"`     // 通知渠道
 	LarkWebhook string `mapstructure:"lark_webhook"` // Lark Webhook
-}
-
-// K8sConfig K8s配置
-type K8sConfig struct {
-	BaseURL string `mapstructure:"base_url"` // 部署服务地址
-	APIKey  string `mapstructure:"api_key"`  // API密钥
 }
 
 // RepoConfig 代码库同步配置
