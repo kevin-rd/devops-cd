@@ -112,6 +112,11 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 	// 4. 为每个集群创建 Deployment
 	var failed []string
 	for _, config := range configs {
+		deploymentName, err := mustDeploymentName(&app, &projectConfigs, &config)
+		if err != nil {
+			return 0, nil, err
+		}
+
 		dep := model.Deployment{
 			BatchID:        release.BatchID,
 			AppID:          release.AppID,
@@ -119,7 +124,7 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 			Env:            constants.EnvTypePre,
 			ClusterName:    config.Cluster,
 			Namespace:      projectConfigs.Namespace, // todo: 检查空
-			DeploymentName: mustDeploymentName(&app, &projectConfigs, &config),
+			DeploymentName: deploymentName,
 			ImageTag:       build.ImageTag,
 			Status:         "pending",
 			RetryCount:     0,

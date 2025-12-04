@@ -141,7 +141,7 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, releaseAppID in
 	err := sm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. 重新加载最新状态
 		var rel model.ReleaseApp
-		if err := tx.First(rel, releaseAppID).Error; err != nil {
+		if err := tx.First(&rel, releaseAppID).Error; err != nil {
 			return err
 		}
 		old = rel.Status

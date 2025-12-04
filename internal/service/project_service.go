@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/samber/lo"
 	"time"
 
 	"devops-cd/internal/dto"
@@ -19,7 +20,7 @@ type ProjectService interface {
 	Update(id int64, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error)
 	Delete(id int64) error
 	GetAvailableEnvClusters(projectID int64, env string) (*dto.ProjectAvailableEnvClustersResponse, error)
-	// 环境配置管理
+
 	GetEnvConfigs(projectID int64) ([]*dto.ProjectEnvConfigResponse, error)
 	UpdateEnvConfigs(projectID int64, configs map[string]*dto.ProjectEnvConfigRequest) error
 }
@@ -495,50 +496,57 @@ func (s *projectService) UpdateEnvConfigs(projectID int64, configs map[string]*d
 	if err != nil {
 		return err
 	}
-
-	// 建立 env -> config 的映射
-	existingMap := make(map[string]*model.ProjectEnvConfig)
-	for _, config := range existingConfigs {
-		existingMap[config.Env] = config
-	}
+	// 转为Map形式，key=item
+	existingMap := lo.Associate(existingConfigs, func(config *model.ProjectEnvConfig) (string, *model.ProjectEnvConfig) {
+		return config.Env, config
+	})
 
 	// 遍历请求中的配置，执行创建或更新
 	for env, reqConfig := range configs {
+		existing, ok := existingMap[env]
+		if !ok {
+			existing = &model.ProjectEnvConfig{
+				ProjectID: projectID,
+				Env:       env,
+			}
+		}
+
 		// 序列化集群列表
-		allowClustersJSON, err := json.Marshal(reqConfig.AllowClusters)
-		if err != nil {
-			return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 allow_clusters 格式错误", env), err)
-		}
-
-		defaultClustersJSON, err := json.Marshal(reqConfig.DefaultClusters)
-		if err != nil {
-			return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 default_clusters 格式错误", env), err)
-		}
-
-		if existing, ok := existingMap[env]; ok {
-			// 更新现有配置
+		if reqConfig.AllowClusters != nil {
+			allowClustersJSON, err := json.Marshal(reqConfig.AllowClusters)
+			if err != nil {
+				return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 allow_clusters 格式错误", env), err)
+			}
 			existing.AllowClusters = string(allowClustersJSON)
-			existing.DefaultClusters = string(defaultClustersJSON)
-			existing.Namespace = reqConfig.Namespace
-			existing.DeploymentNameTemplate = reqConfig.DeploymentNameTemplate
-			existing.ChartRepoURL = reqConfig.ChartRepoURL
+		}
 
+		if reqConfig.DefaultClusters != nil {
+			defaultClustersJSON, err := json.Marshal(reqConfig.DefaultClusters)
+			if err != nil {
+				return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 default_clusters 格式错误", env), err)
+			}
+			existing.DefaultClusters = string(defaultClustersJSON)
+		}
+
+		if reqConfig.Namespace != nil {
+			existing.Namespace = *reqConfig.Namespace
+		}
+
+		if reqConfig.DeploymentNameTemplate != nil {
+			existing.DeploymentNameTemplate = *reqConfig.DeploymentNameTemplate
+		}
+
+		if reqConfig.ChartRepoURL != nil {
+			existing.ChartRepoURL = *reqConfig.ChartRepoURL
+		}
+
+		// update or create
+		if ok {
 			if err := s.envConfigRepo.Update(existing); err != nil {
 				return err
 			}
 		} else {
-			// 创建新配置
-			newConfig := &model.ProjectEnvConfig{
-				ProjectID:              projectID,
-				Env:                    env,
-				AllowClusters:          string(allowClustersJSON),
-				DefaultClusters:        string(defaultClustersJSON),
-				Namespace:              reqConfig.Namespace,
-				DeploymentNameTemplate: reqConfig.DeploymentNameTemplate,
-				ChartRepoURL:           reqConfig.ChartRepoURL,
-			}
-
-			if err := s.envConfigRepo.Create(newConfig); err != nil {
+			if err := s.envConfigRepo.Create(existing); err != nil {
 				return err
 			}
 		}

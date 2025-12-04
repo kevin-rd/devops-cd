@@ -3,20 +3,24 @@ package release_app
 import (
 	"bytes"
 	"devops-cd/internal/model"
-	"devops-cd/internal/pkg/logger"
+	"fmt"
 	"text/template"
 )
 
-func mustDeploymentName(app *model.Application, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) string {
+func mustDeploymentName(app *model.Application, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (string, error) {
 	//if appEnvConfig.DeploymentName != "" {
-	//	return projectConfig.Namespace
+	//	return projectConfig.Namespace, nil
 	//}
 
 	if projectConfig.DeploymentNameTemplate == "" {
-		return app.Name
+		return app.Name, nil
 	}
 
-	tmpl := template.Must(template.New("").Parse(projectConfig.DeploymentNameTemplate))
+	tmpl, err := template.New("").Parse(projectConfig.DeploymentNameTemplate)
+	if err != nil {
+		return "", fmt.Errorf("parse DeploymentName Failed: %w", err)
+	}
+
 	data := map[string]interface{}{
 		"app_name": app.Name,
 		"project":  app.Project.Name,
@@ -25,9 +29,8 @@ func mustDeploymentName(app *model.Application, projectConfig *model.ProjectEnvC
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		logger.Sugar().Fatalf("execute deployment name template error: %v", err)
-		panic(err)
+		return "", fmt.Errorf("parse DeploymentName Failed: %w", err)
 	}
 
-	return buf.String()
+	return buf.String(), nil
 }

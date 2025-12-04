@@ -112,11 +112,22 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
       await Promise.all([preForm.validateFields(), prodForm.validateFields()])
 
       const configsPayload: Record<string, EnvFormValues> = {}
-      const preValues = preForm.getFieldsValue()
-      const prodValues = prodForm.getFieldsValue()
+      
+      // 只有当 pre 环境有变更时才添加到 payload
+      if (preDirty.hasDirtyFields()) {
+        configsPayload.pre = preDirty.getDirtyValues() as EnvFormValues
+      }
+      
+      // 只有当 prod 环境有变更时才添加到 payload
+      if (prodDirty.hasDirtyFields()) {
+        configsPayload.prod = prodDirty.getDirtyValues() as EnvFormValues
+      }
 
-      configsPayload.pre = preValues
-      configsPayload.prod = prodValues
+      // 如果没有任何变更（理论上按钮应该被禁用了，但为了安全起见），则直接返回
+      if (Object.keys(configsPayload).length === 0) {
+        message.info('没有需要保存的修改')
+        return
+      }
 
       await updateMutation.mutateAsync({
         projectId,
@@ -125,10 +136,19 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
 
       message.success('保存成功')
 
-      preDirty.setInitialValues(preValues)
-      prodDirty.setInitialValues(prodValues)
-      originalValuesRef.current.pre = preValues
-      originalValuesRef.current.prod = prodValues
+      // 更新 dirty 状态
+      // 保存成功后，当前的表单值即为新的初始值
+      if (configsPayload.pre) {
+        const currentPreValues = preForm.getFieldsValue()
+        preDirty.setInitialValues(currentPreValues)
+        originalValuesRef.current.pre = currentPreValues
+      }
+      
+      if (configsPayload.prod) {
+        const currentProdValues = prodForm.getFieldsValue()
+        prodDirty.setInitialValues(currentProdValues)
+        originalValuesRef.current.prod = currentProdValues
+      }
     } catch (error) {
       console.error('保存失败:', error)
       message.error('保存失败，请检查表单')

@@ -186,7 +186,7 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 		return nil, nil, fmt.Errorf("批次不存在: %w", err)
 	}
 
-	if req.CanUpdate != nil && req.CanUpdate(req.Operator, batch.ProjectID) {
+	if req.CanUpdate != nil && !req.CanUpdate(req.Operator, batch.ProjectID) {
 		return nil, nil, fmt.Errorf("无权限更新批次")
 	}
 

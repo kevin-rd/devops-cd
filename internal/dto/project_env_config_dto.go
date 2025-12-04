@@ -4,9 +4,9 @@ package dto
 type ProjectEnvConfigRequest struct {
 	AllowClusters          []string `json:"allow_clusters" binding:"required"`
 	DefaultClusters        []string `json:"default_clusters"`
-	Namespace              string   `json:"namespace" binding:"max=63"`
-	DeploymentNameTemplate string   `json:"deployment_name_template" binding:"max=255"`
-	ChartRepoURL           string   `json:"chart_repo_url" binding:"max=255"`
+	Namespace              *string  `json:"namespace" binding:"max=63"`
+	DeploymentNameTemplate *string  `json:"deployment_name_template" binding:"max=255"`
+	ChartRepoURL           *string  `json:"chart_repo_url" binding:"max=255"`
 }
 
 // UpdateProjectEnvConfigsRequest 批量更新项目环境配置请求
