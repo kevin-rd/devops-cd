@@ -76,12 +76,13 @@ func (s *appEnvConfigService) Create(req *dto.CreateAppEnvConfigRequest) (*dto.A
 
 	// 4. 创建配置
 	config := &model.AppEnvConfig{
-		AppID:      req.AppID,
-		Env:        req.Env,
-		Cluster:    req.Cluster,
-		Replicas:   req.Replicas,
-		ConfigData: req.ConfigData,
-		BaseStatus: model.BaseStatus{Status: constants.StatusEnabled},
+		AppID:                  req.AppID,
+		Env:                    req.Env,
+		Cluster:                req.Cluster,
+		Replicas:               req.Replicas,
+		DeploymentNameOverride: req.DeploymentNameOverride,
+		ConfigData:             req.ConfigData,
+		BaseStatus:             model.BaseStatus{Status: constants.StatusEnabled},
 	}
 
 	if err := s.repo.Create(config); err != nil {
@@ -116,6 +117,10 @@ func (s *appEnvConfigService) Update(id int64, req *dto.UpdateAppEnvConfigReques
 
 	if req.Replicas != nil {
 		config.Replicas = *req.Replicas
+	}
+
+	if req.DeploymentNameOverride != nil {
+		config.DeploymentNameOverride = req.DeploymentNameOverride
 	}
 
 	if req.ConfigData != nil {
@@ -209,12 +214,13 @@ func (s *appEnvConfigService) BatchCreate(req *dto.BatchCreateAppEnvConfigsReque
 	configs := make([]*model.AppEnvConfig, len(req.Configs))
 	for i, item := range req.Configs {
 		configs[i] = &model.AppEnvConfig{
-			AppID:      req.AppID,
-			Env:        item.Env,
-			Cluster:    item.Cluster,
-			Replicas:   item.Replicas,
-			ConfigData: item.ConfigData,
-			BaseStatus: model.BaseStatus{Status: constants.StatusEnabled},
+			AppID:                  req.AppID,
+			Env:                    item.Env,
+			Cluster:                item.Cluster,
+			Replicas:               item.Replicas,
+			DeploymentNameOverride: item.DeploymentNameOverride,
+			ConfigData:             item.ConfigData,
+			BaseStatus:             model.BaseStatus{Status: constants.StatusEnabled},
 		}
 	}
 
@@ -248,15 +254,16 @@ func (s *appEnvConfigService) CheckAppHasEnv(appID int64, env string) (bool, err
 // toResponse 转换为响应对象
 func (s *appEnvConfigService) toResponse(config *model.AppEnvConfig) *dto.AppEnvConfigResponse {
 	return &dto.AppEnvConfigResponse{
-		ID:         config.ID,
-		AppID:      config.AppID,
-		Env:        config.Env,
-		Cluster:    config.Cluster,
-		Replicas:   config.Replicas,
-		ConfigData: config.ConfigData,
-		Status:     config.Status,
-		CreatedAt:  config.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:  config.UpdatedAt.Format(time.RFC3339),
+		ID:                     config.ID,
+		AppID:                  config.AppID,
+		Env:                    config.Env,
+		Cluster:                config.Cluster,
+		Replicas:               config.Replicas,
+		DeploymentNameOverride: config.DeploymentNameOverride,
+		ConfigData:             config.ConfigData,
+		Status:                 config.Status,
+		CreatedAt:              config.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:              config.UpdatedAt.Format(time.RFC3339),
 	}
 }
 

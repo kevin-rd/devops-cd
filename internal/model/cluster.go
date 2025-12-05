@@ -34,11 +34,13 @@ func (Cluster) TableName() string {
 type AppEnvConfig struct {
 	BaseStatus
 
-	AppID      int64   `gorm:"column:app_id;not null;uniqueIndex:uk_app_env_cluster" json:"app_id"`
-	Env        string  `gorm:"size:20;not null;uniqueIndex:uk_app_env_cluster;index:idx_app_env" json:"env"`   // pre/prod/dev/test/uat
-	Cluster    string  `gorm:"size:50;not null;default:default;uniqueIndex:uk_app_env_cluster" json:"cluster"` // 集群名称
-	Replicas   int     `gorm:"default:1" json:"replicas"`                                                      // 副本数
-	ConfigData *string `gorm:"type:json" json:"config_data,omitempty"`                                         // 扩展配置(JSON格式)
+	AppID   int64  `gorm:"column:app_id;not null;uniqueIndex:uk_app_env_cluster" json:"app_id"`
+	Env     string `gorm:"size:20;not null;uniqueIndex:uk_app_env_cluster;index:idx_app_env" json:"env"`   // pre/prod/dev/test/uat
+	Cluster string `gorm:"size:50;not null;default:default;uniqueIndex:uk_app_env_cluster" json:"cluster"` // 集群名称
+
+	DeploymentNameOverride *string `gorm:"size:63" json:"deployment_name_override"` // 部署名称覆盖
+	Replicas               int     `gorm:"default:1" json:"replicas"`               // 副本数
+	ConfigData             *string `gorm:"type:json" json:"config_data,omitempty"`  // 扩展配置(JSON格式)
 
 	// Relations
 	Application *Application `gorm:"foreignKey:AppID" json:"application,omitempty"`

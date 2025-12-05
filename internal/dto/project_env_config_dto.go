@@ -7,6 +7,8 @@ type ProjectEnvConfigRequest struct {
 	Namespace              *string  `json:"namespace" binding:"max=63"`
 	DeploymentNameTemplate *string  `json:"deployment_name_template" binding:"max=255"`
 	ChartRepoURL           *string  `json:"chart_repo_url" binding:"max=255"`
+	ValuesRepoURL          *string  `json:"values_repo_url" binding:"max=255"`
+	ValuesPathTemplate     *string  `json:"values_path_template" binding:"max=255"`
 }
 
 // UpdateProjectEnvConfigsRequest 批量更新项目环境配置请求
@@ -24,6 +26,8 @@ type ProjectEnvConfigResponse struct {
 	Namespace              string   `json:"namespace"`
 	DeploymentNameTemplate string   `json:"deployment_name_template"`
 	ChartRepoURL           string   `json:"chart_repo_url"`
+	ValuesRepoURL          *string  `json:"values_repo_url"`
+	ValuesPathTemplate     *string  `json:"values_path_template"`
 	CreatedAt              string   `json:"created_at"`
 	UpdatedAt              string   `json:"updated_at"`
 }

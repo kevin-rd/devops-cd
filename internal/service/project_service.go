@@ -540,6 +540,14 @@ func (s *projectService) UpdateEnvConfigs(projectID int64, configs map[string]*d
 			existing.ChartRepoURL = *reqConfig.ChartRepoURL
 		}
 
+		if reqConfig.ValuesRepoURL != nil {
+			existing.ValuesRepoURL = reqConfig.ValuesRepoURL
+		}
+
+		if reqConfig.ValuesPathTemplate != nil {
+			existing.ValuesPathTemplate = reqConfig.ValuesPathTemplate
+		}
+
 		// update or create
 		if ok {
 			if err := s.envConfigRepo.Update(existing); err != nil {
@@ -564,6 +572,8 @@ func (s *projectService) toEnvConfigResponse(config *model.ProjectEnvConfig) *dt
 		Namespace:              config.Namespace,
 		DeploymentNameTemplate: config.DeploymentNameTemplate,
 		ChartRepoURL:           config.ChartRepoURL,
+		ValuesRepoURL:          config.ValuesRepoURL,
+		ValuesPathTemplate:     config.ValuesPathTemplate,
 		CreatedAt:              config.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:              config.UpdatedAt.Format(time.RFC3339),
 	}

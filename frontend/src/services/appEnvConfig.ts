@@ -6,6 +6,7 @@ export interface AppEnvConfig {
   env: string;
   cluster: string;
   replicas: number;
+  deployment_name_override?: string;
   config_data?: string;
   status: number;
   created_at: string;
@@ -17,6 +18,7 @@ export interface CreateAppEnvConfigRequest {
   env: string;
   cluster: string;
   replicas: number;
+  deployment_name_override?: string;
   config_data?: string;
 }
 
@@ -24,6 +26,7 @@ export interface UpdateAppEnvConfigRequest {
   id: number;
   cluster?: string;
   replicas?: number;
+  deployment_name_override?: string;
   config_data?: string;
   status?: number;
 }
@@ -34,6 +37,7 @@ export interface BatchCreateAppEnvConfigsRequest {
     env: string;
     cluster: string;
     replicas: number;
+    deployment_name_override?: string;
     config_data?: string;
   }>;
 }

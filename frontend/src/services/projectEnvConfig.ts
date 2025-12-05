@@ -11,6 +11,8 @@ export interface ProjectEnvConfig {
   namespace: string
   deployment_name_template: string
   chart_repo_url: string
+  values_repo_url?: string
+  values_path_template?: string
   created_at: string
   updated_at: string
 }
@@ -21,6 +23,8 @@ export interface ProjectEnvConfigRequest {
   namespace: string
   deployment_name_template: string
   chart_repo_url: string
+  values_repo_url?: string
+  values_path_template?: string
 }
 
 export interface UpdateProjectEnvConfigsRequest {

@@ -319,7 +319,7 @@ const ProjectPage: React.FC = () => {
                   title={
                     <Space>
                       <span style={{color: '#999', fontSize: 14, userSelect: 'none'}}>#{selectedProject?.id}</span>
-                      <span>{selectedProject?.name}</span>
+                      <span style={{fontSize: 18}}>{selectedProject?.name}</span>
                     </Space>
                   }
                   extra={

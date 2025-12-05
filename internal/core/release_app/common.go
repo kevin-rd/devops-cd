@@ -8,9 +8,9 @@ import (
 )
 
 func mustDeploymentName(app *model.Application, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (string, error) {
-	//if appEnvConfig.DeploymentName != "" {
-	//	return projectConfig.Namespace, nil
-	//}
+	if appEnvConfig.DeploymentNameOverride != nil && *appEnvConfig.DeploymentNameOverride != "" {
+		return projectConfig.Namespace, nil
+	}
 
 	if projectConfig.DeploymentNameTemplate == "" {
 		return app.Name, nil

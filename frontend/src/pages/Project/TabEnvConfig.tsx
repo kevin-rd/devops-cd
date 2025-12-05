@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useRef} from 'react'
 import {Alert, Button, Card, Checkbox, Form, Input, message, Select, Space, Spin} from 'antd'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
-import type {ProjectEnvConfig} from '@/services/projectEnvConfig'
+import type {ProjectEnvConfig, UpdateProjectEnvConfigsRequest} from '@/services/projectEnvConfig'
 import {projectEnvConfigService} from '@/services/projectEnvConfig'
 import type {Cluster} from '@/services/cluster'
 import {getClusters} from '@/services/cluster'
@@ -23,6 +23,8 @@ interface EnvFormValues {
   namespace: string
   deployment_name_template: string
   chart_repo_url: string
+  values_repo_url: string
+  values_path_template: string
 }
 
 const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
@@ -70,6 +72,8 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
         namespace: config.namespace || '',
         deployment_name_template: config.deployment_name_template || '',
         chart_repo_url: config.chart_repo_url || '',
+        values_repo_url: config.values_repo_url || '',
+        values_path_template: config.values_path_template || '',
       })
     })
 
@@ -81,6 +85,8 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
           namespace: '',
           deployment_name_template: '',
           chart_repo_url: '',
+          values_repo_url: '',
+          values_path_template: '',
         }
 
       if (key === 'pre') {
@@ -98,7 +104,7 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
 
   // 批量更新 mutation
   const updateMutation = useMutation({
-    mutationFn: ({projectId, data}: { projectId: number; data: any }) =>
+    mutationFn: ({projectId, data}: { projectId: number; data: UpdateProjectEnvConfigsRequest }) =>
       projectEnvConfigService.updateConfigs(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['project-env-configs', projectId]})
@@ -112,12 +118,12 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
       await Promise.all([preForm.validateFields(), prodForm.validateFields()])
 
       const configsPayload: Record<string, EnvFormValues> = {}
-      
+
       // 只有当 pre 环境有变更时才添加到 payload
       if (preDirty.hasDirtyFields()) {
         configsPayload.pre = preDirty.getDirtyValues() as EnvFormValues
       }
-      
+
       // 只有当 prod 环境有变更时才添加到 payload
       if (prodDirty.hasDirtyFields()) {
         configsPayload.prod = prodDirty.getDirtyValues() as EnvFormValues
@@ -143,7 +149,7 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
         preDirty.setInitialValues(currentPreValues)
         originalValuesRef.current.pre = currentPreValues
       }
-      
+
       if (configsPayload.prod) {
         const currentProdValues = prodForm.getFieldsValue()
         prodDirty.setInitialValues(currentProdValues)
@@ -316,6 +322,28 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
                 ]}
               >
                 <Input placeholder="https://charts.example.com"/>
+              </Form.Item>
+
+              {/* Values Repo URL */}
+              <Form.Item
+                label="Values Repo URL"
+                name="values_repo_url"
+                tooltip="Values 仓库地址 (可选)"
+                rules={[
+                  {max: 255, message: 'URL 最长 255 字符'},
+                ]}
+              >
+                <Input placeholder="git@github.com:org/repo.git"/>
+              </Form.Item>
+
+              {/* Values Path Template */}
+              <Form.Item
+                label="Values Path Template"
+                name="values_path_template"
+                tooltip="Values 文件路径模板，支持变量: {{.app_name}}, {{.project}}, {{.env}}"
+                rules={[{max: 255, message: '模板最长 255 字符'}]}
+              >
+                <Input placeholder="values/{{.env}}/{{.app_name}}.yaml"/>
               </Form.Item>
             </Form>
           </Card>

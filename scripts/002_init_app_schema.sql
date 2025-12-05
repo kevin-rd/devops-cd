@@ -44,39 +44,4 @@ CREATE TABLE IF NOT EXISTS `applications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用表';
 
 
--- =====================================================
--- 3. 应用环境配置表
--- 用途: 通过记录存在判断应用是否需要部署到某环境
--- 设计:
---   - 每个集群一条记录,支持不同集群独立配置
---   - 有 env='pre' 记录 -> 应用需要部署到 pre
---   - 无 env='pre' 记录 -> 应用跳过 pre,直接到 prod
---
--- 示例:
---   app_id=1, env='prod', cluster='cluster-a', replicas=2
---   app_id=1, env='prod', cluster='cluster-b', replicas=3
--- =====================================================
-CREATE TABLE IF NOT EXISTS `app_env_configs` (
-  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `app_id` BIGINT NOT NULL COMMENT '应用ID,关联 applications.id',
-  `env` VARCHAR(20) NOT NULL COMMENT '环境名称: pre/prod/dev/test/uat 等',
-  `cluster` VARCHAR(50) NOT NULL DEFAULT 'default' COMMENT '集群名称',
 
-  -- 部署配置
-  `replicas` INT DEFAULT 1 COMMENT '副本数量',
-  `config_data` JSON DEFAULT NULL COMMENT '环境专属配置(JSON格式,用于存储扩展配置)',
-
-  -- 系统字段
-  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用,用于临时禁用配置)',
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
-
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_app_env_cluster` (`app_id`, `env`, `cluster`),
-  INDEX `idx_app_env` (`app_id`, `env`),
-  INDEX `idx_status` (`status`),
-  INDEX `idx_deleted_at` (`deleted_at`),
-  CONSTRAINT `fk_app_env_configs_cluster` FOREIGN KEY (`cluster`) REFERENCES `clusters` (`name`) ON DELETE RESTRICT ON UPDATE CASCADE
-  #CONSTRAINT `fk_app_env_configs_app` FOREIGN KEY (`app_id`) REFERENCES `applications` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用环境配置表';
