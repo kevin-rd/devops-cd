@@ -50,9 +50,9 @@ func (sm *StateMachine) toDeploy(ctx context.Context, dep *model.Deployment) err
 	}
 
 	param := deploy.DeploymentParam{
-		AppName:    deployment.Application.Name,
-		AppType:    deployment.Application.AppType,
-		ValuesYAML: deployment.ValuesYAML,
+		AppName: deployment.Application.Name,
+		AppType: deployment.Application.AppType,
+		Values:  deployment.Values,
 
 		ReleaseName: deployment.DeploymentName,
 		Env:         deployment.Env,

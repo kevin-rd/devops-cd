@@ -70,8 +70,8 @@ func (d *K8sDeployer) Deploy(ctx context.Context, dep *model.Deployment) error {
 	}
 
 	// 2. 加载 ReleaseApp 获取镜像
-	imageURL := dep.ImageURL
-	imageTag := dep.ImageTag
+	imageURL := ""
+	imageTag := ""
 	if imageURL == "" || imageTag == "" {
 		return fmt.Errorf("镜像信息为空")
 	}

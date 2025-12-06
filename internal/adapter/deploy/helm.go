@@ -5,7 +5,6 @@ import (
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -52,10 +51,7 @@ func (d *HelmDeployer) Deploy(ctx context.Context, param *DeploymentParam) error
 	}
 
 	// 2.2 取已合并后的values.yaml
-	vals := map[string]interface{}{}
-	if err = yaml.Unmarshal([]byte(param.ValuesYAML), &vals); err != nil {
-		return err
-	}
+	vals := param.Values
 
 	// 3. upgrade or install
 	var rel *release.Release

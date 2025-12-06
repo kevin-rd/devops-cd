@@ -110,24 +110,37 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 	}
 
 	// 4. 为每个集群创建 Deployment
+	// 计算Deployment Name
+	// 为Helm计算values.yaml
 	var failed []string
 	for _, config := range configs {
-		deploymentName, err := mustDeploymentName(&app, &projectConfigs, &config)
+		if projectConfigs.Namespace == "" {
+			return 0, nil, fmt.Errorf("项目 Pre 环境配置未配置 namespace")
+		}
+
+		deploymentName, err := parseDeploymentName(&app, &projectConfigs, &config)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		values, err := parseValues(&app, &build, &projectConfigs, &config)
 		if err != nil {
 			return 0, nil, err
 		}
 
 		dep := model.Deployment{
-			BatchID:        release.BatchID,
-			AppID:          release.AppID,
-			ReleaseID:      release.ID,
+			BatchID:   release.BatchID,
+			AppID:     release.AppID,
+			ReleaseID: release.ID,
+
 			Env:            constants.EnvTypePre,
 			ClusterName:    config.Cluster,
-			Namespace:      projectConfigs.Namespace, // todo: 检查空
+			Namespace:      projectConfigs.Namespace,
 			DeploymentName: deploymentName,
-			ImageTag:       build.ImageTag,
-			Status:         "pending",
-			RetryCount:     0,
+			Values:         values,
+
+			Status:     "pending",
+			RetryCount: 0,
 		}
 
 		// 正确使用 FirstOrCreate
@@ -279,7 +292,6 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 			DeploymentName: app.Name,
 			Env:            constants.EnvTypeProd, // 生产环境
 			ClusterName:    config.Cluster,
-			ImageTag:       build.ImageTag,
 			Status:         "pending",
 			RetryCount:     0,
 		}

@@ -16,9 +16,9 @@ type Deployer interface {
 }
 
 type DeploymentParam struct {
-	AppName    string // Usually: Chart name is AppName or AppType
-	AppType    string
-	ValuesYAML string
+	AppName string // Usually: Chart name is AppName or AppType
+	AppType string
+	Values  map[string]interface{}
 
 	ReleaseName string
 	Env         string
