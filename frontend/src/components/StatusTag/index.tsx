@@ -11,15 +11,15 @@ interface StatusTagProps {
 }
 
 // 批次状态配置
-const BATCH_STATUS_CONFIG: Record<number, { label: string; color: string }> = {
-  0: {label: '草稿', color: '#fadb14'},
+export const BATCH_STATUS_CONFIG: Record<number, { label: string; color: string }> = {
+  0: {label: '草稿', color: 'yellow'},
   10: {label: '已封板', color: 'purple'},
-  20: {label: '预发布已触发', color: 'blue'},
-  21: {label: '预发布中', color: 'processing'},
-  22: {label: '预发布完成', color: 'success'},
-  30: {label: '生产已触发', color: 'blue'},
-  31: {label: '生产部署中', color: 'warning'},
-  32: {label: '生产部署完成', color: 'success'},
+  20: {label: 'Pre已触发', color: 'blue'},
+  21: {label: 'Pre进行中', color: 'processing'},
+  22: {label: 'Pre部署完成', color: 'success'},
+  30: {label: 'Prod已触发', color: 'blue'},
+  31: {label: 'Prod进行中', color: 'warning'},
+  32: {label: 'Prod部署完成', color: 'success'},
   40: {label: '已完成', color: 'success'},
   90: {label: '已取消', color: 'default'},
 }

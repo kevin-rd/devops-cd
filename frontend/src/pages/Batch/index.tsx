@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
 import {
+  Badge,
   Button,
   Card,
   DatePicker,
@@ -19,7 +20,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   EditOutlined,
-  PlayCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
   SaveOutlined,
@@ -34,7 +34,7 @@ import type {ColumnsType} from 'antd/es/table'
 import {batchService} from '@/services/batch'
 import {useNavigate} from 'react-router-dom'
 import {useAuthStore} from '@/stores/authStore'
-import {StatusTag} from '@/components/StatusTag'
+import {BATCH_STATUS_CONFIG, StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
@@ -505,33 +505,33 @@ export default function BatchList() {
         )}
 
         {/*开始Pre发布按钮*/}
-        {(record.status === 10 && record.approval_status === 'approved') && (
-          <Button
-            size="small"
-            icon={<PlayCircleOutlined/>}
-            type="primary"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleAction(record.id, 'start_pre_deploy')
-            }}
-          >
-            {t('batch.startPreDeploy')}
-          </Button>
-        )}
-        {/*开始Prod发布按钮*/}
-        {record.status === 22 && (
-          <Button
-            size="small"
-            icon={<PlayCircleOutlined/>}
-            danger
-            onClick={(e) => {
-              e.stopPropagation()
-              handleAction(record.id, 'start_prod_deploy')
-            }}
-          >
-            {t('batch.startProdDeploy')}
-          </Button>
-        )}
+        {/*{(record.status === 10 && record.approval_status === 'approved') && (*/}
+        {/*  <Button*/}
+        {/*    size="small"*/}
+        {/*    icon={<PlayCircleOutlined/>}*/}
+        {/*    type="primary"*/}
+        {/*    onClick={(e) => {*/}
+        {/*      e.stopPropagation()*/}
+        {/*      handleAction(record.id, 'start_pre_deploy')*/}
+        {/*    }}*/}
+        {/*  >*/}
+        {/*    {t('batch.startPreDeploy')}*/}
+        {/*  </Button>*/}
+        {/*)}*/}
+        {/*/!*开始Prod发布按钮*!/*/}
+        {/*{record.status === 22 && (*/}
+        {/*  <Button*/}
+        {/*    size="small"*/}
+        {/*    icon={<PlayCircleOutlined/>}*/}
+        {/*    danger*/}
+        {/*    onClick={(e) => {*/}
+        {/*      e.stopPropagation()*/}
+        {/*      handleAction(record.id, BatchAction.StartProdDeploy)*/}
+        {/*    }}*/}
+        {/*  >*/}
+        {/*    {t('batch.startProdDeploy')}*/}
+        {/*  </Button>*/}
+        {/*)}*/}
         {record.status === 32 && (
           <Button
             type="primary"
@@ -948,6 +948,7 @@ export default function BatchList() {
 
     // 根据状态添加 CSS 类（使用最新的状态）
     const currentStatus = mergedBatch.status
+    const statusConfig = BATCH_STATUS_CONFIG[currentStatus] || {label: '未知', color: 'default'}
     const statusClass =
       currentStatus === 0 ? 'status-draft' :            // 草稿 - 淡黄色
         currentStatus === 10 ? 'status-sealed' :          // 已封板 - 紫色
@@ -970,83 +971,84 @@ export default function BatchList() {
         <div className="batch-subtext">{t('batch.initiator')}: {record.initiator || '-'}</div>
       </div>
     )
-
     return (
-      <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
-        <div className="batch-card-main" onClick={() => navigate(`/batch/${record.id}/detail`)}>
-          {record.release_notes ? (
-            <Tooltip title={record.release_notes}
-                     overlayInnerStyle={{fontSize: '12px', padding: '6px 10px'}}>
-              {batchNumberContent}</Tooltip>
-          ) : (
-            batchNumberContent
-          )}
-          <div className="batch-cell batch-cell-created">
-            {(() => {
-              const {time, dayInfo} = formatCreatedTime(record.created_at)
-              return (
-                <div>
-                  <div style={{fontSize: '12px', fontWeight: 500}}>{dayInfo}</div>
-                  <div style={{fontSize: '11px', color: '#8c8c8c'}}>{time}</div>
-                </div>
-              )
-            })()}
-          </div>
-          <div className="batch-cell batch-cell-apps">
+      <Badge.Ribbon className="batch-status-ribbon" placement="start"
+                    text={statusConfig.label} color={statusConfig.color}>
+        <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
+          <div className="batch-card-main" onClick={() => navigate(`/batch/${record.id}/detail`)}>
+            {record.release_notes ? (
+              <Tooltip title={record.release_notes}
+                       overlayInnerStyle={{fontSize: '12px', padding: '6px 10px'}}>
+                {batchNumberContent}</Tooltip>
+            ) : (
+              batchNumberContent
+            )}
+            <div className="batch-cell batch-cell-created">
+              {(() => {
+                const {time, dayInfo} = formatCreatedTime(record.created_at)
+                return (
+                  <div>
+                    <div style={{fontSize: '12px', fontWeight: 500}}>{dayInfo}</div>
+                    <div style={{fontSize: '11px', color: '#8c8c8c'}}>{time}</div>
+                  </div>
+                )
+              })()}
+            </div>
+            <div className="batch-cell batch-cell-apps">
             <span className="batch-app-count" style={{cursor: 'pointer'}}
                   onClick={(e) => {
                     e.stopPropagation()
                     handleCardToggle(record)
                   }}>{record.app_count || 0} {t('batch.apps')}
             </span>
+            </div>
+            <div className="batch-cell batch-cell-approval">
+              <StatusTag
+                status={currentStatus}
+                approvalStatus={detail?.approval_status ?? record.approval_status}
+                showApproval
+                onApprovalClick={() => handleOpenApproval(record.id)}
+                approvalTime={
+                  detail?.approved_at
+                    ? dayjs(detail.approved_at).format('MM-DD HH:mm')
+                    : record.approved_at
+                      ? dayjs(record.approved_at).format('MM-DD HH:mm')
+                      : undefined
+                }
+                rejectReason={detail?.reject_reason ?? record.reject_reason}
+                approvedBy={detail?.approved_by ?? record.approved_by}
+              />
+            </div>
+            <div
+              className="batch-cell batch-cell-actions"
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              {renderActionButtons(record)}
+            </div>
           </div>
-          <div className="batch-cell batch-cell-approval">
-            <StatusTag
-              status={currentStatus}
-              approvalStatus={detail?.approval_status ?? record.approval_status}
-              showApproval
-              onApprovalClick={() => handleOpenApproval(record.id)}
-              approvalTime={
-                detail?.approved_at
-                  ? dayjs(detail.approved_at).format('MM-DD HH:mm')
-                  : record.approved_at
-                    ? dayjs(record.approved_at).format('MM-DD HH:mm')
-                    : undefined
-              }
-              rejectReason={detail?.reject_reason ?? record.reject_reason}
-              approvedBy={detail?.approved_by ?? record.approved_by}
+
+          <div className="batch-card-timeline"
+               onClick={(e) => {
+                 // 阻止触发卡片的展开/收起
+                 e.stopPropagation()
+                 // 跳转到洞察页面
+                 // navigate(`/batch/${record.id}/insights`)
+                 navigate(`/batch/${record.id}/detail?tab=graph`)
+               }}
+               style={{cursor: 'pointer'}}
+          >
+            <BatchTimeline
+              batch={timelineBatch}
+              onAction={(action) => handleAction(record.id, action)}
             />
           </div>
-          <div
-            className="batch-cell batch-cell-actions"
-            onClick={(e) => {
-              e.stopPropagation()
-            }}
-          >
-            {renderActionButtons(record)}
-          </div>
-        </div>
 
-        <div
-          className="batch-card-timeline"
-          onClick={(e) => {
-            // 阻止触发卡片的展开/收起
-            e.stopPropagation()
-            // 跳转到洞察页面
-            // navigate(`/batch/${record.id}/insights`)
-            navigate(`/batch/${record.id}/detail?tab=graph`)
-          }}
-          style={{cursor: 'pointer'}}
-        >
-          <BatchTimeline
-            batch={timelineBatch}
-            onAction={(action) => handleAction(record.id, action)}
-          />
+          {isExpanded && renderBatchDetail(detail, isDetailLoading)}
         </div>
-
-        {isExpanded && renderBatchDetail(detail, isDetailLoading)}
-      </div>
-    )
+      </Badge.Ribbon>
+    );
   }
 
   const renderBatchCards = () => {
@@ -1062,9 +1064,7 @@ export default function BatchList() {
     const shouldShowRefreshing = refreshingList && expandedRowKeys.length === 0
 
     return (
-      <div
-        className={`batch-card-list-wrapper ${shouldShowRefreshing ? 'refreshing' : ''}`}
-      >
+      <div className={`batch-card-list-wrapper ${shouldShowRefreshing ? 'refreshing' : ''}`}>
         <div className="batch-card-list">
           <div className="batch-card-header">
             <div className="batch-header-cell batch-cell-number">{t('batch.batchNumber')}</div>
@@ -1137,7 +1137,7 @@ export default function BatchList() {
             <Select
               placeholder={t('batch.filterByApproval')}
               allowClear
-              style={{width: 130}}
+              style={{width: 120}}
               value={params.approval_status}
               onChange={(value) => setParams({...params, approval_status: value, page: 1})}
             >
@@ -1147,26 +1147,26 @@ export default function BatchList() {
               <Select.Option value="skipped">{t('batch.approvalSkipped')}</Select.Option>
             </Select>
 
-            <Input
-              placeholder={t('batch.filterByInitiator')}
-              allowClear
-              style={{width: 150}}
-              value={initiatorInput}
-              onChange={(e) => setInitiatorInput(e.target.value)}
-              onClear={() => setInitiatorInput('')}
-            />
+            {/*<Input*/}
+            {/*  placeholder={t('batch.filterByInitiator')}*/}
+            {/*  allowClear*/}
+            {/*  style={{width: 150}}*/}
+            {/*  value={initiatorInput}*/}
+            {/*  onChange={(e) => setInitiatorInput(e.target.value)}*/}
+            {/*  onClear={() => setInitiatorInput('')}*/}
+            {/*/>*/}
 
             <Input
               placeholder={t('batch.filterByKeyword')}
               allowClear
-              style={{width: 200}}
+              style={{width: 180}}
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               onClear={() => setKeywordInput('')}
             />
 
             <RangePicker
-              style={{width: 280}}
+              style={{width: 240}}
               format="YYYY-MM-DD"
               defaultValue={[dayjs().subtract(30, 'day'), dayjs()]}
               presets={[
@@ -1195,6 +1195,17 @@ export default function BatchList() {
               }}
             />
           </Space>
+          <Pagination
+            current={params.page}
+            pageSize={params.page_size}
+            total={total}
+            showSizeChanger
+            showQuickJumper={false}
+            showTotal={(total) => `${t('common.total')} ${total} ${t('common.unit')}`}
+            onChange={(page, pageSize) => {
+              setParams({...params, page, page_size: pageSize})
+            }}
+          />
         </div>
 
         {/* 列表区域 */}
@@ -1207,7 +1218,7 @@ export default function BatchList() {
             total={total}
             showSizeChanger
             showQuickJumper
-            showTotal={(total) => `${t('common.total')} ${total} ${t('batch.list')}`}
+            showTotal={(total) => `${t('common.total')} ${total} ${t('common.unit')}`}
             onChange={(page, pageSize) => {
               setParams({...params, page, page_size: pageSize})
             }}

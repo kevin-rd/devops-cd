@@ -24,10 +24,13 @@
 }
 
 .batch-filters {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 16px;
-    padding: 16px;
-    background: #fafafa;
-    border-radius: 8px;
+    /*padding: 16px;*/
+    /*background: #fafafa;*/
+    /*border-radius: 8px;*/
 }
 
 .batch-list-container .ant-card-head {
@@ -45,7 +48,24 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    overflow-x: hidden;
+    /* overflow-x: hidden; */
+}
+
+/* 自定义 Ribbon 样式 */
+/* 自定义 Ribbon 样式（更高优先级覆盖 Antd 默认值） */
+.ant-ribbon.batch-status-ribbon {
+    top: 8px !important;
+    inset-inline-start: -18px !important; /* 兼容 RTL，等同于 left: -10px */
+    height: 22px !important;
+    line-height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 12px !important;
+    z-index: 10 !important;
+}
+
+/* 确保包裹元素不裁剪 Ribbon */
+.batch-card .ant-ribbon-wrapper {
+    overflow: visible;
 }
 
 .batch-card-header {
@@ -528,7 +548,7 @@
 }
 
 .batch-pagination {
-    margin-top: 24px;
+    margin-top: 12px;
     display: flex;
     justify-content: flex-end;
 }

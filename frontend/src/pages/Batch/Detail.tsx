@@ -26,7 +26,7 @@ import AppSelectionTable from '@/components/AppSelectionTable'
 import '@/styles/status-theme.css'
 import './Detail.css'
 import {ReleaseApp} from "@/types/release_app.ts";
-import {Batch, BatchStatus} from "@/types/batch.ts";
+import {Batch, BatchAction, BatchStatus} from "@/types/batch.ts";
 
 type DependencyOption = {
   label: ReactNode
@@ -380,7 +380,7 @@ export default function BatchDetail() {
           label: `${t('batch.startPreDeploy')} (${appStatistics.preAppsCount} 个应用)`,
           icon: <PlayCircleOutlined/>,
           type: 'primary',
-          action: 'start_pre_deploy',
+          action: BatchAction.StartPreDeploy,
         })
       }
 
@@ -391,7 +391,7 @@ export default function BatchDetail() {
           label: `${t('batch.startProdDeploy')} (跳过预发布)`,
           icon: <FastForwardOutlined/>,
           type: 'primary',
-          action: 'start_prod_deploy',
+          action: BatchAction.StartProdDeploy,
         })
       }
     }
@@ -414,7 +414,7 @@ export default function BatchDetail() {
         label: t('batch.startProdDeploy'),
         icon: <PlayCircleOutlined/>,
         type: 'primary',
-        action: 'start_prod_deploy',
+        action: BatchAction.StartProdDeploy,
       })
     }
 
@@ -827,6 +827,7 @@ export default function BatchDetail() {
                 <Button
                   key={action.key}
                   type={action.type}
+                  size="small"
                   danger={action.danger}
                   icon={action.icon}
                   loading={actionMutation.isPending}
