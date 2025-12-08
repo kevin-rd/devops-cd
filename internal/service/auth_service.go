@@ -2,12 +2,14 @@ package service
 
 import (
 	"devops-cd/internal/dto"
+	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/config"
 	"devops-cd/internal/pkg/crypto"
 	"devops-cd/internal/pkg/jwt"
 	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
 	pkgErrors "devops-cd/pkg/errors"
+	"devops-cd/pkg/utils/strings"
 )
 
 type AuthService interface {
@@ -47,6 +49,9 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := s.syncLDAPUser(userInfo); err != nil {
+			return nil, err
+		}
 
 	case constants.AuthTypeLocal:
 		if !s.cfg.Local.Enabled {
@@ -67,12 +72,21 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		userInfo.Email,
 		userInfo.DisplayName,
 		userInfo.AuthType,
+		userInfo.UID,
+		userInfo.Phone,
 	)
 	if err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "生成AccessToken失败", err)
 	}
 
-	refreshToken, err := jwt.GenerateRefreshToken(userInfo.Username)
+	refreshToken, err := jwt.GenerateRefreshToken(
+		userInfo.Username,
+		userInfo.Email,
+		userInfo.DisplayName,
+		userInfo.AuthType,
+		userInfo.UID,
+		userInfo.Phone,
+	)
 	if err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "生成RefreshToken失败", err)
 	}
@@ -87,7 +101,7 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 func (s *authService) authenticateLocal(username, password string) (*dto.UserInfo, error) {
 	// 查询用户
-	user, err := s.userRepo.FindByUsername(username)
+	user, err := s.userRepo.FindByUsername(username, constants.AuthTypeLocal)
 	if err != nil {
 		if err == pkgErrors.ErrRecordNotFound {
 			return nil, pkgErrors.ErrInvalidCredentials
@@ -117,13 +131,48 @@ func (s *authService) authenticateLocal(username, password string) (*dto.UserInf
 	if user.DisplayName != nil {
 		displayName = *user.DisplayName
 	}
+	phone := ""
+	if user.Phone != nil {
+		phone = *user.Phone
+	}
+	uid := ""
+	if user.ExternalUID != nil {
+		uid = *user.ExternalUID
+	}
 
 	return &dto.UserInfo{
 		Username:    user.Username,
 		Email:       email,
 		DisplayName: displayName,
 		AuthType:    constants.AuthTypeLocal,
+		UID:         uid,
+		Phone:       phone,
 	}, nil
+}
+
+func (s *authService) syncLDAPUser(userInfo *dto.UserInfo) error {
+	user, err := s.userRepo.FindByUsername(userInfo.Username, constants.AuthTypeLDAP)
+	if err != nil {
+		if err == pkgErrors.ErrRecordNotFound {
+			user = &model.User{
+				AuthProvider: constants.AuthTypeLDAP,
+				Username:     userInfo.Username,
+				Password:     "",
+				DisplayName:  strings.StringPtr(userInfo.DisplayName),
+				Email:        strings.StringPtr(userInfo.Email),
+				Phone:        strings.StringPtr(userInfo.Phone),
+				ExternalUID:  strings.StringPtr(userInfo.UID),
+				BaseStatus:   model.BaseStatus{Status: constants.StatusEnabled},
+			}
+			if err = s.userRepo.Create(user); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	return s.userRepo.UpdateLastLogin(user.ID)
 }
 
 func (s *authService) RefreshToken(refreshToken string) (*dto.LoginResponse, error) {
@@ -144,13 +193,22 @@ func (s *authService) RefreshToken(refreshToken string) (*dto.LoginResponse, err
 		claims.Email,
 		claims.DisplayName,
 		claims.AuthType,
+		claims.UID,
+		claims.Phone,
 	)
 	if err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "生成AccessToken失败", err)
 	}
 
 	// 生成新的RefreshToken
-	newRefreshToken, err := jwt.GenerateRefreshToken(claims.Username)
+	newRefreshToken, err := jwt.GenerateRefreshToken(
+		claims.Username,
+		claims.Email,
+		claims.DisplayName,
+		claims.AuthType,
+		claims.UID,
+		claims.Phone,
+	)
 	if err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeInternalError, "生成RefreshToken失败", err)
 	}
@@ -164,6 +222,8 @@ func (s *authService) RefreshToken(refreshToken string) (*dto.LoginResponse, err
 			Email:       claims.Email,
 			DisplayName: claims.DisplayName,
 			AuthType:    claims.AuthType,
+			UID:         claims.UID,
+			Phone:       claims.Phone,
 		},
 	}, nil
 }
@@ -179,5 +239,7 @@ func (s *authService) VerifyToken(token string) (*dto.UserInfo, error) {
 		Email:       claims.Email,
 		DisplayName: claims.DisplayName,
 		AuthType:    claims.AuthType,
+		UID:         claims.UID,
+		Phone:       claims.Phone,
 	}, nil
 }

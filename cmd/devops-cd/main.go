@@ -42,7 +42,7 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 var (
-	configFile = flag.String("config", "", "配置文件路径 (例如: -config=configs/base.yaml)")
+	configFile = flag.String("config", "", "配置文件路径 (例如: -config=configs/config.yaml)")
 	version    = flag.Bool("version", false, "显示版本信息")
 )
 
@@ -190,7 +190,7 @@ func getConfigPath() string {
 	}
 
 	// 3. 默认路径
-	return "configs/base.yaml"
+	return "configs/config.yaml"
 }
 
 // getConfigSource 获取配置来源说明

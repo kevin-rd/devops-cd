@@ -60,7 +60,7 @@
     line-height: 22px !important;
     padding: 0 6px !important;
     font-size: 12px !important;
-    z-index: 10 !important;
+    z-index: 5 !important;
 }
 
 /* 确保包裹元素不裁剪 Ribbon */

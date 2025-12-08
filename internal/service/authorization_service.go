@@ -5,6 +5,7 @@ import (
 	"devops-cd/internal/pkg/auth"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
+	"devops-cd/pkg/constants"
 	pkgErrors "devops-cd/pkg/errors"
 	"errors"
 	"github.com/samber/lo"
@@ -17,9 +18,9 @@ import (
 //  3. 角色 -> 权限 的关系写死在 internal/model/auth.go 的 RolePermissions 中
 //  4. 权限匹配使用 model.allow，支持通配符（如 view:*、resource:*）
 type AuthorizationService interface {
-	CanAccessProject(username string, projectId int64, perm auth.Permission) bool
+	CanAccessProject(username, authProvider string, projectId int64, perm auth.Permission) bool
 	// HasTeamPermission 判断某个用户在指定 team 下是否拥有某个权限
-	HasTeamPermission(username string, teamID int64, perm auth.Permission) (bool, error)
+	HasTeamPermission(username, authProvider string, teamID int64, perm auth.Permission) (bool, error)
 }
 
 type authorizationService struct {
@@ -35,9 +36,9 @@ func NewAuthorizationService(userRepo repository.UserRepository, teamMemberRepo 
 	}
 }
 
-func (s *authorizationService) CanAccessProject(username string, projectId int64, perm auth.Permission) bool {
+func (s *authorizationService) CanAccessProject(username, authProvider string, projectId int64, perm auth.Permission) bool {
 
-	user, err := s.userRepo.FindWithTeams(username)
+	user, err := s.userRepo.FindWithTeams(username, normalizeProvider(authProvider))
 	if err != nil {
 		if errors.Is(err, pkgErrors.ErrRecordNotFound) {
 			// 用户不存在，视为无权限
@@ -62,9 +63,9 @@ func (s *authorizationService) CanAccessProject(username string, projectId int64
 // 2. 基于用户的 SystemRoles 计算系统级权限，如果已满足则直接放行
 // 3. 否则查询 team_members 中该用户在指定 team 下的记录，基于成员角色计算权限
 // 4. 最终使用 model.allow 进行权限匹配
-func (s *authorizationService) HasTeamPermission(username string, teamID int64, perm auth.Permission) (bool, error) {
+func (s *authorizationService) HasTeamPermission(username, authProvider string, teamID int64, perm auth.Permission) (bool, error) {
 	// 1. 查询用户
-	user, err := s.userRepo.FindByUsername(username)
+	user, err := s.userRepo.FindByUsername(username, normalizeProvider(authProvider))
 	if err != nil {
 		if errors.Is(err, pkgErrors.ErrRecordNotFound) {
 			// 用户不存在，视为无权限
@@ -90,4 +91,11 @@ func (s *authorizationService) HasTeamPermission(username string, teamID int64, 
 	}
 
 	return auth.Allow(member.Roles, perm), nil
+}
+
+func normalizeProvider(provider string) string {
+	if provider == "" {
+		return constants.AuthTypeLocal
+	}
+	return provider
 }

@@ -45,6 +45,8 @@ export interface UserInfo {
   email: string
   display_name: string
   auth_type: 'local' | 'ldap'
+  uid?: string
+  phone?: string
 }
 
 // Repository Types

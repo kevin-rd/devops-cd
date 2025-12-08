@@ -182,3 +182,7 @@ func Error(msg string, fields ...zap.Field) {
 func Fatal(msg string, fields ...zap.Field) {
 	log.Fatal(msg, fields...)
 }
+
+func Fatalf(template string, args ...interface{}) {
+	log.Sugar().Fatalf(template, args...)
+}

@@ -59,15 +59,19 @@ type JWTConfig struct {
 
 // LDAPConfig LDAP配置
 type LDAPConfig struct {
-	Enabled      bool           `mapstructure:"enabled"`
-	Host         string         `mapstructure:"host"`
-	Port         int            `mapstructure:"port"`
-	UseSSL       bool           `mapstructure:"use_ssl"`
-	BindDN       string         `mapstructure:"bind_dn"`
-	BindPassword string         `mapstructure:"bind_password"`
-	BaseDN       string         `mapstructure:"base_dn"`
-	UserFilter   string         `mapstructure:"user_filter"`
-	Attributes   LDAPAttributes `mapstructure:"attributes"`
+	Enabled        bool           `mapstructure:"enabled"`
+	Host           string         `mapstructure:"host"`
+	Port           int            `mapstructure:"port"`
+	UseSSL         bool           `mapstructure:"use_ssl"`
+	SkipTLSVerify  bool           `mapstructure:"skip_tls_verify"`
+	ClientCertPath string         `mapstructure:"client_cert_path"`
+	ClientKeyPath  string         `mapstructure:"client_key_path"`
+	BindDN         string         `mapstructure:"bind_dn"`
+	BindPassword   string         `mapstructure:"bind_password"`
+	BaseDN         string         `mapstructure:"base_dn"`
+	UserFilter     string         `mapstructure:"user_filter"`
+	Attributes     LDAPAttributes `mapstructure:"attributes"`
+	TimeoutSeconds int            `mapstructure:"timeout_seconds"`
 }
 
 // LDAPAttributes LDAP属性映射
@@ -75,6 +79,8 @@ type LDAPAttributes struct {
 	Username    string `mapstructure:"username"`
 	Email       string `mapstructure:"email"`
 	DisplayName string `mapstructure:"display_name"`
+	UID         string `mapstructure:"uid"`
+	Phone       string `mapstructure:"phone"`
 }
 
 // LocalConfig 本地用户配置

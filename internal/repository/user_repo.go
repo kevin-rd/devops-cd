@@ -11,8 +11,8 @@ import (
 
 type UserRepository interface {
 	Create(user *model.User) error
-	FindByUsername(username string) (*model.User, error)
-	FindWithTeams(username string) (*model.User, error)
+	FindByUsername(username, authProvider string) (*model.User, error)
+	FindWithTeams(username, authProvider string) (*model.User, error)
 	FindByID(id int64) (*model.User, error)
 	Update(user *model.User) error
 	UpdateLastLogin(id int64) error
@@ -35,9 +35,9 @@ func (r *userRepository) Create(user *model.User) error {
 	return nil
 }
 
-func (r *userRepository) FindByUsername(username string) (*model.User, error) {
+func (r *userRepository) FindByUsername(username, authProvider string) (*model.User, error) {
 	var user model.User
-	err := r.db.Where("username = ? AND deleted_at IS NULL", username).First(&user).Error
+	err := r.queryByUsername(username, authProvider).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -47,9 +47,9 @@ func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	return &user, nil
 }
 
-func (r *userRepository) FindWithTeams(username string) (*model.User, error) {
+func (r *userRepository) FindWithTeams(username, authProvider string) (*model.User, error) {
 	var user model.User
-	if err := r.db.Where("username = ? AND deleted_at IS NULL", username).Preload("TeamMembers").First(&user).Error; err != nil {
+	if err := r.queryByUsername(username, authProvider).Preload("TeamMembers").First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, pkgErrors.ErrRecordNotFound
 		}
@@ -82,4 +82,12 @@ func (r *userRepository) UpdateLastLogin(id int64) error {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新登录时间失败", err)
 	}
 	return nil
+}
+
+func (r *userRepository) queryByUsername(username, authProvider string) *gorm.DB {
+	db := r.db.Where("username = ? AND deleted_at IS NULL", username)
+	if authProvider != "" {
+		db = db.Where("auth_provider = ?", authProvider)
+	}
+	return db
 }

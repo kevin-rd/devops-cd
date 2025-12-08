@@ -6,11 +6,11 @@ server:
 
 database:
   driver: mysql
-  host: 154.223.178.3
-  port: 3308
+  host: mysql.host
+  port: 3306
   database: devops_cd
-  username: kevin
-  password: 12345
+  username: cd_user
+  password: cd_password
   max_idle_conns: 10
   max_open_conns: 100
   conn_max_lifetime: 3600
@@ -22,18 +22,24 @@ auth:
     access_token_expire: 7200      # 2小时
     refresh_token_expire: 604800   # 7天
   ldap:
-    enabled: false
+    enabled: true
     host: ldap.company.com
-    port: 389
-    use_ssl: false
+    port: 636
+    use_ssl: true           # 使用 LDAPS（推荐）
+    skip_tls_verify: true   # 跳过证书校验
+    client_cert_path: "configs/ldap.crt"
+    client_key_path: "configs/ldap.key"
+    timeout_seconds: 10
     bind_dn: "cn=admin,dc=company,dc=com"
-    bind_password: "password"
+    bind_password: "admin_password"
     base_dn: "ou=users,dc=company,dc=com"
     user_filter: "(uid=%s)"
     attributes:
       username: "uid"
       email: "mail"
       display_name: "cn"
+      uid: "entryUUID"   # 若目录无 entryUUID，可改为 uid
+      phone: "mobile"
   local:
     enabled: true
 

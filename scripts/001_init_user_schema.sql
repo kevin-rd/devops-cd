@@ -8,15 +8,19 @@
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `users` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-    `username` VARCHAR(63) NOT NULL UNIQUE COMMENT '用户名',
-    `password` VARCHAR(255) NOT NULL COMMENT '密码(bcrypt加密)',
+    `auth_provider` VARCHAR(20) NOT NULL DEFAULT 'local' COMMENT '认证来源(local/ldap)',
+    `username` VARCHAR(63) NOT NULL COMMENT '用户名',
+    `password` VARCHAR(255) NOT NULL COMMENT '密码(bcrypt加密, LDAP账号可为空字符串)',
+    `external_uid` VARCHAR(191) DEFAULT NULL COMMENT '外部目录唯一ID(entryUUID/uid)',
     `email` VARCHAR(255) DEFAULT NULL COMMENT '邮箱',
     `display_name` VARCHAR(63) DEFAULT NULL COMMENT '显示名称',
+    `phone` VARCHAR(32) DEFAULT NULL COMMENT '手机号',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用 0:禁用)',
     `last_login_at` TIMESTAMP NULL DEFAULT NULL COMMENT '最后登录时间',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT '软删除时间',
+    UNIQUE KEY `uk_auth_provider_username` (`auth_provider`, `username`),
     INDEX `idx_username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1000 DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
@@ -75,8 +79,8 @@ CREATE TABLE IF NOT EXISTS `projects` (
 
 -- 插入默认本地管理员用户 (密码: admin123, 需要使用bcrypt加密)
 -- 以下密码哈希是 "admin123" 的 bcrypt 加密结果
-INSERT INTO `users` (`username`, `password`, `email`, `display_name`, `status`)
-VALUES ('admin', '$2a$10$N9qo8u1K5PJXh3x9Y7u6J.eqw6Xb5nBxw5TqKJ1x9Y7u6J.eqw6Xb', 'admin@example.com', '系统管理员', 1)
+INSERT INTO `users` (`auth_provider`, `username`, `password`, `email`, `display_name`, `status`)
+VALUES ('local', 'admin', '$2a$10$N9qo8u1K5PJXh3x9Y7u6J.eqw6Xb5nBxw5TqKJ1x9Y7u6J.eqw6Xb', 'admin@example.com', '系统管理员', 1)
 ON DUPLICATE KEY UPDATE `username` = `username`;
 
 

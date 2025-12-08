@@ -17,12 +17,14 @@ type UserClaims struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
 	AuthType    string `json:"auth_type"` // ldap or local
-	Type        string `json:"type"`      // access or refresh
+	UID         string `json:"uid"`
+	Phone       string `json:"phone"`
+	Type        string `json:"type"` // access or refresh
 	jwt.RegisteredClaims
 }
 
 // GenerateAccessToken 生成访问Token
-func GenerateAccessToken(username, email, displayName, authType string) (string, error) {
+func GenerateAccessToken(username, email, displayName, authType, uid, phone string) (string, error) {
 	cfg := config.GlobalConfig.Auth.JWT
 
 	claims := UserClaims{
@@ -30,6 +32,8 @@ func GenerateAccessToken(username, email, displayName, authType string) (string,
 		Email:       email,
 		DisplayName: displayName,
 		AuthType:    authType,
+		UID:         uid,
+		Phone:       phone,
 		Type:        constants.JWTTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   username,
@@ -43,12 +47,17 @@ func GenerateAccessToken(username, email, displayName, authType string) (string,
 }
 
 // GenerateRefreshToken 生成刷新Token
-func GenerateRefreshToken(username string) (string, error) {
+func GenerateRefreshToken(username, email, displayName, authType, uid, phone string) (string, error) {
 	cfg := config.GlobalConfig.Auth.JWT
 
 	claims := UserClaims{
-		Username: username,
-		Type:     constants.JWTTypeRefresh,
+		Username:    username,
+		Email:       email,
+		DisplayName: displayName,
+		AuthType:    authType,
+		UID:         uid,
+		Phone:       phone,
+		Type:        constants.JWTTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   username,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.RefreshTokenExpire) * time.Second)),

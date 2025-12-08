@@ -9,12 +9,15 @@ const TeamMemberTableName = "team_members"
 // User 本地用户模型
 type User struct {
 	BaseStatus
-	Username    string     `gorm:"size:50;not null;uniqueIndex" json:"username"`
-	Password    string     `gorm:"size:255;not null" json:"-"` // 不返回到前端
-	Email       *string    `gorm:"size:100" json:"email"`
-	DisplayName *string    `gorm:"size:100" json:"display_name"`
-	LastLoginAt *time.Time `json:"last_login_at"`
-	SystemRoles StringList `gorm:"column:system_roles;type:json" json:"system_roles"`
+	AuthProvider string     `gorm:"size:20;not null;default:local;uniqueIndex:idx_user_provider_name" json:"auth_provider"`
+	Username     string     `gorm:"size:50;not null;uniqueIndex:idx_user_provider_name" json:"username"`
+	Password     string     `gorm:"size:255" json:"-"` // 不返回到前端；LDAP 用户可为空字符串
+	ExternalUID  *string    `gorm:"size:191" json:"external_uid,omitempty"`
+	Email        *string    `gorm:"size:100" json:"email,omitempty"`
+	DisplayName  *string    `gorm:"size:100" json:"display_name,omitempty"`
+	Phone        *string    `gorm:"size:32" json:"phone,omitempty"`
+	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
+	SystemRoles  StringList `gorm:"column:system_roles;type:json" json:"system_roles"`
 
 	TeamMembers []TeamMember `gorm:"foreignKey:UserID;references:ID" json:"team_members,omitempty"`
 	//Teams       []Team       `gorm:"foreignKey:many2many:team_members;joinForeignKey:userid,joinReferences:team_id" json:"teams,omitempty"`

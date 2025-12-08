@@ -21,6 +21,8 @@ type UserInfo struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
 	AuthType    string `json:"auth_type"`
+	UID         string `json:"uid,omitempty"`
+	Phone       string `json:"phone,omitempty"`
 }
 
 // RefreshTokenRequest 刷新Token请求
