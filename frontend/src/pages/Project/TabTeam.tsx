@@ -14,9 +14,10 @@ import {userService, type UserSimple} from '@/services/user'
 
 interface TabTeamProps {
   project: Project
+  refreshTrigger: number
 }
 
-const TabTeam: React.FC<TabTeamProps> = ({project}) => {
+const TabTeam: React.FC<TabTeamProps> = ({project, refreshTrigger}) => {
   const {t} = useTranslation()
   const queryClient = useQueryClient()
   const [teamForm] = Form.useForm()
@@ -319,7 +320,7 @@ const TabTeam: React.FC<TabTeamProps> = ({project}) => {
 
   const TeamMembersPanel: React.FC<{ teamId: number; active: boolean }> = ({teamId, active}) => {
     const {data = [], isLoading} = useQuery<TeamMember[]>({
-      queryKey: ['team-members', teamId],
+      queryKey: ['team-members', teamId, refreshTrigger],
       queryFn: () => fetchTeamMembers(teamId),
       enabled: active,
       staleTime: 1000 * 60,

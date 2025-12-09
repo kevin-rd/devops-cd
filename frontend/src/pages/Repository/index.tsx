@@ -66,7 +66,7 @@ const RepositoryPage: React.FC = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([])
 
   // 视图模式切换
-  const [viewMode, setViewMode] = useState<'repo' | 'app'>('repo')
+  const [viewMode, setViewMode] = useState<'repo' | 'app'>('app')
 
   // 模态框中选择的项目ID（用于联动团队列表）
   const [modalProjectId, setModalProjectId] = useState<number | undefined>()

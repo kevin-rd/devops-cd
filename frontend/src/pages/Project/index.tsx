@@ -60,6 +60,7 @@ const ProjectPage: React.FC = () => {
 
   // Tabs 状态
   const [activeTabKey, setActiveTabKey] = useState('basic')
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // 查询项目列表（简化版，用于左侧列表）
   const {data: response} = useQuery<BackendPaginatedResponse<Project>>({
@@ -217,13 +218,13 @@ const ProjectPage: React.FC = () => {
       key: 'env',
       label: '环境配置',
       children: selectedProject ? (
-        <TabEnvConfig projectId={selectedProject.id}/>
+        <TabEnvConfig projectId={selectedProject.id} refreshTrigger={refreshTrigger}/>
       ) : null,
     }, {
       key: 'teams',
       label: '团队管理',
       children: selectedProject ? (
-        <TabTeam project={selectedProject}/>
+        <TabTeam project={selectedProject} refreshTrigger={refreshTrigger}/>
       ) : null,
     }]
   const mainTabContent: Record<string, React.ReactNode> = Object.fromEntries(
@@ -323,18 +324,23 @@ const ProjectPage: React.FC = () => {
                     </Space>
                   }
                   extra={
-                    <Popconfirm title="确定要删除该项目吗？" onConfirm={() => deleteMutation.mutate(selectedProjectId)}>
-                      <Button danger icon={<DeleteOutlined/>}>删除项目</Button>
-                    </Popconfirm>
+                    <Space>
+                      <Button key="refresh" icon={<ReloadOutlined/>} onClick={() => {
+                        if (selectedProjectId) {
+                          queryClient.invalidateQueries({queryKey: ['project-detail', selectedProjectId]}).then()
+                          setRefreshTrigger(prev => prev + 1)
+                        }
+                      }}>
+                        刷新
+                      </Button>
+                      <Popconfirm title="确定要删除该项目吗？"
+                                  onConfirm={() => deleteMutation.mutate(selectedProjectId)}>
+                        <Button danger icon={<DeleteOutlined/>}>删除项目</Button>
+                      </Popconfirm>
+                    </Space>
                   }
                   tabList={mainTab.map(({key, label}) => ({key, label}))}
                   activeTabKey={activeTabKey}
-                  tabBarExtraContent={
-                    <Button key="refresh" icon={<ReloadOutlined/>} onClick={() => {
-                      if (selectedProjectId) {
-                        queryClient.invalidateQueries({queryKey: ['project-detail', selectedProjectId]})
-                      }
-                    }}>刷新</Button>}
                   onTabChange={key => setActiveTabKey(key)}
             >
               {mainTabContent[activeTabKey]}

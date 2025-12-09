@@ -9,6 +9,7 @@ import {useDirtyFields} from '@/hooks/useDirtyFields'
 
 interface TabEnvConfigProps {
   projectId: number
+  refreshTrigger: number
 }
 
 // 支持的环境列表（可扩展）
@@ -27,7 +28,7 @@ interface EnvFormValues {
   values_path_template: string
 }
 
-const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
+const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
   const queryClient = useQueryClient()
   const [preForm] = Form.useForm<EnvFormValues>()
   const [prodForm] = Form.useForm<EnvFormValues>()
@@ -41,7 +42,7 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
 
   // 获取所有集群
   const {data: clustersResponse, isLoading: clustersLoading} = useQuery({
-    queryKey: ['clusters'],
+    queryKey: ['clusters', refreshTrigger],
     queryFn: async () => {
       return await getClusters({status: 1, page: 1, page_size: 1000})
     },
@@ -51,7 +52,7 @@ const TabEnvConfig = ({projectId}: TabEnvConfigProps) => {
 
   // 获取项目环境配置
   const {data: configsResponse, isLoading: configsLoading} = useQuery({
-    queryKey: ['project-env-configs', projectId],
+    queryKey: ['project-env-configs', projectId, refreshTrigger],
     queryFn: async () => {
       return await projectEnvConfigService.getList(projectId)
     },
