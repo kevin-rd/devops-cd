@@ -1,5 +1,28 @@
 basePath: /api/v1
 definitions:
+  devops-cd_internal_dto.AppEnvConfigResponse:
+    properties:
+      app_id:
+        type: integer
+      cluster:
+        type: string
+      config_data:
+        type: string
+      created_at:
+        type: string
+      deployment_name_override:
+        type: string
+      env:
+        type: string
+      id:
+        type: integer
+      replicas:
+        type: integer
+      status:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   devops-cd_internal_dto.AppTypeInfo:
     properties:
       color:
@@ -29,38 +52,78 @@ definitions:
           $ref: '#/definitions/devops-cd_internal_dto.AppTypeInfo'
         type: array
     type: object
+  devops-cd_internal_dto.ApplicationDependenciesResponse:
+    properties:
+      app_id:
+        type: integer
+      app_name:
+        type: string
+      dependencies:
+        items:
+          type: integer
+        type: array
+      updated_at:
+        type: string
+    type: object
   devops-cd_internal_dto.ApplicationResponse:
     properties:
       app_type:
         type: string
       created_at:
         type: string
+      default_depends_on:
+        items:
+          type: integer
+        type: array
       deployed_tag:
         description: 当前部署的镜像标签
         type: string
       description:
         type: string
-      display_name:
-        type: string
+      env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 环境集群配置，从 app_env_configs 表查询得出
+        type: object
       id:
         type: integer
       name:
         type: string
-      project:
+      project_id:
+        description: 关联的项目ID
+        type: integer
+      project_name:
+        description: 项目名称
         type: string
       repo_id:
         type: integer
       repo_name:
-        description: Repository的project/name
+        description: Repository的namespace/name
         type: string
       status:
         type: integer
       team_id:
         type: integer
       team_name:
+        description: 团队名称
         type: string
       updated_at:
         type: string
+    type: object
+  devops-cd_internal_dto.BatchCreateAppEnvConfigsRequest:
+    properties:
+      app_id:
+        type: integer
+      configs:
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateAppEnvConfigItemRequest'
+        minItems: 1
+        type: array
+    required:
+    - app_id
+    - configs
     type: object
   devops-cd_internal_dto.BuildNotifyApp:
     properties:
@@ -150,9 +213,6 @@ definitions:
       commit_ref:
         description: refs/tags/v2025.1027.01-ga
         type: string
-      env:
-        description: ========== 环境信息 ==========
-        type: string
       git_author_email:
         description: 原作者邮箱（可选）
         type: string
@@ -198,19 +258,23 @@ definitions:
         description: 应用名称（关联查询）
         type: string
       build_created:
-        type: integer
+        description: RFC3339 格式时间字符串
+        type: string
       build_duration:
+        description: 构建耗时（秒）
         type: integer
       build_event:
         type: string
       build_finished:
-        type: integer
+        description: RFC3339 格式时间字符串
+        type: string
       build_link:
         type: string
       build_number:
         type: integer
       build_started:
-        type: integer
+        description: RFC3339 格式时间字符串
+        type: string
       build_status:
         type: string
       commit_author:
@@ -243,6 +307,129 @@ definitions:
       updated_at:
         type: string
     type: object
+  devops-cd_internal_dto.BuildSummary:
+    properties:
+      build_created:
+        type: string
+      build_number:
+        type: integer
+      build_status:
+        type: string
+      commit_author:
+        type: string
+      commit_message:
+        type: string
+      commit_sha:
+        type: string
+      id:
+        type: integer
+      image_tag:
+        type: string
+    type: object
+  devops-cd_internal_dto.ClusterCreateRequest:
+    properties:
+      description:
+        example: 华东区域生产集群
+        type: string
+      name:
+        example: cluster-prod-01
+        maxLength: 50
+        type: string
+      region:
+        example: cn-east-1
+        maxLength: 50
+        type: string
+    required:
+    - name
+    type: object
+  devops-cd_internal_dto.ClusterResponse:
+    properties:
+      created_at:
+        description: Status      int8    `json:"status"`
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      region:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.ClusterUpdateRequest:
+    properties:
+      description:
+        example: 华东区域生产集群
+        type: string
+      name:
+        example: cluster-prod-01
+        maxLength: 50
+        type: string
+      region:
+        example: cn-east-1
+        maxLength: 50
+        type: string
+    type: object
+  devops-cd_internal_dto.CreateAppEnvConfigItemRequest:
+    properties:
+      cluster:
+        maxLength: 50
+        type: string
+      config_data:
+        type: string
+      deployment_name_override:
+        maxLength: 63
+        type: string
+      env:
+        enum:
+        - pre
+        - prod
+        - dev
+        - test
+        - uat
+        type: string
+      replicas:
+        maximum: 100
+        minimum: 1
+        type: integer
+    required:
+    - cluster
+    - env
+    - replicas
+    type: object
+  devops-cd_internal_dto.CreateAppEnvConfigRequest:
+    properties:
+      app_id:
+        type: integer
+      cluster:
+        maxLength: 50
+        type: string
+      config_data:
+        description: JSON字符串
+        type: string
+      deployment_name_override:
+        maxLength: 63
+        type: string
+      env:
+        enum:
+        - pre
+        - prod
+        - dev
+        - test
+        - uat
+        type: string
+      replicas:
+        maximum: 100
+        minimum: 1
+        type: integer
+    required:
+    - app_id
+    - cluster
+    - env
+    - replicas
+    type: object
   devops-cd_internal_dto.CreateApplicationRequest:
     properties:
       app_type:
@@ -257,9 +444,19 @@ definitions:
         type: string
       display_name:
         type: string
+      env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 环境集群配置，用于初始化 app_env_configs 表
+        type: object
       name:
         maxLength: 100
         type: string
+      project_id:
+        description: 可选：如果不指定则从 Repository 继承
+        type: integer
       repo_id:
         type: integer
       team_id:
@@ -268,6 +465,66 @@ definitions:
     - app_type
     - name
     - repo_id
+    type: object
+  devops-cd_internal_dto.CreateBatchApp:
+    properties:
+      app_id:
+        description: 应用ID
+        type: integer
+      release_notes:
+        description: 应用级发布说明（可选）
+        type: string
+    required:
+    - app_id
+    type: object
+  devops-cd_internal_dto.CreateBatchRequest:
+    properties:
+      apps:
+        description: 应用列表（允许为空，封板时校验）
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateBatchApp'
+        type: array
+      batch_number:
+        description: 批次编号/标题，用户填写
+        type: string
+      project_id:
+        description: 关联的项目ID
+        type: integer
+      release_notes:
+        description: 批次级发布说明（可选）
+        type: string
+    required:
+    - batch_number
+    - project_id
+    type: object
+  devops-cd_internal_dto.CreateProjectRequest:
+    properties:
+      allowed_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: '允许的环境集群配置: {"pre": ["cluster-a"], "prod": ["cluster-b"]}'
+        type: object
+      create_default_team:
+        type: boolean
+      default_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 项目默认环境集群配置(必须是 allowed_env_clusters 的子集)
+        type: object
+      description:
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      owner_name:
+        maxLength: 100
+        type: string
+    required:
+    - name
     type: object
   devops-cd_internal_dto.CreateRepositoryRequest:
     properties:
@@ -286,16 +543,34 @@ definitions:
       name:
         maxLength: 100
         type: string
-      project:
+      namespace:
         maxLength: 100
         type: string
+      project_id:
+        type: integer
       team_id:
         type: integer
     required:
     - git_type
     - git_url
     - name
-    - project
+    - namespace
+    type: object
+  devops-cd_internal_dto.CreateTeamRequest:
+    properties:
+      description:
+        type: string
+      leader_name:
+        maxLength: 100
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      project_id:
+        type: integer
+    required:
+    - name
+    - project_id
     type: object
   devops-cd_internal_dto.DeleteApplicationRequest:
     properties:
@@ -309,6 +584,14 @@ definitions:
     properties:
       id:
         description: 必填：要删除的代码库ID
+        type: integer
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.GetReleaseAppRequest:
+    properties:
+      id:
+        description: 发布应用ID
         type: integer
     required:
     - id
@@ -351,12 +634,243 @@ definitions:
       total:
         type: integer
     type: object
+  devops-cd_internal_dto.ProjectAvailableEnvClustersResponse:
+    properties:
+      allowed_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: '完整配置: {"pre": ["cluster-a"], "prod": ["cluster-b"]}'
+        type: object
+      available_clusters:
+        description: 如果指定了env,返回该环境下可用集群列表
+        items:
+          type: string
+        type: array
+    type: object
+  devops-cd_internal_dto.ProjectEnvConfigRequest:
+    properties:
+      allow_clusters:
+        items:
+          type: string
+        type: array
+      chart_repo_url:
+        maxLength: 255
+        type: string
+      default_clusters:
+        items:
+          type: string
+        type: array
+      deployment_name_template:
+        maxLength: 255
+        type: string
+      namespace:
+        maxLength: 63
+        type: string
+      values_path_template:
+        maxLength: 255
+        type: string
+      values_repo_url:
+        maxLength: 255
+        type: string
+    required:
+    - allow_clusters
+    type: object
+  devops-cd_internal_dto.ProjectEnvConfigResponse:
+    properties:
+      allow_clusters:
+        items:
+          type: string
+        type: array
+      chart_repo_url:
+        type: string
+      created_at:
+        type: string
+      default_clusters:
+        items:
+          type: string
+        type: array
+      deployment_name_template:
+        type: string
+      env:
+        type: string
+      id:
+        type: integer
+      namespace:
+        type: string
+      project_id:
+        type: integer
+      updated_at:
+        type: string
+      values_path_template:
+        type: string
+      values_repo_url:
+        type: string
+    type: object
+  devops-cd_internal_dto.ProjectResponse:
+    properties:
+      allowed_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 允许的环境集群配置
+        type: object
+      created_at:
+        type: string
+      default_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 项目默认环境集群配置(必须是 allowed_env_clusters 的子集)
+        type: object
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      owner_name:
+        type: string
+      teams:
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.ProjectSimpleResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
   devops-cd_internal_dto.RefreshTokenRequest:
     properties:
       refresh_token:
         type: string
     required:
     - refresh_token
+    type: object
+  devops-cd_internal_dto.ReleaseAppResponse:
+    properties:
+      app_id:
+        type: integer
+      app_name:
+        description: 应用信息
+        type: string
+      app_project:
+        type: string
+      app_status:
+        type: integer
+      app_type:
+        type: string
+      batch_id:
+        type: integer
+      build_id:
+        description: 关联的构建ID
+        type: integer
+      build_number:
+        description: 构建信息（通过 build 关联获取，可选）
+        type: integer
+      build_status:
+        description: 构建状态
+        type: string
+      build_time:
+        type: string
+      commit_branch:
+        description: 分支
+        type: string
+      commit_message:
+        description: commit 信息
+        type: string
+      commit_sha:
+        description: commit SHA
+        type: string
+      created_at:
+        description: 时间信息
+        type: string
+      default_depends_on:
+        description: 依赖信息
+        items:
+          type: integer
+        type: array
+      deployed_tag:
+        description: 应用当前部署的镜像标签（从 applications 表获取）
+        type: string
+      id:
+        description: ReleaseApp 基本信息
+        type: integer
+      image_url:
+        description: 完整镜像地址
+        type: string
+      is_locked:
+        description: 是否已锁定（封板后为true）
+        type: boolean
+      latest_build_id:
+        description: 版本信息
+        type: integer
+      previous_deployed_tag:
+        description: 部署前的版本（封板时记录）
+        type: string
+      reason:
+        type: string
+      recent_builds:
+        description: 最近的构建记录（自上次部署以来，最多15条）
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.BuildSummary'
+        type: array
+      release_notes:
+        description: 发布信息
+        type: string
+      repo_full_name:
+        type: string
+      repo_id:
+        description: 仓库信息
+        type: integer
+      repo_name:
+        type: string
+      skip_pre_env:
+        description: 是否跳过预发布环境（封板时从app_env_configs计算得出）
+        type: boolean
+      status:
+        type: integer
+      target_tag:
+        description: 目标部署版本（封板时固定，部署期间代表期望版本，部署完成后代表已部署版本）
+        type: string
+      team_id:
+        description: 团队信息
+        type: integer
+      team_name:
+        type: string
+      temp_depends_on:
+        items:
+          type: integer
+        type: array
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.ReleaseDependenciesResponse:
+    properties:
+      app_id:
+        type: integer
+      batch_id:
+        type: integer
+      default_depends_on:
+        items:
+          type: integer
+        type: array
+      release_app_id:
+        type: integer
+      temp_depends_on:
+        items:
+          type: integer
+        type: array
+      updated_at:
+        type: string
     type: object
   devops-cd_internal_dto.RepositoryResponse:
     properties:
@@ -370,7 +884,7 @@ definitions:
       description:
         type: string
       full_name:
-        description: project/name
+        description: namespace/name
         type: string
       git_type:
         type: string
@@ -382,7 +896,11 @@ definitions:
         type: string
       name:
         type: string
-      project:
+      namespace:
+        type: string
+      project_id:
+        type: integer
+      project_name:
         type: string
       status:
         type: integer
@@ -392,6 +910,86 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  devops-cd_internal_dto.SwitchVersionRequest:
+    properties:
+      batch_id:
+        description: 批次ID
+        type: integer
+      build_id:
+        description: 目标build id
+        type: integer
+      operator:
+        description: 操作人
+        type: string
+      reason:
+        description: 触发原因（可选）
+        type: string
+      release_app_id:
+        description: 发布应用ID
+        type: integer
+    required:
+    - batch_id
+    - build_id
+    - operator
+    - release_app_id
+    type: object
+  devops-cd_internal_dto.TeamResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      leader_name:
+        type: string
+      name:
+        type: string
+      project_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  devops-cd_internal_dto.TeamSimpleResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      project_id:
+        type: integer
+    type: object
+  devops-cd_internal_dto.UpdateAppDependenciesRequest:
+    properties:
+      dependencies:
+        items:
+          type: integer
+        type: array
+    type: object
+  devops-cd_internal_dto.UpdateAppEnvConfigRequest:
+    properties:
+      cluster:
+        maxLength: 50
+        type: string
+      config_data:
+        type: string
+      deployment_name_override:
+        maxLength: 63
+        type: string
+      id:
+        type: integer
+      replicas:
+        maximum: 100
+        minimum: 1
+        type: integer
+      status:
+        enum:
+        - 0
+        - 1
+        type: integer
+    required:
+    - id
     type: object
   devops-cd_internal_dto.UpdateApplicationRequest:
     properties:
@@ -410,6 +1008,13 @@ definitions:
         type: string
       display_name:
         type: string
+      env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 环境集群配置，用于同步更新 app_env_configs 表
+        type: object
       id:
         description: 必填：应用ID
         type: integer
@@ -425,6 +1030,97 @@ definitions:
         type: integer
     required:
     - id
+    type: object
+  devops-cd_internal_dto.UpdateBatchRequest:
+    properties:
+      add_apps:
+        description: 新增应用
+        items:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateBatchApp'
+        type: array
+      batch_id:
+        type: integer
+      batch_number:
+        description: Operator     string           `json:"operator" binding:"required"`
+        type: string
+      release_notes:
+        type: string
+      remove_app_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - batch_id
+    type: object
+  devops-cd_internal_dto.UpdateBuildsRequest:
+    properties:
+      batch_id:
+        type: integer
+      build_changes:
+        additionalProperties:
+          format: int64
+          type: integer
+        description: 'key: app_id, value: build_id'
+        type: object
+      operator:
+        type: string
+    required:
+    - batch_id
+    - build_changes
+    - operator
+    type: object
+  devops-cd_internal_dto.UpdateProjectEnvConfigsRequest:
+    properties:
+      configs:
+        additionalProperties:
+          $ref: '#/definitions/devops-cd_internal_dto.ProjectEnvConfigRequest'
+        description: 'key: env (pre/prod)'
+        type: object
+    required:
+    - configs
+    type: object
+  devops-cd_internal_dto.UpdateProjectRequest:
+    properties:
+      allowed_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 允许的环境集群配置
+        type: object
+      default_env_clusters:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: 项目默认环境集群配置(必须是 allowed_env_clusters 的子集)
+        type: object
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        maxLength: 100
+        type: string
+      owner_name:
+        maxLength: 100
+        type: string
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.UpdateReleaseDependenciesRequest:
+    properties:
+      batch_id:
+        type: integer
+      operator:
+        type: string
+      temp_depends_on:
+        items:
+          type: integer
+        type: array
+    required:
+    - batch_id
+    - operator
     type: object
   devops-cd_internal_dto.UpdateRepositoryRequest:
     properties:
@@ -446,15 +1142,34 @@ definitions:
       name:
         maxLength: 100
         type: string
-      project:
+      namespace:
         maxLength: 100
         type: string
+      project_id:
+        type: integer
       status:
         enum:
         - 0
         - 1
         type: integer
       team_id:
+        type: integer
+    required:
+    - id
+    type: object
+  devops-cd_internal_dto.UpdateTeamRequest:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      leader_name:
+        maxLength: 100
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      project_id:
         type: integer
     required:
     - id
@@ -467,62 +1182,12 @@ definitions:
         type: string
       email:
         type: string
+      phone:
+        type: string
+      uid:
+        type: string
       username:
         type: string
-    type: object
-  devops-cd_internal_service.CreateBatchApp:
-    properties:
-      app_id:
-        description: 应用ID
-        type: integer
-      release_notes:
-        description: 应用级发布说明（可选）
-        type: string
-    required:
-    - app_id
-    type: object
-  devops-cd_internal_service.CreateBatchRequest:
-    properties:
-      apps:
-        description: 应用列表（允许为空，封板时校验）
-        items:
-          $ref: '#/definitions/devops-cd_internal_service.CreateBatchApp'
-        type: array
-      batch_number:
-        description: 批次编号/标题，用户填写
-        type: string
-      initiator:
-        description: 发起人
-        type: string
-      release_notes:
-        description: 批次级发布说明（可选）
-        type: string
-    required:
-    - batch_number
-    - initiator
-    type: object
-  devops-cd_internal_service.UpdateBatchRequest:
-    properties:
-      add_apps:
-        description: 新增应用
-        items:
-          $ref: '#/definitions/devops-cd_internal_service.CreateBatchApp'
-        type: array
-      batch_id:
-        type: integer
-      batch_number:
-        type: string
-      operator:
-        type: string
-      release_notes:
-        type: string
-      remove_app_ids:
-        items:
-          type: integer
-        type: array
-    required:
-    - batch_id
-    - operator
     type: object
   devops-cd_pkg_utils.Response:
     properties:
@@ -599,6 +1264,168 @@ info:
   title: DevOps CD API
   version: "1.0"
 paths:
+  /api/v1/app-env-configs:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 应用ID
+        format: int64
+        in: query
+        name: app_id
+        required: true
+        type: integer
+      - description: 环境名称(pre/prod/dev/test/uat)
+        in: query
+        name: env
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
+                  type: array
+              type: object
+      summary: 查询应用环境配置列表
+      tags:
+      - AppEnvConfig
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateAppEnvConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
+              type: object
+      summary: 创建应用环境配置
+      tags:
+      - AppEnvConfig
+  /api/v1/app-env-configs/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 配置ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 删除应用环境配置
+      tags:
+      - AppEnvConfig
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 配置ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
+              type: object
+      summary: 获取应用环境配置详情
+      tags:
+      - AppEnvConfig
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 配置ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateAppEnvConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
+              type: object
+      summary: 更新应用环境配置
+      tags:
+      - AppEnvConfig
+  /api/v1/app-env-configs/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 批量创建请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.BatchCreateAppEnvConfigsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
+                  type: array
+              type: object
+      summary: 批量创建应用环境配置
+      tags:
+      - AppEnvConfig
   /api/v1/application:
     get:
       consumes:
@@ -647,6 +1474,59 @@ paths:
                   $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
               type: object
       summary: 更新应用
+      tags:
+      - Application
+  /api/v1/application/{id}/dependencies:
+    get:
+      parameters:
+      - description: 应用ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ApplicationDependenciesResponse'
+              type: object
+      summary: 获取应用默认依赖
+      tags:
+      - Application
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 应用ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新依赖请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateAppDependenciesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ApplicationDependenciesResponse'
+              type: object
+      summary: 更新应用默认依赖
       tags:
       - Application
   /api/v1/application/builds:
@@ -923,7 +1803,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取批次详细信息和应用列表
+      description: 获取批次详细信息和应用列表（支持应用列表分页）。每个应用默认会包含自上次部署以来的最近15条成功构建记录，可通过 with_recent_builds=false
+        关闭。
       parameters:
       - description: 批次ID
         format: int64
@@ -931,6 +1812,21 @@ paths:
         name: id
         required: true
         type: integer
+      - default: 1
+        description: 应用列表页码
+        in: query
+        name: app_page
+        type: integer
+      - default: 20
+        description: 应用列表每页数量
+        in: query
+        name: app_page_size
+        type: integer
+      - default: true
+        description: 是否包含最近构建记录
+        in: query
+        name: with_recent_builds
+        type: boolean
       produces:
       - application/json
       responses:
@@ -964,7 +1860,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/devops-cd_internal_service.CreateBatchRequest'
+          $ref: '#/definitions/devops-cd_internal_dto.CreateBatchRequest'
       produces:
       - application/json
       responses:
@@ -1003,7 +1899,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/devops-cd_internal_service.UpdateBatchRequest'
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateBatchRequest'
       produces:
       - application/json
       responses:
@@ -1140,6 +2036,89 @@ paths:
       security:
       - BearerAuth: []
       summary: 批次审批拒绝
+      tags:
+      - 批次管理
+  /api/v1/batch/release_app:
+    put:
+      consumes:
+      - application/json
+      description: 批量更新批次中应用的构建版本等信息（仅草稿状态可修改）
+      parameters:
+      - description: 更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateBuildsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: 批次状态不允许修改
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 更新失败
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 更新批次发布应用
+      tags:
+      - 批次管理
+  /api/v1/batch/status:
+    get:
+      consumes:
+      - application/json
+      description: 获取批次状态信息（轻量级接口，专门用于状态轮询）。只返回批次和应用的状态信息，不包含构建历史、依赖等详细数据。
+      parameters:
+      - description: 批次ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: 应用列表页码
+        in: query
+        name: app_page
+        type: integer
+      - default: 20
+        description: 应用列表每页数量
+        in: query
+        name: app_page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器错误
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取批次状态
       tags:
       - 批次管理
   /api/v1/batches:
@@ -1324,6 +2303,418 @@ paths:
       summary: 查询构建记录列表
       tags:
       - Build
+  /api/v1/clusters:
+    get:
+      parameters:
+      - description: 集群名称(模糊搜索)
+        in: query
+        name: name
+        type: string
+      - description: 状态(0:禁用 1:启用)
+        in: query
+        name: status
+        type: integer
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+      summary: 获取集群列表
+      tags:
+      - 集群管理
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建集群请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.ClusterCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.ClusterResponse'
+      summary: 创建集群
+      tags:
+      - 集群管理
+  /api/v1/clusters/{id}:
+    delete:
+      parameters:
+      - description: 集群ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 删除集群
+      tags:
+      - 集群管理
+    get:
+      parameters:
+      - description: 集群ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.ClusterResponse'
+      summary: 获取集群详情
+      tags:
+      - 集群管理
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 集群ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新集群请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.ClusterUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_internal_dto.ClusterResponse'
+      summary: 更新集群
+      tags:
+      - 集群管理
+  /api/v1/project:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: 是否包含团队列表
+        in: query
+        name: with_teams
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ProjectResponse'
+              type: object
+      summary: 获取项目详情
+      tags:
+      - Project
+  /api/v1/project/{id}/env:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/devops-cd_internal_dto.ProjectEnvConfigResponse'
+                  type: array
+              type: object
+      summary: 获取项目的环境配置
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 环境配置
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateProjectEnvConfigsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 批量更新项目的环境配置
+      tags:
+      - Project
+  /api/v1/projects:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 关键字搜索
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
+              type: object
+      summary: 获取项目列表（无分页参数时返回所有项目，有分页参数时返回分页数据）
+      tags:
+      - Project
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建项目请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ProjectResponse'
+              type: object
+      summary: 创建项目
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 更新项目请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ProjectResponse'
+              type: object
+      summary: 更新项目
+      tags:
+      - Project
+  /api/v1/projects/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 删除项目
+      tags:
+      - Project
+  /api/v1/projects/available-env-clusters:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        format: int64
+        in: query
+        name: project_id
+        required: true
+        type: integer
+      - description: 环境名称(pre/prod),不传返回全部配置
+        in: query
+        name: env
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ProjectAvailableEnvClustersResponse'
+              type: object
+      summary: 获取项目可用的环境集群配置
+      tags:
+      - Project
+  /api/v1/release_app:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 发布应用ID
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.GetReleaseAppRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ReleaseAppResponse'
+              type: object
+      summary: 获取发布应用详情
+      tags:
+      - ReleaseApp
+  /api/v1/release_app/{id}/dependencies:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ReleaseApp ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 依赖更新请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateReleaseDependenciesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.ReleaseDependenciesResponse'
+              type: object
+      summary: 更新发布应用临时依赖
+      tags:
+      - ReleaseApp
+  /api/v1/release_app/trigger_deploy:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 切换请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.SwitchVersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: 切换版本
+      tags:
+      - ReleaseApp
   /api/v1/repositories:
     get:
       consumes:
@@ -1472,6 +2863,129 @@ paths:
       summary: 删除代码库
       tags:
       - Repository
+  /api/v1/team:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 团队ID
+        format: int64
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
+              type: object
+      summary: 获取团队详情
+      tags:
+      - Team
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建团队请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
+              type: object
+      summary: 创建团队
+      tags:
+      - Team
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 更新团队请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.UpdateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
+              type: object
+      summary: 更新团队
+      tags:
+      - Team
+  /api/v1/team/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 团队ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+      summary: 删除团队
+      tags:
+      - Team
+  /api/v1/teams:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        in: query
+        name: project_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/devops-cd_internal_dto.TeamSimpleResponse'
+                  type: array
+              type: object
+      summary: 获取团队列表（返回所有团队，可按项目过滤，用于下拉选择）
+      tags:
+      - Team
   /build/notify:
     post:
       consumes:

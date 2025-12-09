@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"devops-cd/pkg/responses"
 	"net/http"
 	"strconv"
 
@@ -8,7 +9,6 @@ import (
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/service"
-	"devops-cd/pkg/utils"
 )
 
 type TeamHandler struct {
@@ -32,17 +32,17 @@ func NewTeamHandler(teamService service.TeamService) *TeamHandler {
 func (h *TeamHandler) Create(c *gin.Context) {
 	var req dto.CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	team, err := h.teamService.Create(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, team)
+	responses.Success(c, team)
 }
 
 // GetByID 获取团队详情
@@ -56,17 +56,17 @@ func (h *TeamHandler) Create(c *gin.Context) {
 func (h *TeamHandler) GetByID(c *gin.Context) {
 	var req dto.GetTeamRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	team, err := h.teamService.GetByID(req.ID)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, team)
+	responses.Success(c, team)
 }
 
 // List 获取团队列表
@@ -82,7 +82,7 @@ func (h *TeamHandler) List(c *gin.Context) {
 	if idStr := c.Query("project_id"); idStr != "" {
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
-			utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+			responses.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
 			return
 		}
 		projectID = &id
@@ -90,11 +90,11 @@ func (h *TeamHandler) List(c *gin.Context) {
 
 	teams, err := h.teamService.List(projectID)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, teams)
+	responses.Success(c, teams)
 }
 
 // Update 更新团队
@@ -108,17 +108,17 @@ func (h *TeamHandler) List(c *gin.Context) {
 func (h *TeamHandler) Update(c *gin.Context) {
 	var req dto.UpdateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	team, err := h.teamService.Update(req.ID, &req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, team)
+	responses.Success(c, team)
 }
 
 // Delete 删除团队
@@ -133,14 +133,14 @@ func (h *TeamHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的团队ID", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "无效的团队ID", err.Error())
 		return
 	}
 
 	if err := h.teamService.Delete(id); err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, nil)
+	responses.Success(c, nil)
 }

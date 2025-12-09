@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"fmt"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 
 	"devops-cd/internal/pkg/config"
 	"devops-cd/pkg/constants"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 // UserClaims 用户Claims

@@ -1,6 +1,7 @@
 package gitea
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"devops-cd/internal/pkg/git/api"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 // Provider Gitea平台提供者

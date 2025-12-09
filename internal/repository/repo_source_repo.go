@@ -1,11 +1,10 @@
 package repository
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"time"
 
 	"devops-cd/internal/model"
-	pkgErrors "devops-cd/pkg/errors"
-
 	"gorm.io/gorm"
 )
 

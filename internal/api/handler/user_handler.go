@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"devops-cd/pkg/utils/responses"
+	"devops-cd/pkg/responses"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

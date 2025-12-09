@@ -6,7 +6,7 @@ import (
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
-	pkgErrors "devops-cd/pkg/errors"
+	pkgErrors "devops-cd/pkg/responses"
 	"errors"
 	"github.com/samber/lo"
 )
@@ -25,11 +25,11 @@ type AuthorizationService interface {
 
 type authorizationService struct {
 	userRepo       repository.UserRepository
-	teamMemberRepo repository.TeamMemberRepository
+	teamMemberRepo *repository.TeamMemberRepository
 }
 
 // NewAuthorizationService 创建 AuthorizationService
-func NewAuthorizationService(userRepo repository.UserRepository, teamMemberRepo repository.TeamMemberRepository) AuthorizationService {
+func NewAuthorizationService(userRepo repository.UserRepository, teamMemberRepo *repository.TeamMemberRepository) AuthorizationService {
 	return &authorizationService{
 		userRepo:       userRepo,
 		teamMemberRepo: teamMemberRepo,

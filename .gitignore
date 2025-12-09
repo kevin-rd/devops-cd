@@ -5,4 +5,8 @@
 
 /build/
 
+/configs/config.yaml
+/configs/*.crt
+/configs/*.key
+
 .DS_Store

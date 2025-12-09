@@ -1,6 +1,7 @@
 package service
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"fmt"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 type RepositoryService interface {

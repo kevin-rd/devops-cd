@@ -57,9 +57,10 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	// 初始化Service
 	ldapService := service.NewLDAPService(&cfg.Auth.LDAP)
 	authService := service.NewAuthService(&cfg.Auth, userRepo, ldapService)
+	userService := service.NewUserService(userRepo)
 	projectService := service.NewProjectService(projectRepo, teamRepo, projectEnvConfigRepo)
 	teamService := service.NewTeamService(teamRepo, projectRepo)
-	teamMemberService := service.NewTeamMemberService(teamMemberRepo, teamRepo, userRepo)
+	teamMemberService := service.NewTeamMemberService(logger, teamMemberRepo, teamRepo, userRepo)
 	repositoryService := service.NewRepositoryService(repositoryRepo, applicationRepo)
 	repoSourceService := service.NewRepoSourceService(repoSyncSourceRepo, teamRepo, cfg.Crypto.AESKey)
 	repoSyncService := service.NewRepoSyncService(db, logger, cfg.Crypto.AESKey)
@@ -71,6 +72,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 
 	// 初始化Handler
 	authHandler := handler.NewAuthHandler(authService)
+	userHandler := handler.NewUserHandler(userService)
 	projectHandler := handler.NewProjectHandler(projectService)
 	teamHandler := handler.NewTeamHandler(teamService)
 	teamMemberHandler := handler.NewTeamMemberHandler(teamMemberService)
@@ -100,6 +102,8 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 			// 认证信息
 			authed.GET("/auth/me", authHandler.GetMe)
 			authed.GET("/auth/verify", authHandler.Verify)
+			authed.GET("/users/search", userHandler.Search)
+			authed.GET("/roles", userHandler.ListRoles)
 
 			// 项目管理
 			groupProject := authed.Group("/project")

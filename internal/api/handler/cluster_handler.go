@@ -3,7 +3,7 @@ package handler
 import (
 	"devops-cd/internal/dto"
 	"devops-cd/internal/service"
-	"devops-cd/pkg/utils"
+	"devops-cd/pkg/responses"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -30,17 +30,17 @@ func NewClusterHandler(clusterService *service.ClusterService) *ClusterHandler {
 func (h *ClusterHandler) Create(c *gin.Context) {
 	var req dto.ClusterCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithCode(c, 400, "请求参数错误: "+err.Error())
+		responses.ErrorWithCode(c, 400, "请求参数错误: "+err.Error())
 		return
 	}
 
 	resp, err := h.clusterService.Create(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // Update 更新集群
@@ -55,23 +55,23 @@ func (h *ClusterHandler) Create(c *gin.Context) {
 func (h *ClusterHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		utils.ErrorWithCode(c, 400, "无效的集群ID")
+		responses.ErrorWithCode(c, 400, "无效的集群ID")
 		return
 	}
 
 	var req dto.ClusterUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithCode(c, 400, "请求参数错误: "+err.Error())
+		responses.ErrorWithCode(c, 400, "请求参数错误: "+err.Error())
 		return
 	}
 
 	resp, err := h.clusterService.Update(id, &req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // Get 获取集群详情
@@ -84,17 +84,17 @@ func (h *ClusterHandler) Update(c *gin.Context) {
 func (h *ClusterHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		utils.ErrorWithCode(c, 400, "无效的集群ID")
+		responses.ErrorWithCode(c, 400, "无效的集群ID")
 		return
 	}
 
 	resp, err := h.clusterService.Get(id)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // List 获取集群列表
@@ -110,7 +110,7 @@ func (h *ClusterHandler) Get(c *gin.Context) {
 func (h *ClusterHandler) List(c *gin.Context) {
 	var req dto.ClusterListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithCode(c, 400, "请求参数错误: "+err.Error())
+		responses.ErrorWithCode(c, 400, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -124,11 +124,11 @@ func (h *ClusterHandler) List(c *gin.Context) {
 
 	data, total, err := h.clusterService.List(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(data, total, req.Page, req.PageSize))
+	responses.Success(c, dto.NewPageResponse(data, total, req.Page, req.PageSize))
 }
 
 // Delete 删除集群
@@ -141,14 +141,14 @@ func (h *ClusterHandler) List(c *gin.Context) {
 func (h *ClusterHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		utils.ErrorWithCode(c, 400, "无效的集群ID")
+		responses.ErrorWithCode(c, 400, "无效的集群ID")
 		return
 	}
 
 	if err := h.clusterService.Delete(id); err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, gin.H{"message": "删除成功"})
+	responses.Success(c, gin.H{"message": "删除成功"})
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"devops-cd/pkg/responses"
 	"github.com/gin-gonic/gin"
 
 	"devops-cd/internal/dto"
@@ -30,17 +31,17 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, 400, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, 400, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.authService.Login(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // Refresh 刷新Token
@@ -55,17 +56,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, 400, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, 400, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.authService.RefreshToken(req.RefreshToken)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // GetMe 获取当前用户信息
@@ -80,11 +81,11 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 	// 从context中获取用户信息(由认证中间件设置)
 	userInfo, exists := c.Get("user")
 	if !exists {
-		utils.ErrorWithCode(c, 401, "未登录")
+		responses.ErrorWithCode(c, 401, "未登录")
 		return
 	}
 
-	utils.Success(c, userInfo)
+	responses.Success(c, userInfo)
 }
 
 // Verify 验证Token
@@ -99,9 +100,9 @@ func (h *AuthHandler) Verify(c *gin.Context) {
 	// 由认证中间件已验证,直接返回用户信息
 	userInfo, exists := c.Get("user")
 	if !exists {
-		utils.ErrorWithCode(c, 401, "未登录")
+		responses.ErrorWithCode(c, 401, "未登录")
 		return
 	}
 
-	utils.Success(c, userInfo)
+	responses.Success(c, userInfo)
 }

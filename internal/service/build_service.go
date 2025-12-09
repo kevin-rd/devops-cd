@@ -2,6 +2,7 @@ package service
 
 import (
 	"devops-cd/internal/core"
+	pkgErrors "devops-cd/pkg/responses"
 	"devops-cd/pkg/utils"
 	"fmt"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 // BuildService 构建服务接口

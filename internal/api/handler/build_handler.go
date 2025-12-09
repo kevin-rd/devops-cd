@@ -1,13 +1,13 @@
 package handler
 
 import (
+	"devops-cd/pkg/responses"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/service"
-	pkgErrors "devops-cd/pkg/errors"
 	"devops-cd/pkg/utils"
 )
 
@@ -37,7 +37,7 @@ func NewBuildHandler(buildService service.BuildService, batchService *service.Ba
 func (h *BuildHandler) Notify(c *gin.Context) {
 	var req dto.BuildNotifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -47,17 +47,17 @@ func (h *BuildHandler) Notify(c *gin.Context) {
 	// 处理构建通知
 	if err := h.buildService.ProcessNotify(&req); err != nil {
 		// 部分成功的情况也返回成功，但在响应中说明
-		if err.(*pkgErrors.AppError).Code == pkgErrors.CodePartialSuccess {
+		if err.(*responses.AppError).Code == responses.CodePartialSuccess {
 			logger.Warn("构建通知部分处理成功", zap.Error(err))
-			utils.Success(c, gin.H{"message": err.Error(), "status": "partial_success"})
+			responses.Success(c, gin.H{"message": err.Error(), "status": "partial_success"})
 			return
 		}
 		log.Errorf("处理构建通知失败: %v", err)
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, gin.H{"message": "构建通知处理成功"})
+	responses.Success(c, gin.H{"message": "构建通知处理成功"})
 }
 
 // List 查询构建记录列表
@@ -80,17 +80,17 @@ func (h *BuildHandler) Notify(c *gin.Context) {
 func (h *BuildHandler) List(c *gin.Context) {
 	var query dto.BuildListQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	data, total, err := h.buildService.List(&query)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
+	responses.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
 }
 
 // GetByID 获取构建记录详情
@@ -104,17 +104,17 @@ func (h *BuildHandler) List(c *gin.Context) {
 func (h *BuildHandler) GetByID(c *gin.Context) {
 	var req dto.GetBuildRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.buildService.GetByID(req.ID)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // GetByAppAndNumber 根据应用和构建号查询
@@ -129,15 +129,15 @@ func (h *BuildHandler) GetByID(c *gin.Context) {
 func (h *BuildHandler) GetByAppAndNumber(c *gin.Context) {
 	var req dto.GetBuildByAppAndNumberRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.buildService.GetByAppAndNumber(req.AppID, req.BuildNumber)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }

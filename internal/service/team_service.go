@@ -1,13 +1,13 @@
 package service
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"fmt"
 	"time"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/internal/repository"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 type TeamService interface {

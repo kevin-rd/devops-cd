@@ -1,12 +1,12 @@
 package repository
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"errors"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/database"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 type UserRepository interface {
@@ -14,6 +14,7 @@ type UserRepository interface {
 	FindByUsername(username, authProvider string) (*model.User, error)
 	FindWithTeams(username, authProvider string) (*model.User, error)
 	FindByID(id int64) (*model.User, error)
+	Search(keyword string, page, pageSize int) ([]*model.User, int64, error)
 	Update(user *model.User) error
 	UpdateLastLogin(id int64) error
 }
@@ -68,6 +69,36 @@ func (r *userRepository) FindByID(id int64) (*model.User, error) {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询用户失败", err)
 	}
 	return &user, nil
+}
+
+func (r *userRepository) Search(keyword string, page, pageSize int) ([]*model.User, int64, error) {
+	var users []*model.User
+	var total int64
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	query := r.db.Model(&model.User{}).Where("deleted_at IS NULL").Where("status = 1")
+
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		query = query.Where("username LIKE ? OR display_name LIKE ? OR email LIKE ?", like, like, like)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "统计用户失败", err)
+	}
+
+	offset := (page - 1) * pageSize
+	if err := query.Order("updated_at DESC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		return nil, 0, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "查询用户失败", err)
+	}
+
+	return users, total, nil
 }
 
 func (r *userRepository) Update(user *model.User) error {

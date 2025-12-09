@@ -8,7 +8,7 @@ import (
 	"devops-cd/internal/pkg/jwt"
 	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
-	pkgErrors "devops-cd/pkg/errors"
+	pkgErrors "devops-cd/pkg/responses"
 	"devops-cd/pkg/utils/strings"
 )
 

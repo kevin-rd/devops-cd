@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"devops-cd/pkg/responses"
 	"net/http"
 	"strconv"
 
@@ -8,7 +9,6 @@ import (
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/service"
-	"devops-cd/pkg/utils"
 )
 
 type ProjectHandler struct {
@@ -32,17 +32,17 @@ func NewProjectHandler(projectService service.ProjectService) *ProjectHandler {
 func (h *ProjectHandler) Create(c *gin.Context) {
 	var req dto.CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	project, err := h.projectService.Create(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, project)
+	responses.Success(c, project)
 }
 
 // GetByID 获取项目详情
@@ -57,17 +57,17 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 func (h *ProjectHandler) GetByID(c *gin.Context) {
 	var req dto.GetProjectRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	project, err := h.projectService.GetByID(req.ID, req.WithTeams)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, project)
+	responses.Success(c, project)
 }
 
 // List 获取项目列表
@@ -79,12 +79,12 @@ func (h *ProjectHandler) GetByID(c *gin.Context) {
 // @Param page_size query int false "每页数量"
 // @Param keyword query string false "关键字搜索"
 // @Success 200 {object} utils.Response{data=[]dto.ProjectSimpleResponse}
-// @Success 200 {object} utils.Response{data=dto.PaginatedResponse}
+// @Success 200 {object} utils.Response{data=dto.PageResponse}
 // @Router /api/v1/projects [get]
 func (h *ProjectHandler) List(c *gin.Context) {
 	var query dto.ProjectListQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
@@ -92,21 +92,21 @@ func (h *ProjectHandler) List(c *gin.Context) {
 	if query.Page == 0 && query.PageSize == 0 {
 		projects, err := h.projectService.ListAll()
 		if err != nil {
-			utils.Error(c, err)
+			responses.Error(c, err)
 			return
 		}
-		utils.Success(c, projects)
+		responses.Success(c, projects)
 		return
 	}
 
 	// 有分页参数，返回分页数据
 	projects, total, err := h.projectService.List(&query)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(projects, total, query.GetPage(), query.GetPageSize()))
+	responses.Success(c, dto.NewPageResponse(projects, total, query.GetPage(), query.GetPageSize()))
 }
 
 // Update 更新项目
@@ -120,17 +120,17 @@ func (h *ProjectHandler) List(c *gin.Context) {
 func (h *ProjectHandler) Update(c *gin.Context) {
 	var req dto.UpdateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	project, err := h.projectService.Update(req.ID, &req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, project)
+	responses.Success(c, project)
 }
 
 // Delete 删除项目
@@ -145,16 +145,16 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
 		return
 	}
 
 	if err := h.projectService.Delete(id); err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, nil)
+	responses.Success(c, nil)
 }
 
 // GetAvailableEnvClusters 获取项目可用的环境集群配置
@@ -169,17 +169,17 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 func (h *ProjectHandler) GetAvailableEnvClusters(c *gin.Context) {
 	var req dto.GetProjectAvailableEnvClustersRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	resp, err := h.projectService.GetAvailableEnvClusters(req.ProjectID, req.Env)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // GetEnvConfigs 获取项目的环境配置
@@ -194,17 +194,17 @@ func (h *ProjectHandler) GetEnvConfigs(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
 		return
 	}
 
 	configs, err := h.projectService.GetEnvConfigs(id)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, configs)
+	responses.Success(c, configs)
 }
 
 // UpdateEnvConfigs 批量更新项目的环境配置
@@ -220,20 +220,20 @@ func (h *ProjectHandler) UpdateEnvConfigs(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "无效的项目ID", err.Error())
 		return
 	}
 
 	var req dto.UpdateProjectEnvConfigsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", err.Error())
 		return
 	}
 
 	if err := h.projectService.UpdateEnvConfigs(id, req.Configs); err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, nil)
+	responses.Success(c, nil)
 }

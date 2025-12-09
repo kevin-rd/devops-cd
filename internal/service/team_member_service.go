@@ -2,13 +2,14 @@ package service
 
 import (
 	"devops-cd/internal/pkg/auth"
+	pkgErrors "devops-cd/pkg/responses"
+	"go.uber.org/zap"
 	"strings"
 	"time"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/internal/repository"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 func normalizeRoles(input []string, defaultRole string) model.StringList {
@@ -43,16 +44,20 @@ type TeamMemberService interface {
 }
 
 type teamMemberService struct {
-	repo     repository.TeamMemberRepository
+	repo     *repository.TeamMemberRepository
 	teamRepo repository.TeamRepository
 	userRepo repository.UserRepository
+
+	log *zap.SugaredLogger
 }
 
-func NewTeamMemberService(repo repository.TeamMemberRepository, teamRepo repository.TeamRepository, userRepo repository.UserRepository) TeamMemberService {
+func NewTeamMemberService(log *zap.Logger, repo *repository.TeamMemberRepository, teamRepo repository.TeamRepository, userRepo repository.UserRepository) TeamMemberService {
 	return &teamMemberService{
 		repo:     repo,
 		teamRepo: teamRepo,
 		userRepo: userRepo,
+
+		log: log.With(zap.String("service", "team_member_service")).Sugar(),
 	}
 }
 
@@ -90,6 +95,7 @@ func (s *teamMemberService) Add(req *dto.TeamMemberAddRequest) (*dto.TeamMemberR
 func (s *teamMemberService) List(req *dto.TeamMemberListQuery) ([]*dto.TeamMemberResponse, int64, error) {
 	members, total, err := s.repo.ListByTeam(req.TeamID, req.GetPage(), req.GetPageSize(), req.Keyword)
 	if err != nil {
+		s.log.Errorf("查询团队成员列表失败: %v", err)
 		return nil, 0, err
 	}
 

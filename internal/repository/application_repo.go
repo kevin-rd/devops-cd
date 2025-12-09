@@ -1,6 +1,7 @@
 package repository
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"encoding/json"
 	"fmt"
 
@@ -8,7 +9,6 @@ import (
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 type ApplicationRepository interface {

@@ -1,46 +1,36 @@
 package repository
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"errors"
 	"gorm.io/gorm"
 
 	"devops-cd/internal/model"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
-type TeamMemberRepository interface {
-	Create(member *model.TeamMember) error
-	Update(member *model.TeamMember) error
-	FindByID(id int64) (*model.TeamMember, error)
-	FindByTeamAndUser(teamID, userID int64) (*model.TeamMember, error)
-	FindByProjectAndUser(projectID, userID int64) (*model.TeamMember, error)
-	ListByTeam(teamID int64, page, pageSize int, keyword string) ([]*model.TeamMember, int64, error)
-	Delete(id int64) error
-}
-
-type teamMemberRepository struct {
+type TeamMemberRepository struct {
 	db *gorm.DB
 }
 
-func NewTeamMemberRepository(db *gorm.DB) TeamMemberRepository {
-	return &teamMemberRepository{db: db}
+func NewTeamMemberRepository(db *gorm.DB) *TeamMemberRepository {
+	return &TeamMemberRepository{db: db}
 }
 
-func (r *teamMemberRepository) Create(member *model.TeamMember) error {
+func (r *TeamMemberRepository) Create(member *model.TeamMember) error {
 	if err := r.db.Create(member).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "添加团队成员失败", err)
 	}
 	return nil
 }
 
-func (r *teamMemberRepository) Update(member *model.TeamMember) error {
+func (r *TeamMemberRepository) Update(member *model.TeamMember) error {
 	if err := r.db.Save(member).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新团队成员失败", err)
 	}
 	return nil
 }
 
-func (r *teamMemberRepository) FindByID(id int64) (*model.TeamMember, error) {
+func (r *TeamMemberRepository) FindByID(id int64) (*model.TeamMember, error) {
 	var member model.TeamMember
 	err := r.db.Preload("User").First(&member, id).Error
 	if err != nil {
@@ -52,9 +42,9 @@ func (r *teamMemberRepository) FindByID(id int64) (*model.TeamMember, error) {
 	return &member, nil
 }
 
-func (r *teamMemberRepository) FindByTeamAndUser(teamID, userID int64) (*model.TeamMember, error) {
+func (r *TeamMemberRepository) FindByTeamAndUser(teamID, userID int64) (*model.TeamMember, error) {
 	var member model.TeamMember
-	err := r.db.Where("team_id = ? AND user_id = ? AND deleted_at IS NULL", teamID, userID).First(&member).Error
+	err := r.db.Where("team_id = ? AND user_id = ?", teamID, userID).First(&member).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -64,9 +54,9 @@ func (r *teamMemberRepository) FindByTeamAndUser(teamID, userID int64) (*model.T
 	return &member, nil
 }
 
-func (r *teamMemberRepository) FindByProjectAndUser(projectID, userID int64) (*model.TeamMember, error) {
+func (r *TeamMemberRepository) FindByProjectAndUser(projectID, userID int64) (*model.TeamMember, error) {
 	var member model.TeamMember
-	err := r.db.Where("project_id = ? AND user_id = ? AND deleted_at IS NULL", projectID, userID).First(&member).Error
+	err := r.db.Where("project_id = ? AND user_id = ?", projectID, userID).First(&member).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -76,12 +66,12 @@ func (r *teamMemberRepository) FindByProjectAndUser(projectID, userID int64) (*m
 	return &member, nil
 }
 
-func (r *teamMemberRepository) ListByTeam(teamID int64, page, pageSize int, keyword string) ([]*model.TeamMember, int64, error) {
+func (r *TeamMemberRepository) ListByTeam(teamID int64, page, pageSize int, keyword string) ([]*model.TeamMember, int64, error) {
 	var members []*model.TeamMember
 	var total int64
 
 	query := r.db.Model(&model.TeamMember{}).
-		Where("team_id = ? AND deleted_at IS NULL", teamID).
+		Where("team_id = ?", teamID).
 		Preload("User")
 
 	if keyword != "" {
@@ -105,7 +95,7 @@ func (r *teamMemberRepository) ListByTeam(teamID int64, page, pageSize int, keyw
 	return members, total, nil
 }
 
-func (r *teamMemberRepository) Delete(id int64) error {
+func (r *TeamMemberRepository) Delete(id int64) error {
 	if err := r.db.Delete(&model.TeamMember{}, id).Error; err != nil {
 		return pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "删除团队成员失败", err)
 	}

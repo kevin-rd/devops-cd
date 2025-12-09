@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"devops-cd/pkg/responses"
 	"github.com/gin-gonic/gin"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/service"
-	pkgErrors "devops-cd/pkg/errors"
 	"devops-cd/pkg/utils"
 )
 
@@ -30,17 +30,17 @@ func NewRepositoryHandler(service service.RepositoryService) *RepositoryHandler 
 func (h *RepositoryHandler) Create(c *gin.Context) {
 	var req dto.CreateRepositoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.Create(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // GetByID 获取代码库详情
@@ -54,17 +54,17 @@ func (h *RepositoryHandler) Create(c *gin.Context) {
 func (h *RepositoryHandler) GetByID(c *gin.Context) {
 	var req dto.GetRepositoryRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.GetByID(req.ID)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // List 获取代码库列表
@@ -85,17 +85,17 @@ func (h *RepositoryHandler) GetByID(c *gin.Context) {
 func (h *RepositoryHandler) List(c *gin.Context) {
 	var query dto.RepositoryListQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	data, total, err := h.service.List(&query)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
+	responses.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
 }
 
 // Update 更新代码库
@@ -109,17 +109,17 @@ func (h *RepositoryHandler) List(c *gin.Context) {
 func (h *RepositoryHandler) Update(c *gin.Context) {
 	var req dto.UpdateRepositoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.Update(req.ID, &req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // Delete 删除代码库（软删除）
@@ -133,14 +133,14 @@ func (h *RepositoryHandler) Update(c *gin.Context) {
 func (h *RepositoryHandler) Delete(c *gin.Context) {
 	var req dto.DeleteRepositoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	if err := h.service.Delete(req.ID); err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, nil)
+	responses.Success(c, nil)
 }

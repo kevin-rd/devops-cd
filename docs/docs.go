@@ -22,6 +22,275 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/app-env-configs": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppEnvConfig"
+                ],
+                "summary": "查询应用环境配置列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "应用ID",
+                        "name": "app_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "环境名称(pre/prod/dev/test/uat)",
+                        "name": "env",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/devops-cd_internal_dto.AppEnvConfigResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppEnvConfig"
+                ],
+                "summary": "创建应用环境配置",
+                "parameters": [
+                    {
+                        "description": "创建请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateAppEnvConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.AppEnvConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/app-env-configs/batch": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppEnvConfig"
+                ],
+                "summary": "批量创建应用环境配置",
+                "parameters": [
+                    {
+                        "description": "批量创建请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.BatchCreateAppEnvConfigsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/devops-cd_internal_dto.AppEnvConfigResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/app-env-configs/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppEnvConfig"
+                ],
+                "summary": "获取应用环境配置详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.AppEnvConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppEnvConfig"
+                ],
+                "summary": "更新应用环境配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateAppEnvConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.AppEnvConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AppEnvConfig"
+                ],
+                "summary": "删除应用环境配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/application": {
             "get": {
                 "consumes": [
@@ -222,6 +491,96 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/devops-cd_internal_dto.AppTypesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/application/{id}/dependencies": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "获取应用默认依赖",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "应用ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ApplicationDependenciesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Application"
+                ],
+                "summary": "更新应用默认依赖",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "应用ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新依赖请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateAppDependenciesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ApplicationDependenciesResponse"
                                         }
                                     }
                                 }
@@ -556,7 +915,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取批次详细信息和应用列表",
+                "description": "获取批次详细信息和应用列表（支持应用列表分页）。每个应用默认会包含自上次部署以来的最近15条成功构建记录，可通过 with_recent_builds=false 关闭。",
                 "consumes": [
                     "application/json"
                 ],
@@ -575,6 +934,27 @@ const docTemplate = `{
                         "name": "id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "应用列表页码",
+                        "name": "app_page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "应用列表每页数量",
+                        "name": "app_page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "是否包含最近构建记录",
+                        "name": "with_recent_builds",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -625,7 +1005,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_internal_service.UpdateBatchRequest"
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateBatchRequest"
                         }
                     }
                 ],
@@ -691,7 +1071,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_internal_service.CreateBatchRequest"
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateBatchRequest"
                         }
                     }
                 ],
@@ -881,6 +1261,129 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "拒绝失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batch/release_app": {
+            "put": {
+                "description": "批量更新批次中应用的构建版本等信息（仅草稿状态可修改）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "更新批次发布应用",
+                "parameters": [
+                    {
+                        "description": "更新请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateBuildsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "批次状态不允许修改",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "更新失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/batch/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取批次状态信息（轻量级接口，专门用于状态轮询）。只返回批次和应用的状态信息，不包含构建历史、依赖等详细数据。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "批次管理"
+                ],
+                "summary": "获取批次状态",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "批次ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "应用列表页码",
+                        "name": "app_page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "应用列表每页数量",
+                        "name": "app_page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -1178,6 +1681,677 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/clusters": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "集群管理"
+                ],
+                "summary": "获取集群列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "集群名称(模糊搜索)",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "状态(0:禁用 1:启用)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "集群管理"
+                ],
+                "summary": "创建集群",
+                "parameters": [
+                    {
+                        "description": "创建集群请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.ClusterCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.ClusterResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/clusters/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "集群管理"
+                ],
+                "summary": "获取集群详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "集群ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.ClusterResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "集群管理"
+                ],
+                "summary": "更新集群",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "集群ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新集群请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.ClusterUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.ClusterResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "集群管理"
+                ],
+                "summary": "删除集群",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "集群ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "获取项目详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "项目ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "是否包含团队列表",
+                        "name": "with_teams",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ProjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{id}/env": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "获取项目的环境配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "项目ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/devops-cd_internal_dto.ProjectEnvConfigResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "批量更新项目的环境配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "项目ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "环境配置",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateProjectEnvConfigsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "获取项目列表（无分页参数时返回所有项目，有分页参数时返回分页数据）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "关键字搜索",
+                        "name": "keyword",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "更新项目",
+                "parameters": [
+                    {
+                        "description": "更新项目请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateProjectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ProjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "创建项目",
+                "parameters": [
+                    {
+                        "description": "创建项目请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateProjectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ProjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/available-env-clusters": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "获取项目可用的环境集群配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "项目ID",
+                        "name": "project_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "环境名称(pre/prod),不传返回全部配置",
+                        "name": "env",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ProjectAvailableEnvClustersResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{id}": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "删除项目",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "项目ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/release_app": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ReleaseApp"
+                ],
+                "summary": "获取发布应用详情",
+                "parameters": [
+                    {
+                        "description": "发布应用ID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.GetReleaseAppRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ReleaseAppResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/release_app/trigger_deploy": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ReleaseApp"
+                ],
+                "summary": "切换版本",
+                "parameters": [
+                    {
+                        "description": "切换请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.SwitchVersionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/release_app/{id}/dependencies": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ReleaseApp"
+                ],
+                "summary": "更新发布应用临时依赖",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ReleaseApp ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "依赖更新请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateReleaseDependenciesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.ReleaseDependenciesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/repositories": {
             "get": {
                 "consumes": [
@@ -1424,6 +2598,213 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/team": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Team"
+                ],
+                "summary": "获取团队详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "团队ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.TeamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Team"
+                ],
+                "summary": "更新团队",
+                "parameters": [
+                    {
+                        "description": "更新团队请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.UpdateTeamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.TeamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Team"
+                ],
+                "summary": "创建团队",
+                "parameters": [
+                    {
+                        "description": "创建团队请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateTeamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.TeamResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/team/{id}": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Team"
+                ],
+                "summary": "删除团队",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "团队ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teams": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Team"
+                ],
+                "summary": "获取团队列表（返回所有团队，可按项目过滤，用于下拉选择）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "项目ID",
+                        "name": "project_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/devops-cd_internal_dto.TeamSimpleResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/build/notify": {
             "post": {
                 "description": "接收 Drone CI/CD 构建完成通知，记录构建信息并更新应用状态",
@@ -1460,6 +2841,41 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "devops-cd_internal_dto.AppEnvConfigResponse": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "cluster": {
+                    "type": "string"
+                },
+                "config_data": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deployment_name_override": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "replicas": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "devops-cd_internal_dto.AppTypeInfo": {
             "type": "object",
             "properties": {
@@ -1501,6 +2917,26 @@ const docTemplate = `{
                 }
             }
         },
+        "devops-cd_internal_dto.ApplicationDependenciesResponse": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "app_name": {
+                    "type": "string"
+                },
+                "dependencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "devops-cd_internal_dto.ApplicationResponse": {
             "type": "object",
             "properties": {
@@ -1510,6 +2946,12 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "default_depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "deployed_tag": {
                     "description": "当前部署的镜像标签",
                     "type": "string"
@@ -1517,8 +2959,15 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "display_name": {
-                    "type": "string"
+                "env_clusters": {
+                    "description": "环境集群配置，从 app_env_configs 表查询得出",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
                 },
                 "id": {
                     "type": "integer"
@@ -1526,14 +2975,19 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "project": {
+                "project_id": {
+                    "description": "关联的项目ID",
+                    "type": "integer"
+                },
+                "project_name": {
+                    "description": "项目名称",
                     "type": "string"
                 },
                 "repo_id": {
                     "type": "integer"
                 },
                 "repo_name": {
-                    "description": "Repository的project/name",
+                    "description": "Repository的namespace/name",
                     "type": "string"
                 },
                 "status": {
@@ -1543,10 +2997,30 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "team_name": {
+                    "description": "团队名称",
                     "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.BatchCreateAppEnvConfigsRequest": {
+            "type": "object",
+            "required": [
+                "app_id",
+                "configs"
+            ],
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "configs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.CreateAppEnvConfigItemRequest"
+                    }
                 }
             }
         },
@@ -1682,10 +3156,6 @@ const docTemplate = `{
                     "description": "refs/tags/v2025.1027.01-ga",
                     "type": "string"
                 },
-                "env": {
-                    "description": "========== 环境信息 ==========",
-                    "type": "string"
-                },
                 "git_author_email": {
                     "description": "原作者邮箱（可选）",
                     "type": "string"
@@ -1726,16 +3196,19 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "build_created": {
-                    "type": "integer"
+                    "description": "RFC3339 格式时间字符串",
+                    "type": "string"
                 },
                 "build_duration": {
+                    "description": "构建耗时（秒）",
                     "type": "integer"
                 },
                 "build_event": {
                     "type": "string"
                 },
                 "build_finished": {
-                    "type": "integer"
+                    "description": "RFC3339 格式时间字符串",
+                    "type": "string"
                 },
                 "build_link": {
                     "type": "string"
@@ -1744,7 +3217,8 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "build_started": {
-                    "type": "integer"
+                    "description": "RFC3339 格式时间字符串",
+                    "type": "string"
                 },
                 "build_status": {
                     "type": "string"
@@ -1794,6 +3268,177 @@ const docTemplate = `{
                 }
             }
         },
+        "devops-cd_internal_dto.BuildSummary": {
+            "type": "object",
+            "properties": {
+                "build_created": {
+                    "type": "string"
+                },
+                "build_number": {
+                    "type": "integer"
+                },
+                "build_status": {
+                    "type": "string"
+                },
+                "commit_author": {
+                    "type": "string"
+                },
+                "commit_message": {
+                    "type": "string"
+                },
+                "commit_sha": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "image_tag": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ClusterCreateRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "华东区域生产集群"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "cluster-prod-01"
+                },
+                "region": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "cn-east-1"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ClusterResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "Status      int8    ` + "`" + `json:\"status\"` + "`" + `",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ClusterUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "华东区域生产集群"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "cluster-prod-01"
+                },
+                "region": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "cn-east-1"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateAppEnvConfigItemRequest": {
+            "type": "object",
+            "required": [
+                "cluster",
+                "env",
+                "replicas"
+            ],
+            "properties": {
+                "cluster": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "config_data": {
+                    "type": "string"
+                },
+                "deployment_name_override": {
+                    "type": "string",
+                    "maxLength": 63
+                },
+                "env": {
+                    "type": "string",
+                    "enum": [
+                        "pre",
+                        "prod",
+                        "dev",
+                        "test",
+                        "uat"
+                    ]
+                },
+                "replicas": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateAppEnvConfigRequest": {
+            "type": "object",
+            "required": [
+                "app_id",
+                "cluster",
+                "env",
+                "replicas"
+            ],
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "cluster": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "config_data": {
+                    "description": "JSON字符串",
+                    "type": "string"
+                },
+                "deployment_name_override": {
+                    "type": "string",
+                    "maxLength": 63
+                },
+                "env": {
+                    "type": "string",
+                    "enum": [
+                        "pre",
+                        "prod",
+                        "dev",
+                        "test",
+                        "uat"
+                    ]
+                },
+                "replicas": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                }
+            }
+        },
         "devops-cd_internal_dto.CreateApplicationRequest": {
             "type": "object",
             "required": [
@@ -1818,9 +3463,23 @@ const docTemplate = `{
                 "display_name": {
                     "type": "string"
                 },
+                "env_clusters": {
+                    "description": "环境集群配置，用于初始化 app_env_configs 表",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "project_id": {
+                    "description": "可选：如果不指定则从 Repository 继承",
+                    "type": "integer"
                 },
                 "repo_id": {
                     "type": "integer"
@@ -1830,13 +3489,99 @@ const docTemplate = `{
                 }
             }
         },
+        "devops-cd_internal_dto.CreateBatchApp": {
+            "type": "object",
+            "required": [
+                "app_id"
+            ],
+            "properties": {
+                "app_id": {
+                    "description": "应用ID",
+                    "type": "integer"
+                },
+                "release_notes": {
+                    "description": "应用级发布说明（可选）",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateBatchRequest": {
+            "type": "object",
+            "required": [
+                "batch_number",
+                "project_id"
+            ],
+            "properties": {
+                "apps": {
+                    "description": "应用列表（允许为空，封板时校验）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.CreateBatchApp"
+                    }
+                },
+                "batch_number": {
+                    "description": "批次编号/标题，用户填写",
+                    "type": "string"
+                },
+                "project_id": {
+                    "description": "关联的项目ID",
+                    "type": "integer"
+                },
+                "release_notes": {
+                    "description": "批次级发布说明（可选）",
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateProjectRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "allowed_env_clusters": {
+                    "description": "允许的环境集群配置: {\"pre\": [\"cluster-a\"], \"prod\": [\"cluster-b\"]}",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "create_default_team": {
+                    "type": "boolean"
+                },
+                "default_env_clusters": {
+                    "description": "项目默认环境集群配置(必须是 allowed_env_clusters 的子集)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "owner_name": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "devops-cd_internal_dto.CreateRepositoryRequest": {
             "type": "object",
             "required": [
                 "git_type",
                 "git_url",
                 "name",
-                "project"
+                "namespace"
             ],
             "properties": {
                 "description": {
@@ -1860,11 +3605,37 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100
                 },
-                "project": {
+                "namespace": {
                     "type": "string",
                     "maxLength": 100
                 },
+                "project_id": {
+                    "type": "integer"
+                },
                 "team_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateTeamRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "project_id"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "leader_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "project_id": {
                     "type": "integer"
                 }
             }
@@ -1889,6 +3660,18 @@ const docTemplate = `{
             "properties": {
                 "id": {
                     "description": "必填：要删除的代码库ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.GetReleaseAppRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "description": "发布应用ID",
                     "type": "integer"
                 }
             }
@@ -1949,6 +3732,175 @@ const docTemplate = `{
                 }
             }
         },
+        "devops-cd_internal_dto.ProjectAvailableEnvClustersResponse": {
+            "type": "object",
+            "properties": {
+                "allowed_env_clusters": {
+                    "description": "完整配置: {\"pre\": [\"cluster-a\"], \"prod\": [\"cluster-b\"]}",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "available_clusters": {
+                    "description": "如果指定了env,返回该环境下可用集群列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "devops-cd_internal_dto.ProjectEnvConfigRequest": {
+            "type": "object",
+            "required": [
+                "allow_clusters"
+            ],
+            "properties": {
+                "allow_clusters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "chart_repo_url": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "default_clusters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deployment_name_template": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "namespace": {
+                    "type": "string",
+                    "maxLength": 63
+                },
+                "values_path_template": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "values_repo_url": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "devops-cd_internal_dto.ProjectEnvConfigResponse": {
+            "type": "object",
+            "properties": {
+                "allow_clusters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "chart_repo_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_clusters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deployment_name_template": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "values_path_template": {
+                    "type": "string"
+                },
+                "values_repo_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ProjectResponse": {
+            "type": "object",
+            "properties": {
+                "allowed_env_clusters": {
+                    "description": "允许的环境集群配置",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_env_clusters": {
+                    "description": "项目默认环境集群配置(必须是 allowed_env_clusters 的子集)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.TeamResponse"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ProjectSimpleResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "devops-cd_internal_dto.RefreshTokenRequest": {
             "type": "object",
             "required": [
@@ -1956,6 +3908,172 @@ const docTemplate = `{
             ],
             "properties": {
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ReleaseAppResponse": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "app_name": {
+                    "description": "应用信息",
+                    "type": "string"
+                },
+                "app_project": {
+                    "type": "string"
+                },
+                "app_status": {
+                    "type": "integer"
+                },
+                "app_type": {
+                    "type": "string"
+                },
+                "batch_id": {
+                    "type": "integer"
+                },
+                "build_id": {
+                    "description": "关联的构建ID",
+                    "type": "integer"
+                },
+                "build_number": {
+                    "description": "构建信息（通过 build 关联获取，可选）",
+                    "type": "integer"
+                },
+                "build_status": {
+                    "description": "构建状态",
+                    "type": "string"
+                },
+                "build_time": {
+                    "type": "string"
+                },
+                "commit_branch": {
+                    "description": "分支",
+                    "type": "string"
+                },
+                "commit_message": {
+                    "description": "commit 信息",
+                    "type": "string"
+                },
+                "commit_sha": {
+                    "description": "commit SHA",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "时间信息",
+                    "type": "string"
+                },
+                "default_depends_on": {
+                    "description": "依赖信息",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "deployed_tag": {
+                    "description": "应用当前部署的镜像标签（从 applications 表获取）",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ReleaseApp 基本信息",
+                    "type": "integer"
+                },
+                "image_url": {
+                    "description": "完整镜像地址",
+                    "type": "string"
+                },
+                "is_locked": {
+                    "description": "是否已锁定（封板后为true）",
+                    "type": "boolean"
+                },
+                "latest_build_id": {
+                    "description": "版本信息",
+                    "type": "integer"
+                },
+                "previous_deployed_tag": {
+                    "description": "部署前的版本（封板时记录）",
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "recent_builds": {
+                    "description": "最近的构建记录（自上次部署以来，最多15条）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.BuildSummary"
+                    }
+                },
+                "release_notes": {
+                    "description": "发布信息",
+                    "type": "string"
+                },
+                "repo_full_name": {
+                    "type": "string"
+                },
+                "repo_id": {
+                    "description": "仓库信息",
+                    "type": "integer"
+                },
+                "repo_name": {
+                    "type": "string"
+                },
+                "skip_pre_env": {
+                    "description": "是否跳过预发布环境（封板时从app_env_configs计算得出）",
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "target_tag": {
+                    "description": "目标部署版本（封板时固定，部署期间代表期望版本，部署完成后代表已部署版本）",
+                    "type": "string"
+                },
+                "team_id": {
+                    "description": "团队信息",
+                    "type": "integer"
+                },
+                "team_name": {
+                    "type": "string"
+                },
+                "temp_depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.ReleaseDependenciesResponse": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "integer"
+                },
+                "batch_id": {
+                    "type": "integer"
+                },
+                "default_depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "release_app_id": {
+                    "type": "integer"
+                },
+                "temp_depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1977,7 +4095,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "full_name": {
-                    "description": "project/name",
+                    "description": "namespace/name",
                     "type": "string"
                 },
                 "git_type": {
@@ -1995,7 +4113,13 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "project": {
+                "namespace": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "integer"
+                },
+                "project_name": {
                     "type": "string"
                 },
                 "status": {
@@ -2009,6 +4133,122 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.SwitchVersionRequest": {
+            "type": "object",
+            "required": [
+                "batch_id",
+                "build_id",
+                "operator",
+                "release_app_id"
+            ],
+            "properties": {
+                "batch_id": {
+                    "description": "批次ID",
+                    "type": "integer"
+                },
+                "build_id": {
+                    "description": "目标build id",
+                    "type": "integer"
+                },
+                "operator": {
+                    "description": "操作人",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "触发原因（可选）",
+                    "type": "string"
+                },
+                "release_app_id": {
+                    "description": "发布应用ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.TeamResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "leader_name": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.TeamSimpleResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateAppDependenciesRequest": {
+            "type": "object",
+            "properties": {
+                "dependencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateAppEnvConfigRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "cluster": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "config_data": {
+                    "type": "string"
+                },
+                "deployment_name_override": {
+                    "type": "string",
+                    "maxLength": 63
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "replicas": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
                 }
             }
         },
@@ -2038,6 +4278,16 @@ const docTemplate = `{
                 "display_name": {
                     "type": "string"
                 },
+                "env_clusters": {
+                    "description": "环境集群配置，用于同步更新 app_env_configs 表",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "id": {
                     "description": "必填：应用ID",
                     "type": "integer"
@@ -2055,6 +4305,139 @@ const docTemplate = `{
                 },
                 "team_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateBatchRequest": {
+            "type": "object",
+            "required": [
+                "batch_id"
+            ],
+            "properties": {
+                "add_apps": {
+                    "description": "新增应用",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.CreateBatchApp"
+                    }
+                },
+                "batch_id": {
+                    "type": "integer"
+                },
+                "batch_number": {
+                    "description": "Operator     string           ` + "`" + `json:\"operator\" binding:\"required\"` + "`" + `",
+                    "type": "string"
+                },
+                "release_notes": {
+                    "type": "string"
+                },
+                "remove_app_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateBuildsRequest": {
+            "type": "object",
+            "required": [
+                "batch_id",
+                "build_changes",
+                "operator"
+            ],
+            "properties": {
+                "batch_id": {
+                    "type": "integer"
+                },
+                "build_changes": {
+                    "description": "key: app_id, value: build_id",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "operator": {
+                    "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateProjectEnvConfigsRequest": {
+            "type": "object",
+            "required": [
+                "configs"
+            ],
+            "properties": {
+                "configs": {
+                    "description": "key: env (pre/prod)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/devops-cd_internal_dto.ProjectEnvConfigRequest"
+                    }
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateProjectRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "allowed_env_clusters": {
+                    "description": "允许的环境集群配置",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "default_env_clusters": {
+                    "description": "项目默认环境集群配置(必须是 allowed_env_clusters 的子集)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "owner_name": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateReleaseDependenciesRequest": {
+            "type": "object",
+            "required": [
+                "batch_id",
+                "operator"
+            ],
+            "properties": {
+                "batch_id": {
+                    "type": "integer"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "temp_depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -2089,9 +4472,12 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100
                 },
-                "project": {
+                "namespace": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "project_id": {
+                    "type": "integer"
                 },
                 "status": {
                     "type": "integer",
@@ -2101,6 +4487,31 @@ const docTemplate = `{
                     ]
                 },
                 "team_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.UpdateTeamRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "leader_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "project_id": {
                     "type": "integer"
                 }
             }
@@ -2117,86 +4528,14 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "phone": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
                 "username": {
                     "type": "string"
-                }
-            }
-        },
-        "devops-cd_internal_service.CreateBatchApp": {
-            "type": "object",
-            "required": [
-                "app_id"
-            ],
-            "properties": {
-                "app_id": {
-                    "description": "应用ID",
-                    "type": "integer"
-                },
-                "release_notes": {
-                    "description": "应用级发布说明（可选）",
-                    "type": "string"
-                }
-            }
-        },
-        "devops-cd_internal_service.CreateBatchRequest": {
-            "type": "object",
-            "required": [
-                "batch_number",
-                "initiator"
-            ],
-            "properties": {
-                "apps": {
-                    "description": "应用列表（允许为空，封板时校验）",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/devops-cd_internal_service.CreateBatchApp"
-                    }
-                },
-                "batch_number": {
-                    "description": "批次编号/标题，用户填写",
-                    "type": "string"
-                },
-                "initiator": {
-                    "description": "发起人",
-                    "type": "string"
-                },
-                "release_notes": {
-                    "description": "批次级发布说明（可选）",
-                    "type": "string"
-                }
-            }
-        },
-        "devops-cd_internal_service.UpdateBatchRequest": {
-            "type": "object",
-            "required": [
-                "batch_id",
-                "operator"
-            ],
-            "properties": {
-                "add_apps": {
-                    "description": "新增应用",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/devops-cd_internal_service.CreateBatchApp"
-                    }
-                },
-                "batch_id": {
-                    "type": "integer"
-                },
-                "batch_number": {
-                    "type": "string"
-                },
-                "operator": {
-                    "type": "string"
-                },
-                "release_notes": {
-                    "type": "string"
-                },
-                "remove_app_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 }
             }
         },

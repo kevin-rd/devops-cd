@@ -1,7 +1,7 @@
 package handler
 
 import (
-	pkgErrors "devops-cd/pkg/errors"
+	"devops-cd/pkg/responses"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -52,7 +52,7 @@ type ProcessActionRequest struct {
 func (h *BatchHandler) ProcessAction(c *gin.Context) {
 	var req ProcessActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -62,7 +62,7 @@ func (h *BatchHandler) ProcessAction(c *gin.Context) {
 			zap.Int64("batch_id", req.BatchID),
 			zap.String("action", req.Action),
 			zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *BatchHandler) ProcessAction(c *gin.Context) {
 		zap.String("action", req.Action),
 		zap.String("operator", req.Operator))
 
-	utils.Success(c, gin.H{
+	responses.Success(c, gin.H{
 		"message": "操作成功",
 		"action":  req.Action,
 	})
@@ -99,17 +99,17 @@ type ApproveRequest struct {
 func (h *BatchHandler) Approve(c *gin.Context) {
 	var req ApproveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	// 调用 service 层处理审批
 	if err := h.batchService.ApproveBatch(req.BatchID, req.Operator, req.Reason); err != nil {
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, gin.H{"message": "审核通过"})
+	responses.Success(c, gin.H{"message": "审核通过"})
 }
 
 // RejectRequest 拒绝请求
@@ -134,17 +134,17 @@ type RejectRequest struct {
 func (h *BatchHandler) Reject(c *gin.Context) {
 	var req RejectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	// 调用 service 层处理拒绝
 	if err := h.batchService.RejectBatch(req.BatchID, req.Operator, req.Reason); err != nil {
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, gin.H{"message": "已拒绝"})
+	responses.Success(c, gin.H{"message": "已拒绝"})
 }
 
 // ============== 批次管理接口（新增） ==============
@@ -155,7 +155,7 @@ func (h *BatchHandler) Reject(c *gin.Context) {
 // @Tags 批次管理
 // @Accept json
 // @Produce json
-// @Param request body service.CreateBatchRequest true "批次创建请求"
+// @Param request body dto.CreateBatchRequest true "批次创建请求"
 // @Success 200 {object} map[string]interface{} "成功响应"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 409 {object} map[string]interface{} "应用冲突"
@@ -165,7 +165,7 @@ func (h *BatchHandler) Reject(c *gin.Context) {
 func (h *BatchHandler) Create(c *gin.Context, canAccess func(username string, projectId int64) bool) {
 	var req dto.CreateBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *BatchHandler) Create(c *gin.Context, canAccess func(username string, pr
 	// 检查权限
 	username := c.GetString("username")
 	if !canAccess(username, req.ProjectID) {
-		utils.Error(c, pkgErrors.ErrForbidden)
+		responses.Error(c, responses.ErrForbidden)
 		return
 	}
 
@@ -223,11 +223,11 @@ func (h *BatchHandler) Create(c *gin.Context, canAccess func(username string, pr
 		}
 
 		logger.Error("创建批次失败", zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, gin.H{
+	responses.Success(c, gin.H{
 		"batch_id":     batch.ID,
 		"batch_number": batch.BatchNumber,
 		"message":      "批次创建成功",
@@ -240,7 +240,7 @@ func (h *BatchHandler) Create(c *gin.Context, canAccess func(username string, pr
 // @Tags 批次管理
 // @Accept json
 // @Produce json
-// @Param request body service.UpdateBatchRequest true "批次更新请求"
+// @Param request body dto.UpdateBatchRequest true "批次更新请求"
 // @Success 200 {object} map[string]interface{} "成功响应"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 403 {object} map[string]interface{} "批次已封板"
@@ -251,7 +251,7 @@ func (h *BatchHandler) Create(c *gin.Context, canAccess func(username string, pr
 func (h *BatchHandler) Update(c *gin.Context, canAccess func(username string, projectId int64) bool) {
 	var req dto.UpdateBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -315,11 +315,11 @@ func (h *BatchHandler) Update(c *gin.Context, canAccess func(username string, pr
 		}
 
 		logger.Error("更新批次失败", zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, gin.H{
+	responses.Success(c, gin.H{
 		"batch_id":       batch.ID,
 		"batch_number":   batch.BatchNumber,
 		"updated_fields": updatedFields,
@@ -336,7 +336,7 @@ func (h *BatchHandler) Delete(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -344,11 +344,11 @@ func (h *BatchHandler) Delete(c *gin.Context) {
 		logger.Error("删除批次失败",
 			zap.Int64("batch_id", req.BatchID),
 			zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, gin.H{"message": "批次删除成功"})
+	responses.Success(c, gin.H{"message": "批次删除成功"})
 }
 
 // Get 获取批次详情
@@ -370,18 +370,18 @@ func (h *BatchHandler) Get(c *gin.Context) {
 	var req dto.BatchGetRequest
 
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	response, err := h.batchService.GetBatch(req.ID, req.GetAppPage(), req.GetAppPageSize(), req.GetWithRecentBuilds())
 	if err != nil {
 		logger.Error("获取批次详情失败", zap.Int64("batch_id", req.ID), zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, response)
+	responses.Success(c, response)
 }
 
 // List 查询批次列表
@@ -407,19 +407,19 @@ func (h *BatchHandler) List(c *gin.Context) {
 	var req dto.BatchListQuery
 
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	param := req.ToParam()
-	responses, total, err := h.batchService.ListBatches(param)
+	response, total, err := h.batchService.ListBatches(param)
 	if err != nil {
 		logger.Error("查询批次列表失败", zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(responses, total, param.Page, param.PageSize))
+	responses.Success(c, dto.NewPageResponse(response, total, param.Page, param.PageSize))
 }
 
 // GetStatus 获取批次状态（轻量级，用于状态轮询）
@@ -440,18 +440,18 @@ func (h *BatchHandler) GetStatus(c *gin.Context) {
 	var req dto.BatchStatusRequest
 
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	response, err := h.batchService.GetBatchStatus(req.ID, req.GetAppPage(), req.GetAppPageSize())
 	if err != nil {
 		logger.Error("获取批次状态失败", zap.Int64("batch_id", req.ID), zap.Error(err))
-		utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.Success(c, response)
+	responses.Success(c, response)
 }
 
 // getStatusName 获取状态名称（仅用于错误响应）

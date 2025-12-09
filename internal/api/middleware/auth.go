@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"devops-cd/pkg/responses"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -8,7 +9,6 @@ import (
 	"devops-cd/internal/dto"
 	"devops-cd/internal/pkg/jwt"
 	"devops-cd/pkg/constants"
-	"devops-cd/pkg/utils"
 )
 
 // AuthMiddleware JWT认证中间件
@@ -17,14 +17,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 获取Authorization header
 		authHeader := c.GetHeader(constants.HeaderAuthorization)
 		if authHeader == "" {
-			utils.ErrorWithCode(c, 401, "缺少Authorization Header")
+			responses.ErrorWithCode(c, 401, "缺少Authorization Header")
 			c.Abort()
 			return
 		}
 
 		// 检查Bearer前缀
 		if !strings.HasPrefix(authHeader, constants.HeaderBearerPrefix) {
-			utils.ErrorWithCode(c, 401, "Authorization格式错误")
+			responses.ErrorWithCode(c, 401, "Authorization格式错误")
 			c.Abort()
 			return
 		}
@@ -35,14 +35,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 验证Token
 		claims, err := jwt.ValidateToken(token)
 		if err != nil {
-			utils.Error(c, err)
+			responses.Error(c, err)
 			c.Abort()
 			return
 		}
 
 		// 检查Token类型(必须是AccessToken)
 		if claims.Type != constants.JWTTypeAccess {
-			utils.ErrorWithCode(c, 401, "无效的Token类型")
+			responses.ErrorWithCode(c, 401, "无效的Token类型")
 			c.Abort()
 			return
 		}

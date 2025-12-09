@@ -1,8 +1,6 @@
-package utils
+package responses
 
 import (
-	"devops-cd/pkg/errors"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +15,7 @@ type Response struct {
 // Success 成功响应
 func Success(c *gin.Context, data interface{}) {
 	c.JSON(200, Response{
-		Code:    errors.CodeSuccess,
+		Code:    CodeSuccess,
 		Message: "success",
 		Data:    data,
 	})
@@ -26,7 +24,7 @@ func Success(c *gin.Context, data interface{}) {
 // SuccessWithMessage 带消息的成功响应
 func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 	c.JSON(200, Response{
-		Code:    errors.CodeSuccess,
+		Code:    CodeSuccess,
 		Message: message,
 		Data:    data,
 	})
@@ -34,7 +32,7 @@ func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 
 // Error 错误响应
 func Error(c *gin.Context, err error) {
-	if appErr, ok := err.(*errors.AppError); ok {
+	if appErr, ok := err.(*AppError); ok {
 		// 统一返回HTTP 200，业务错误码在response.code中
 		c.JSON(200, Response{
 			Code:    appErr.Code,
@@ -45,7 +43,7 @@ func Error(c *gin.Context, err error) {
 
 	// 未知错误也返回HTTP 200
 	c.JSON(200, Response{
-		Code:    errors.CodeInternalError,
+		Code:    CodeInternalError,
 		Message: err.Error(),
 	})
 }

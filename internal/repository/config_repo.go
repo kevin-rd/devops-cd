@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 	"devops-cd/internal/model"
-	pkgErrors "devops-cd/pkg/errors"
+	pkgErrors "devops-cd/pkg/responses"
 	"errors"
 	"gorm.io/gorm"
 )

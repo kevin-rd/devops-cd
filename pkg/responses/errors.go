@@ -1,20 +1,20 @@
-package errors
+package responses
 
 import "fmt"
 
 // 错误码
 const (
-	CodeSuccess         = 200
+	CodeSuccess         = 2000000
 	CodePartialSuccess  = 206 // 部分成功
-	CodeBadRequest      = 400
-	CodeUnauthorized    = 401
-	CodeForbidden       = 403
-	CodeNotFound        = 404
-	CodeConflict        = 409
-	CodeInternalError   = 500
-	CodeDatabaseError   = 501
-	CodeAuthError       = 502
-	CodeValidationError = 503
+	CodeBadRequest      = 4000000
+	CodeUnauthorized    = 4010000
+	CodeForbidden       = 4030000
+	CodeNotFound        = 4040000
+	CodeConflict        = 4009000
+	CodeInternalError   = 5000000
+	CodeDatabaseError   = 5001000
+	CodeAuthError       = 5002000
+	CodeValidationError = 5003000
 )
 
 // AppError 应用错误
@@ -60,7 +60,6 @@ var (
 	ErrAuthError       = New(CodeAuthError, "认证失败")
 	ErrValidationError = New(CodeValidationError, "数据验证失败")
 
-	// 具体业务错误
 	ErrInvalidParams        = New(CodeBadRequest, "请求参数错误")
 	ErrInvalidCredentials   = New(CodeAuthError, "用户名或密码错误")
 	ErrLDAPConnectionFailed = New(CodeAuthError, "LDAP连接失败")

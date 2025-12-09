@@ -3,7 +3,7 @@ package repository
 import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
-	pkgErrors "devops-cd/pkg/errors"
+	pkgErrors "devops-cd/pkg/responses"
 
 	"gorm.io/gorm"
 )

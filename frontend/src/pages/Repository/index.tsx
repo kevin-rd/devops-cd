@@ -500,7 +500,7 @@ const RepositoryPage: React.FC = () => {
     setAppPage(1)
   }
 
-  // Repository 表格列定义
+  // 🔥 Repository 表格列定义
   const repoColumns: ColumnsType<Repository> = [
     {
       title: t('repository.name'),
@@ -597,7 +597,7 @@ const RepositoryPage: React.FC = () => {
     },
   ]
 
-  // Application 子表格列定义
+  // Repository Application 子表格列定义
   const appColumns: ColumnsType<Application> = [
     {
       title: t('application.name'),
@@ -714,7 +714,7 @@ const RepositoryPage: React.FC = () => {
     },
   ]
 
-  // 🔥 Application 视图的表格列定义（独立表格，非嵌套）
+  // 🔥 Application 视图的表格列定义
   const appListColumns: ColumnsType<Application> = [
     {
       title: t('application.name'),
@@ -764,7 +764,7 @@ const RepositoryPage: React.FC = () => {
       title: t('application.appType'),
       dataIndex: 'app_type',
       key: 'app_type',
-      width: 100,
+      width: 80,
       render: (appType: string) => {
         const typeConfig = getAppTypeConfig(appType)
         if (typeConfig) {
@@ -945,7 +945,7 @@ const RepositoryPage: React.FC = () => {
             </Space>
             
             {/* 🔥 分页器移到右侧 */}
-            {repoTotal > repoPageSize && (
+            {repoTotal > 0 && (
               <Pagination
                 current={repoPage}
                 pageSize={repoPageSize}
@@ -1042,7 +1042,7 @@ const RepositoryPage: React.FC = () => {
             </Space>
             
             {/* 分页器移到右侧 */}
-            {appListTotal > appPageSize && (
+            {appListTotal > 0 && (
               <Pagination
                 current={appPage}
                 pageSize={appPageSize}

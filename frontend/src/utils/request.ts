@@ -13,6 +13,14 @@ const request = axios.create({
   },
 })
 
+export const Errno = {
+  OK: 2000000,
+  OKPrefix: 200,
+
+  Unauthorized: 4010000,
+  UnauthorizedPrefix: 401
+}
+
 // 标记是否正在刷新 token
 let isRefreshing = false
 // 刷新失败次数
@@ -155,12 +163,12 @@ request.interceptors.response.use(
     }
 
     // 标准格式：{ code, message, data }
-    if (data.code === 200 || data.code === 0) {
+    if (Math.floor(data.code / 10000) === Errno.OKPrefix || data.code === 0) {
       return data
     }
 
     // 如果响应数据中的code是401（Token相关错误），需要刷新token
-    if (data.code === 401) {
+    if (Math.floor(data.code / 10000) === Errno.UnauthorizedPrefix) {
       const originalRequest = response.config as InternalAxiosRequestConfig & {
         _retry?: boolean,
         skipErrorMessage?: boolean

@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"devops-cd/internal/pkg/logger"
+	pkgErrors "devops-cd/pkg/responses"
 	"fmt"
 	"net"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"devops-cd/internal/dto"
 	"devops-cd/internal/pkg/config"
 	"devops-cd/pkg/constants"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 type LDAPService interface {

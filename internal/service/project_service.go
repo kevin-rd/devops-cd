@@ -1,6 +1,7 @@
 package service
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"encoding/json"
 	"fmt"
 	"github.com/samber/lo"
@@ -9,7 +10,6 @@ import (
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/internal/repository"
-	pkgErrors "devops-cd/pkg/errors"
 )
 
 type ProjectService interface {

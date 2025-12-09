@@ -43,11 +43,13 @@ func (Team) TableName() string {
 
 // TeamMember 团队成员
 type TeamMember struct {
-	BaseStatus
+	BaseModel
+
 	TeamID int64      `gorm:"column:team_id;not null;index" json:"team_id"`
 	UserID int64      `gorm:"column:user_id;not null;index" json:"user_id"`
 	Roles  StringList `gorm:"column:roles;type:json" json:"roles"`
 
+	// Relations
 	Team *Team `gorm:"foreignKey:TeamID" json:"team,omitempty"`
 	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }

@@ -1,13 +1,13 @@
 package handler
 
 import (
+	"devops-cd/pkg/responses"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/service"
-	pkgErrors "devops-cd/pkg/errors"
 	"devops-cd/pkg/utils"
 )
 
@@ -32,17 +32,17 @@ func NewApplicationHandler(service service.ApplicationService) *ApplicationHandl
 func (h *ApplicationHandler) Create(c *gin.Context) {
 	var req dto.CreateApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.Create(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // GetByID 获取应用详情
@@ -56,17 +56,17 @@ func (h *ApplicationHandler) Create(c *gin.Context) {
 func (h *ApplicationHandler) GetByID(c *gin.Context) {
 	var req dto.GetApplicationRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.GetByID(req.ID)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // List 获取应用列表
@@ -86,17 +86,17 @@ func (h *ApplicationHandler) GetByID(c *gin.Context) {
 func (h *ApplicationHandler) List(c *gin.Context) {
 	var query dto.ApplicationListQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	data, total, err := h.service.List(&query)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
+	responses.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
 }
 
 // Update 更新应用
@@ -110,17 +110,17 @@ func (h *ApplicationHandler) List(c *gin.Context) {
 func (h *ApplicationHandler) Update(c *gin.Context) {
 	var req dto.UpdateApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.Update(req.ID, &req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // Delete 删除应用（软删除）
@@ -134,16 +134,16 @@ func (h *ApplicationHandler) Update(c *gin.Context) {
 func (h *ApplicationHandler) Delete(c *gin.Context) {
 	var req dto.DeleteApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	if err := h.service.Delete(req.ID); err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, nil)
+	responses.Success(c, nil)
 }
 
 // GetBuilds 获取应用的构建历史
@@ -159,17 +159,17 @@ func (h *ApplicationHandler) Delete(c *gin.Context) {
 func (h *ApplicationHandler) GetBuilds(c *gin.Context) {
 	var req dto.GetApplicationBuildsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	builds, total, err := h.service.GetBuilds(req.ID, req.GetPage(), req.GetPageSize())
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(builds, total, req.GetPage(), req.GetPageSize()))
+	responses.Success(c, dto.NewPageResponse(builds, total, req.GetPage(), req.GetPageSize()))
 }
 
 // GetAppTypes 获取应用类型列表
@@ -183,11 +183,11 @@ func (h *ApplicationHandler) GetBuilds(c *gin.Context) {
 func (h *ApplicationHandler) GetAppTypes(c *gin.Context) {
 	resp, err := h.service.GetAppTypes()
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询）
@@ -208,17 +208,17 @@ func (h *ApplicationHandler) GetAppTypes(c *gin.Context) {
 func (h *ApplicationHandler) SearchWithBuilds(c *gin.Context) {
 	var query dto.ApplicationSearchQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	data, total, err := h.service.SearchWithBuilds(&query)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
+	responses.Success(c, dto.NewPageResponse(data, total, query.GetPage(), query.GetPageSize()))
 }
 
 // GetDependencies 获取应用默认依赖
@@ -231,17 +231,17 @@ func (h *ApplicationHandler) SearchWithBuilds(c *gin.Context) {
 func (h *ApplicationHandler) GetDependencies(c *gin.Context) {
 	id, ok := parseIDParam(c.Param("id"))
 	if !ok {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "应用ID无效", c.Param("id"))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "应用ID无效", c.Param("id"))
 		return
 	}
 
 	resp, err := h.service.GetDefaultDependencies(id)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // UpdateDependencies 更新应用默认依赖
@@ -256,23 +256,23 @@ func (h *ApplicationHandler) GetDependencies(c *gin.Context) {
 func (h *ApplicationHandler) UpdateDependencies(c *gin.Context) {
 	id, ok := parseIDParam(c.Param("id"))
 	if !ok {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "应用ID无效", c.Param("id"))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "应用ID无效", c.Param("id"))
 		return
 	}
 
 	var req dto.UpdateAppDependenciesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, pkgErrors.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, responses.CodeBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.service.UpdateDefaultDependencies(id, &req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 func parseIDParam(raw string) (int64, bool) {

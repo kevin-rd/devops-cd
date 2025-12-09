@@ -44,12 +44,12 @@ CREATE TABLE IF NOT EXISTS `teams` (
 -- 3. 团队成员表 (team_members)
 -- =====================================================
 CREATE TABLE `team_members` (
-  `id` bigint NOT NULL COMMENT '主键ID',
+  `id` bigint PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
   `team_id` bigint NOT NULL COMMENT '团队ID',
   `user_id` bigint NOT NULL COMMENT '用户ID',
   `roles` json NOT NULL DEFAULT (_utf8mb4'[]') COMMENT '该用户在当前团队拥有的角色列表',
-  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-  `updated_at` datetime(3) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `updated_at` TIMESTAMP DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
   KEY `idx_team_id` (`team_id`),
   KEY `idx_user_id` (`user_id`),
   CONSTRAINT `fk_team_members_team_id` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,

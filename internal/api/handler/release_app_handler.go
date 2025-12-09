@@ -2,6 +2,7 @@ package handler
 
 import (
 	"devops-cd/internal/pkg/logger"
+	"devops-cd/pkg/responses"
 	"go.uber.org/zap"
 	"net/http"
 
@@ -33,17 +34,17 @@ func NewReleaseAppHandler(batchService *service.BatchService) *ReleaseAppHandler
 func (h *ReleaseAppHandler) GetByID(c *gin.Context) {
 	var req dto.GetReleaseAppRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.batchService.GetReleaseApp(req.ID)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // UpdateBuilds 更新批次发布应用
@@ -61,7 +62,7 @@ func (h *ReleaseAppHandler) GetByID(c *gin.Context) {
 func (h *ReleaseAppHandler) UpdateBuilds(c *gin.Context) {
 	var req dto.UpdateBuildsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -71,14 +72,14 @@ func (h *ReleaseAppHandler) UpdateBuilds(c *gin.Context) {
 
 		// 根据错误类型返回不同的HTTP状态码
 		if err.Error() == "只能修改草稿状态的批次" {
-			utils.ErrorWithCode(c, http.StatusForbidden, err.Error())
+			responses.ErrorWithCode(c, http.StatusForbidden, err.Error())
 		} else {
-			utils.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
+			responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	utils.Success(c, gin.H{
+	responses.Success(c, gin.H{
 		"message":      "批次应用构建更新成功",
 		"batch_id":     req.BatchID,
 		"update_count": len(req.BuildChanges),
@@ -97,13 +98,13 @@ func (h *ReleaseAppHandler) UpdateBuilds(c *gin.Context) {
 func (h *ReleaseAppHandler) UpdateDependencies(c *gin.Context) {
 	releaseID, ok := parseIDParam(c.Param("id"))
 	if !ok {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "发布应用ID无效", c.Param("id"))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "发布应用ID无效", c.Param("id"))
 		return
 	}
 
 	var req dto.UpdateReleaseDependenciesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
@@ -111,11 +112,11 @@ func (h *ReleaseAppHandler) UpdateDependencies(c *gin.Context) {
 
 	resp, err := h.batchService.UpdateReleaseDependencies(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 // SwitchVersion 切换版本(更新版本)
@@ -123,37 +124,37 @@ func (h *ReleaseAppHandler) UpdateDependencies(c *gin.Context) {
 // @Tags ReleaseApp
 // @Accept json
 // @Produce json
-// @Param body dto.SwitchVersionRequest true "切换请求"
-// @Success 200 {object} utils.Response{data=dto.TriggerDeployResponse}
+// @Param request body dto.SwitchVersionRequest true "切换请求"
+// @Success 200 {object} utils.Response{data=string}
 // @Router /api/v1/release_app/trigger_deploy [post]
 func (h *BatchHandler) SwitchVersion(c *gin.Context) {
 	var req dto.SwitchVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.coreEngine.SwitchVersion(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }
 
 func (h *BatchHandler) ManualDeploy(c *gin.Context) {
 	var req dto.ManualDeployRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
+		responses.ErrorWithDetail(c, http.StatusBadRequest, "请求参数错误", utils.FormatValidationError(err))
 		return
 	}
 
 	resp, err := h.coreEngine.ManualDeploy(&req)
 	if err != nil {
-		utils.Error(c, err)
+		responses.Error(c, err)
 		return
 	}
 
-	utils.Success(c, resp)
+	responses.Success(c, resp)
 }

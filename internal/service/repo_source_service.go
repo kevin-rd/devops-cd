@@ -1,12 +1,12 @@
 package service
 
 import (
+	pkgErrors "devops-cd/pkg/responses"
 	"strings"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/internal/repository"
-	pkgErrors "devops-cd/pkg/errors"
 	"devops-cd/pkg/utils"
 )
 
