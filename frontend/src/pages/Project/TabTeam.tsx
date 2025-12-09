@@ -1,5 +1,5 @@
-import React, {useMemo, useState} from 'react'
-import {Button, Card, Collapse, Form, Input, message, Modal, Popconfirm, Select, Space, Table, Tag} from 'antd'
+import React, {useEffect, useMemo, useState} from 'react'
+import {Button, Card, Collapse, Form, Input, message, Modal, Popconfirm, Select, Space, Spin, Table, Tag} from 'antd'
 import type {ColumnsType} from 'antd/es/table'
 import {DeleteOutlined, EditOutlined, PlusOutlined, TeamOutlined, UserOutlined} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
@@ -9,6 +9,8 @@ import type {CreateTeamRequest, Team} from '@/services/team'
 import {teamService} from '@/services/team'
 import type {CreateTeamMemberRequest, TeamMember, UpdateTeamMemberRoleRequest} from '@/services/teamMember'
 import {teamMemberService} from '@/services/teamMember'
+import {roleService} from '@/services/role'
+import {userService, type UserSimple} from '@/services/user'
 
 interface TabTeamProps {
   project: Project
@@ -25,6 +27,59 @@ const TabTeam: React.FC<TabTeamProps> = ({project}) => {
   const [teamModalVisible, setTeamModalVisible] = useState(false)
   const [memberModalVisible, setMemberModalVisible] = useState(false)
   const [roleModalVisible, setRoleModalVisible] = useState(false)
+  const [currentTeamId, setCurrentTeamId] = useState<number | null>(null)
+  const [existingMembers, setExistingMembers] = useState<TeamMember[]>([])
+  const [userSearch, setUserSearch] = useState('')
+  const [debouncedUserSearch, setDebouncedUserSearch] = useState('')
+
+  // 角色枚举
+  const {data: roleList = [], isLoading: isLoadingRoles} = useQuery<string[]>({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const res = await roleService.getAll()
+      return res.data || []
+    },
+    staleTime: 60_000,
+  })
+
+  const roleOptions = useMemo(
+    () => (roleList || []).map((r) => ({label: r, value: r})),
+    [roleList],
+  )
+
+  // 用户搜索（支持 keyword 可选，默认按 updated_at 排序由后端处理）
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedUserSearch(userSearch), 300)
+    return () => clearTimeout(timer)
+  }, [userSearch])
+
+  const {data: userSearchResult = [], isFetching: isFetchingUsers} = useQuery<UserSimple[]>({
+    queryKey: ['user-search', debouncedUserSearch, memberModalVisible],
+    queryFn: async () => {
+      const res = await userService.search({
+        keyword: debouncedUserSearch || undefined,
+        page: 1,
+        page_size: 20,
+      })
+      return res.data?.items || []
+    },
+    enabled: memberModalVisible,
+    keepPreviousData: true,
+  })
+
+  const filteredUsers = useMemo(() => {
+    const existingIds = new Set(existingMembers.map((m) => m.user_id))
+    return (userSearchResult || []).filter((u) => !existingIds.has(u.id))
+  }, [userSearchResult, existingMembers])
+
+  const userOptions = useMemo(
+    () =>
+      filteredUsers.map((u) => ({
+        value: u.id,
+        label: `${u.username}${u.display_name ? ` (${u.display_name})` : ''}${u.email ? ` - ${u.email}` : ''}`,
+      })),
+    [filteredUsers],
+  )
 
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [editingMemberForRole, setEditingMemberForRole] = useState<TeamMember | null>(null)
@@ -145,11 +200,19 @@ const TabTeam: React.FC<TabTeamProps> = ({project}) => {
   }
 
   const handleAddMember = (teamId: number) => {
+    setCurrentTeamId(teamId)
+    setUserSearch('')
+    setDebouncedUserSearch('')
+    setExistingMembers([])
     memberForm.resetFields()
     memberForm.setFieldsValue({
       team_id: teamId,
       roles: [],
     })
+    // 预先拉取团队成员用于前端过滤重复
+    teamMemberService.getList({team_id: teamId, page: 1, page_size: 200})
+      .then((res) => setExistingMembers(res.data?.items || []))
+      .catch(() => setExistingMembers([]))
     setMemberModalVisible(true)
   }
 
@@ -427,6 +490,10 @@ const TabTeam: React.FC<TabTeamProps> = ({project}) => {
         onOk={handleMemberSubmit}
         onCancel={() => {
           setMemberModalVisible(false)
+          setCurrentTeamId(null)
+          setExistingMembers([])
+          setUserSearch('')
+          setDebouncedUserSearch('')
           memberForm.resetFields()
         }}
         confirmLoading={addMemberMutation.isPending}
@@ -438,20 +505,30 @@ const TabTeam: React.FC<TabTeamProps> = ({project}) => {
           </Form.Item>
           <Form.Item
             name="user_id"
-            label="用户ID"
-            rules={[{required: true, message: '请输入用户ID'}]}
+            label="选择用户"
+            rules={[{required: true, message: '请选择用户'}]}
           >
-            <Input placeholder="请输入用户ID" type="number"/>
+            <Select
+              showSearch
+              placeholder="输入用户名/邮箱搜索"
+              filterOption={false}
+              onSearch={(value) => setUserSearch(value)}
+              notFoundContent={isFetchingUsers ? <Spin size="small"/> : '暂无数据'}
+              options={userOptions}
+              loading={isFetchingUsers}
+              optionLabelProp="label"
+            />
           </Form.Item>
           <Form.Item
             name="roles"
             label="角色"
-            tooltip="可以输入多个角色，用逗号分隔"
+            rules={[{required: true, message: '请至少选择一个角色'}]}
           >
             <Select
-              mode="tags"
-              placeholder="输入角色后按回车"
-              tokenSeparators={[',']}
+              mode="multiple"
+              placeholder="请选择角色"
+              options={roleOptions}
+              loading={isLoadingRoles}
             />
           </Form.Item>
         </Form>
@@ -475,12 +552,12 @@ const TabTeam: React.FC<TabTeamProps> = ({project}) => {
             name="roles"
             label="角色"
             rules={[{required: true, message: '请至少选择一个角色'}]}
-            tooltip="可以输入多个角色，用逗号分隔"
           >
             <Select
-              mode="tags"
-              placeholder="输入角色后按回车"
-              tokenSeparators={[',']}
+              mode="multiple"
+              placeholder="请选择角色"
+              options={roleOptions}
+              loading={isLoadingRoles}
             />
           </Form.Item>
         </Form>
