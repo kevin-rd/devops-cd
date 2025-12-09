@@ -16,7 +16,7 @@ import type {BatchActionRequest} from '@/types'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import {useAuthStore} from '@/stores/authStore'
 import BatchEditDrawer from '@/components/BatchEditDrawer'
-import DependencyGraph from './components/DependencyGraph'
+import DependencyGraph from '@/components/BatchInsight/DependencyGraph'
 import '@/styles/status-theme.css'
 import styles from './index.module.css'
 import {Batch} from "@/types/batch.ts";

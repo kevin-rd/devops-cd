@@ -40,7 +40,7 @@ type AppEnvConfig struct {
 
 	DeploymentNameOverride *string `gorm:"size:63" json:"deployment_name_override"` // 部署名称覆盖
 	Replicas               int     `gorm:"default:1" json:"replicas"`               // 副本数
-	ConfigData             *string `gorm:"type:json" json:"config_data,omitempty"`  // 扩展配置(JSON格式)
+	ConfigData             *string `gorm:"type:json" json:"config_data,omitempty"`  // 扩展配置(JSON格式), 未来支持
 
 	// Relations
 	Application *Application `gorm:"foreignKey:AppID" json:"application,omitempty"`

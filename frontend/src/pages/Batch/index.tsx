@@ -81,7 +81,7 @@ export default function BatchList() {
   const [buildChanges, setBuildChanges] = useState<Record<number, Record<number, number>>>({})
 
   // 防抖输入框的本地状态
-  const [initiatorInput, setInitiatorInput] = useState<string>(params.initiator || '')
+  const [initiatorInput] = useState<string>(params.initiator || '')
   const [keywordInput, setKeywordInput] = useState<string>(params.keyword || '')
 
   // 发起人防抖效果

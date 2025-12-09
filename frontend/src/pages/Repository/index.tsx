@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react'
+import React, {useEffect, useState} from 'react'
 import {
   Button,
   Card,
@@ -106,7 +106,7 @@ const RepositoryPage: React.FC = () => {
     getDirtyValues: getAppDirtyValues,
     getDirtyFields: getAppDirtyFields,
     resetDirty: resetAppDirty,
-  } = useDirtyFields(appForm, {
+  } = useDirtyFields<Application>(appForm, {
     excludeFields: ['id', 'created_at', 'updated_at', 'status', 'repo_name', 'namespace', 'project_name', 'team_name', 'last_tag'],
     deepCompare: true,
     treatEmptyAsSame: true,
@@ -283,7 +283,7 @@ const RepositoryPage: React.FC = () => {
       message.success(
         editingApp ? t('application.updateSuccess') : t('application.createSuccess')
       )
-      
+
       // 使用返回的数据直接更新缓存，避免重新请求
       if (response?.data) {
         // 更新 Repository 视图的缓存
@@ -302,7 +302,7 @@ const RepositoryPage: React.FC = () => {
                   return {
                     ...repo,
                     applications: repo.applications.map((app: Application) =>
-                      app.id === response.data.id ? { ...app, ...response.data } : app
+                      app.id === response.data.id ? {...app, ...response.data} : app
                     ),
                   }
                 }
@@ -336,17 +336,17 @@ const RepositoryPage: React.FC = () => {
               ...oldData,
               items: editingApp
                 ? // 更新操作：替换对应的应用
-                  oldData.items.map((app: Application) =>
-                    app.id === response.data.id ? { ...app, ...response.data } : app
-                  )
+                oldData.items.map((app: Application) =>
+                  app.id === response.data.id ? {...app, ...response.data} : app
+                )
                 : // 创建操作：在列表开头添加新应用
-                  [response.data, ...oldData.items],
+                [response.data, ...oldData.items],
               total: editingApp ? oldData.total : oldData.total + 1,
             }
           }
         )
       }
-      
+
       setAppModalVisible(false)
       appForm.resetFields()
       resetAppDirty()
@@ -423,15 +423,15 @@ const RepositoryPage: React.FC = () => {
     setEditingApp(app)
     // 设置应用模态框的项目ID（用于过滤团队列表）
     setAppModalProjectId(app.project_id)
-    
+
     appForm.setFieldsValue({
       ...app,
       env_clusters: app.env_clusters || {},
     })
-    
+
     // 🔥 设置初始值，用于追踪字段变化
-    setAppInitialValues(app as unknown as Record<string, unknown>)
-    
+    setAppInitialValues(app)
+
     setAppModalVisible(true)
   }
 
@@ -445,23 +445,23 @@ const RepositoryPage: React.FC = () => {
     appForm.validateFields().then((values) => {
       // 🔥 如果是编辑模式，只提交修改过的字段
       let submitValues = values
-      
+
       if (editingApp) {
         const dirtyValues = getAppDirtyValues()
-        
+
         // 如果没有任何修改，提示用户
         if (Object.keys(dirtyValues).length === 0) {
           message.info('没有任何修改')
           return
         }
-        
+
         submitValues = dirtyValues
-        
+
         // 打印调试信息（可选）
         console.log('📝 Dirty fields:', getAppDirtyFields())
         console.log('📦 Submitting values:', submitValues)
       }
-      
+
       appMutation.mutate(submitValues)
     })
   }
@@ -886,7 +886,14 @@ const RepositoryPage: React.FC = () => {
       >
         {/* Repository 视图 - 筛选器和分页器 */}
         {viewMode === 'repo' && (
-          <div style={{marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'}}>
+          <div style={{
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
             <Space size="middle" wrap>
               <Select
                 placeholder={t('repository.selectProject')}
@@ -943,7 +950,7 @@ const RepositoryPage: React.FC = () => {
               />
               <Button onClick={handleResetFilters}>{t('common.reset')}</Button>
             </Space>
-            
+
             {/* 🔥 分页器移到右侧 */}
             {repoTotal > 0 && (
               <Pagination
@@ -964,7 +971,14 @@ const RepositoryPage: React.FC = () => {
 
         {/* Application 视图 - 筛选器和分页器 */}
         {viewMode === 'app' && (
-          <div style={{marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'}}>
+          <div style={{
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
             <Space size="middle" wrap>
               <Select
                 placeholder={t('repository.selectProject')}
@@ -1040,7 +1054,7 @@ const RepositoryPage: React.FC = () => {
               />
               <Button onClick={handleResetAppFilters}>{t('common.reset')}</Button>
             </Space>
-            
+
             {/* 分页器移到右侧 */}
             {appListTotal > 0 && (
               <Pagination
@@ -1057,7 +1071,7 @@ const RepositoryPage: React.FC = () => {
             )}
           </div>
         )}
-        
+
         {/* Repository 视图 - 表格 */}
         {viewMode === 'repo' && (
           <Table
@@ -1084,7 +1098,7 @@ const RepositoryPage: React.FC = () => {
                     sticky={{offsetHeader: 55}}
                     size="small"
                     className="app-table"
-                    scroll={{ x: 'max-content', scrollToFirstRowOnChange: true}}
+                    scroll={{x: 'max-content', scrollToFirstRowOnChange: true}}
                   />
                 )
               },
@@ -1374,7 +1388,7 @@ const RepositoryPage: React.FC = () => {
                     rules={[{required: true, message: '请配置至少一个环境集群'}]}
                   >
                     {/* 🔥 传入 projectDetail，避免重复查询 */}
-                    <EnvClusterConfig 
+                    <EnvClusterConfig
                       projectId={appModalProjectId}
                       project={projectDetail || undefined}
                     />

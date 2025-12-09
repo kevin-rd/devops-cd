@@ -3,8 +3,8 @@ import {useEffect, useState} from 'react'
 import {CheckCircleOutlined, FastForwardOutlined, RetweetOutlined, RocketOutlined} from '@ant-design/icons'
 import type {BuildSummary} from '@/types'
 import {AppStatus, AppStatusLabel, ReleaseApp} from '@/types/release_app.ts';
-import {batchService} from '@/services/batch'
-import {useAuthStore} from '@/stores/authStore'
+import {batchService} from '@/services/batch.ts'
+import {useAuthStore} from '@/stores/authStore.ts'
 import {Batch, BatchStatus} from "@/types/batch.ts";
 
 interface AppNodeModalProps {

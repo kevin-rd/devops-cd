@@ -28,7 +28,6 @@ const TabTeam: React.FC<TabTeamProps> = ({project, refreshTrigger}) => {
   const [teamModalVisible, setTeamModalVisible] = useState(false)
   const [memberModalVisible, setMemberModalVisible] = useState(false)
   const [roleModalVisible, setRoleModalVisible] = useState(false)
-  const [currentTeamId, setCurrentTeamId] = useState<number | null>(null)
   const [existingMembers, setExistingMembers] = useState<TeamMember[]>([])
   const [userSearch, setUserSearch] = useState('')
   const [debouncedUserSearch, setDebouncedUserSearch] = useState('')
@@ -65,7 +64,7 @@ const TabTeam: React.FC<TabTeamProps> = ({project, refreshTrigger}) => {
       return res.data?.items || []
     },
     enabled: memberModalVisible,
-    keepPreviousData: true,
+    staleTime: 30_000,
   })
 
   const filteredUsers = useMemo(() => {
@@ -201,7 +200,6 @@ const TabTeam: React.FC<TabTeamProps> = ({project, refreshTrigger}) => {
   }
 
   const handleAddMember = (teamId: number) => {
-    setCurrentTeamId(teamId)
     setUserSearch('')
     setDebouncedUserSearch('')
     setExistingMembers([])
@@ -491,7 +489,6 @@ const TabTeam: React.FC<TabTeamProps> = ({project, refreshTrigger}) => {
         onOk={handleMemberSubmit}
         onCancel={() => {
           setMemberModalVisible(false)
-          setCurrentTeamId(null)
           setExistingMembers([])
           setUserSearch('')
           setDebouncedUserSearch('')

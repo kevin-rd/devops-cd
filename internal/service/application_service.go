@@ -32,13 +32,16 @@ type applicationService struct {
 	appRepo  repository.ApplicationRepository
 	repoRepo repository.RepositoryRepository
 	db       *gorm.DB
+
+	log *zap.SugaredLogger
 }
 
-func NewApplicationService(appRepo repository.ApplicationRepository, repoRepo repository.RepositoryRepository, db *gorm.DB) ApplicationService {
+func NewApplicationService(appRepo repository.ApplicationRepository, repoRepo repository.RepositoryRepository, db *gorm.DB, log *zap.Logger) ApplicationService {
 	return &applicationService{
 		appRepo:  appRepo,
 		repoRepo: repoRepo,
 		db:       db,
+		log:      log.With(zap.String("service", "application_service")).Sugar(),
 	}
 }
 
@@ -205,14 +208,15 @@ func (s *applicationService) Update(id int64, req *dto.UpdateApplicationRequest)
 	}
 
 	// 保存更新
-	if err := s.appRepo.Update(app); err != nil {
-		return nil, err
+	if err = s.appRepo.Update(app); err != nil {
+		s.log.Errorf("更新应用失败: %v", err)
+		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "更新应用失败", err)
 	}
 
 	// 如果传入了 EnvClusters，同步更新 app_env_configs 表
 	if req.EnvClusters != nil {
-		if err := s.syncEnvClusters(app.ID, req.EnvClusters); err != nil {
-			return nil, err
+		if err = s.syncEnvClusters(app.ID, req.EnvClusters); err != nil {
+			return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "同步EnvClusters失败", err)
 		}
 	}
 
