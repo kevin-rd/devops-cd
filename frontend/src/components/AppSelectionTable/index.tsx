@@ -1,13 +1,13 @@
 import {useEffect, useMemo, useState} from 'react'
-import {Alert, Button, Checkbox, Empty, Input, Select, Space, Spin, Table, Tag} from 'antd'
-import {LeftOutlined, RightOutlined} from '@ant-design/icons'
+import {Alert, Button, Checkbox, Empty, Input, Pagination, Select, Space, Spin, Table, Tag} from 'antd'
 import {useTranslation} from 'react-i18next'
-import {useQuery} from '@tanstack/react-query'
+import {useQuery, useQueryClient} from '@tanstack/react-query'
 import type {ColumnsType} from 'antd/es/table'
 import type {ApplicationType, ApplicationWithBuild} from '@/types'
 import {applicationService} from '@/services/application'
 import {teamService, TeamSimple} from '@/services/team'
 import './index.css'
+import {ReloadOutlined} from "@ant-design/icons";
 
 const {TextArea} = Input
 
@@ -45,6 +45,7 @@ export default function AppSelectionTable(
     showReleaseNotes = true,
   }: AppSelectionTableProps) {
   const {t} = useTranslation()
+  const queryClient = useQueryClient()
   const {selectedIds, existingIds = [], mode = 'create'} = selection
 
   const [releaseNotesMap, setReleaseNotesMap] = useState<Record<number, string>>({})
@@ -379,11 +380,15 @@ export default function AppSelectionTable(
         if (record.image_tag) {
           return (
             <div>
-              <code style={{fontSize: 11}}>{record.image_tag}</code>
+              <code style={{fontSize: 13}}>{record.image_tag}</code>
               {record.commit_message && (
-                <div style={{fontSize: 11, color: '#8c8c8c', marginTop: 2}}>
-                  {record.commit_message.substring(0, 30)}
-                  {record.commit_message.length > 30 && '...'}
+                <div style={{
+                  fontSize: 11,
+                  color: '#8c8c8c',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>{record.commit_message}
                 </div>
               )}
             </div>
@@ -501,83 +506,60 @@ export default function AppSelectionTable(
         />
 
         {/* 筛选器, 搜索框和分页器 */}
-        <Space className="search-pagination-wrapper">
-          {/* 筛选器：团队和应用类型 */}
-          <Select
-            mode="multiple"
-            placeholder="筛选团队"
-            style={{width: 160}}
-            maxTagCount="responsive"
-            value={queryData.team_ids}
-            onChange={(values) => setQueryData({...queryData, team_ids: values, page: 1})}
-            options={teamOptions}
-            allowClear
-          />
+        <div
+          style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12}}>
+          <Space>
+            {/* 筛选器：团队和应用类型 */}
+            <Select
+              mode="multiple"
+              placeholder="筛选团队"
+              style={{width: 160}}
+              maxTagCount="responsive"
+              value={queryData.team_ids}
+              onChange={(values) => setQueryData({...queryData, team_ids: values, page: 1})}
+              options={teamOptions}
+              allowClear
+            />
 
-          <Select
-            mode="multiple"
-            placeholder="筛选应用类型"
-            style={{width: 160}}
-            maxTagCount="responsive"
-            value={queryData.app_types}
-            onChange={(values) => setQueryData({...queryData, app_types: values, page: 1})}
-            options={appTypeOptions}
-            allowClear
-          />
+            <Select
+              mode="multiple"
+              placeholder="筛选应用类型"
+              style={{width: 160}}
+              maxTagCount="responsive"
+              value={queryData.app_types}
+              onChange={(values) => setQueryData({...queryData, app_types: values, page: 1})}
+              options={appTypeOptions}
+              allowClear
+            />
 
-          <Input.Search
-            placeholder="搜索应用名称、代码库、Commit、Tag..."
-            allowClear
-            style={{width: 200, minWidth: 200}}
-            value={queryData.keyword}
-            onChange={(e) => {
-              setQueryData({...queryData, keyword: e.target.value})
+            <Input.Search
+              placeholder="搜索应用名称、代码库、Commit、Tag..."
+              allowClear
+              style={{width: 200, minWidth: 200}}
+              value={queryData.keyword}
+              onChange={(e) => {
+                setQueryData({...queryData, keyword: e.target.value})
+              }}
+            />
+
+            <Button icon={<ReloadOutlined/>}
+                    onClick={() => queryClient.invalidateQueries({queryKey: ['applicationsWithBuilds', debouncedSearchKeyword]})}/>
+          </Space>
+
+          <Pagination
+            size="small"
+            current={queryData.page}
+            pageSize={queryData.pageSize}
+            total={total}
+            showTotal={(total) => `${t('common.total')} ${total} ${t('common.unit')}`}
+            showSizeChanger
+            pageSizeOptions={['10', '20', '50', '100']}
+            onChange={(page, pageSize) => {
+              setQueryData({...queryData, page, pageSize})
             }}
           />
+        </div>
 
-
-          <div style={{flex: 1}}/>
-          <div style={{display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0}}>
-            <span style={{fontSize: 13, color: '#8c8c8c', whiteSpace: 'nowrap'}}>
-              共 {total || 0} 个
-            </span>
-            <Space size={4}>
-              <Button
-                size="small"
-                icon={<LeftOutlined/>}
-                disabled={queryData.page === 1}
-                onClick={() => {
-                  setQueryData({...queryData, page: queryData.page - 1})
-                }}
-              />
-              <span style={{fontSize: 13, whiteSpace: 'nowrap', padding: '0 4px'}}>
-                {queryData.page} / {Math.ceil((total || 0) / queryData.pageSize) || 1}
-              </span>
-              <Button
-                size="small"
-                icon={<RightOutlined/>}
-                disabled={queryData.page >= Math.ceil((total || 0) / queryData.pageSize)}
-                onClick={() => {
-                  setQueryData({...queryData, page: queryData.page + 1})
-                }}
-              />
-              <Select
-                size="small"
-                value={queryData.pageSize}
-                onChange={(value) => {
-                  setQueryData({...queryData, pageSize: value, page: 1})  // 重置到第一页
-                }}
-                style={{width: 90}}
-                options={[
-                  {label: '10/页', value: 10},
-                  {label: '20/页', value: 20},
-                  {label: '50/页', value: 50},
-                  {label: '100/页', value: 100},
-                ]}
-              />
-            </Space>
-          </div>
-        </Space>
       </div>
 
       {/* 应用表格 */}

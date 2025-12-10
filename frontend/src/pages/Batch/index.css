@@ -44,6 +44,8 @@
 }
 
 .batch-card-list {
+  position: relative;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -514,7 +516,7 @@
 }
 
 .batch-apps-section .ant-table-tbody > tr > td {
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-size: 13px;
 }
 
@@ -553,15 +555,6 @@
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
-}
-
-.batch-card-list-wrapper {
-  position: relative;
-  min-height: 200px;
-}
-
-.batch-card-list-wrapper.refreshing {
-  pointer-events: none;
 }
 
 .batch-list-refresh-mask {

@@ -494,22 +494,9 @@ export default function BatchDetail() {
       fixed: 'left',
       ellipsis: true,
       render: (name: string, record: ReleaseApp) => (
-        <div style={{display: 'flex', alignItems: 'center', overflow: 'hidden'}}>
-          <span style={{
-            color: '#999',
-            fontSize: 12,
-            userSelect: 'none',
-            flexShrink: 0,
-            marginRight: 4
-          }}>#{record.app_id} </span>
-          <span style={{
-            fontWeight: 500,
-            fontSize: 13,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>{name}
-          </span>
+        <div style={{display: 'flex', alignItems: 'center'}}>
+          <span style={{color: '#999', fontSize: 11, userSelect: 'none', marginRight: 4}}>#{record.app_id} </span>
+          <span style={{fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis'}}>{name}</span>
         </div>
       )
     },
@@ -724,7 +711,7 @@ export default function BatchDetail() {
         const canEditDependencies = !!batch && batch.status < 10 && !record.is_locked
 
         return (
-          <Space direction="vertical" size={4}>
+          <Space wrap={true}>
             {hasDeps ? (
               <Space size={[4, 4]} wrap>
                 {defaultTags}

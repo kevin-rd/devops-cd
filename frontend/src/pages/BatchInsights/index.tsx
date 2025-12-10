@@ -1,21 +1,13 @@
 import {useEffect, useMemo, useState} from 'react'
 import {useNavigate, useParams, useSearchParams} from 'react-router-dom'
-import {Alert, Button, Card, Empty, Input, message, Modal, Radio, Segmented, Skeleton, Space, Spin, Tabs,} from 'antd'
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  LeftOutlined,
-  PlayCircleOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons'
+import {Alert, Button, Card, Empty, Input, message, Modal, Segmented, Skeleton, Space, Spin, Tabs,} from 'antd'
+import {CheckCircleOutlined, LeftOutlined, PlayCircleOutlined, ReloadOutlined,} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useTranslation} from 'react-i18next'
 import {batchService} from '@/services/batch'
 import type {BatchActionRequest} from '@/types'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import {useAuthStore} from '@/stores/authStore'
-import BatchEditDrawer from '@/components/BatchEditDrawer'
 import DependencyGraph from '@/components/BatchInsight/DependencyGraph'
 import '@/styles/status-theme.css'
 import styles from './index.module.css'
@@ -71,16 +63,6 @@ export default function BatchInsights() {
   // 取消批次相关状态
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
-
-  // 审批相关状态
-  const [approvalModalVisible, setApprovalModalVisible] = useState(false)
-  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve')
-  const [approvalReason, setApprovalReason] = useState('')
-  const [approvalLoading, setApprovalLoading] = useState(false)
-
-  // 编辑批次相关状态
-  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [editingBatch, setEditingBatch] = useState<Batch | null>(null)
 
   const {data: batchTabData, isLoading: isTabsLoading, isError: tabError, refetch: refetchTabs} = useQuery({
     queryKey: ['batch-insights-tabs'],
@@ -277,58 +259,10 @@ export default function BatchInsights() {
     }
   }
 
-  // 打开编辑抽屉
-  const handleEdit = () => {
-    if (mergedBatchDetail) {
-      setEditingBatch(mergedBatchDetail)
-      setEditDrawerOpen(true)
-    }
-  }
-
   // 从 timeline 触发的操作处理
   const handleTimelineAction = (action: string) => {
     if (!currentBatchId) return
     handleAction(currentBatchId, action)
-  }
-
-  // 确认审批
-  const handleConfirmApproval = async () => {
-    if (approvalAction === 'reject' && !approvalReason.trim()) {
-      message.warning('请输入拒绝原因')
-      return
-    }
-
-    if (!currentBatchId) return
-
-    setApprovalLoading(true)
-    try {
-      if (approvalAction === 'approve') {
-        await batchService.approve({
-          batch_id: currentBatchId,
-          operator: user?.username || 'unknown',
-        })
-        message.success(t('batch.approveSuccess'))
-      } else {
-        await batchService.reject({
-          batch_id: currentBatchId,
-          operator: user?.username || 'unknown',
-          reason: approvalReason,
-        })
-        message.success(t('batch.rejectSuccess'))
-      }
-
-      queryClient.invalidateQueries({queryKey: ['batch-insights-tabs']})
-      queryClient.invalidateQueries({queryKey: ['batch-insights-detail']})
-      refetchTabs()
-      refetchDetail()
-
-      setApprovalModalVisible(false)
-      setApprovalReason('')
-    } catch (error: any) {
-      message.error(error.response?.data?.message || t('common.error'))
-    } finally {
-      setApprovalLoading(false)
-    }
   }
 
   // 渲染操作按钮
@@ -339,20 +273,6 @@ export default function BatchInsights() {
     }
 
     const actions = []
-
-    // 编辑按钮（草稿或待审批状态）
-    if (batch.status === 0 || batch.approval_status === 'pending') {
-      actions.push(
-        <Button
-          key="edit"
-          size="small"
-          icon={<EditOutlined/>}
-          onClick={handleEdit}
-        >
-          {t('common.edit')}
-        </Button>
-      )
-    }
 
     // 封板按钮（草稿状态且审批已通过）
     if (batch.status === 0 && batch.approval_status === 'approved') {
@@ -566,8 +486,8 @@ export default function BatchInsights() {
                 title={<TimelineCardTitle batch={mergedBatchDetail}/>}
                 extra={renderActionButtons(mergedBatchDetail)}
               >
-                <BatchTimeline 
-                  batch={mergedBatchDetail} 
+                <BatchTimeline
+                  batch={mergedBatchDetail}
                   hasPreApps={releaseApps.some(app => !app.skip_pre_env)}
                   onAction={handleTimelineAction}
                 />
@@ -612,78 +532,6 @@ export default function BatchInsights() {
         />
       </Modal>
 
-      {/* 审批批次 Modal */}
-      <Modal
-        title="批次审批"
-        open={approvalModalVisible}
-        onOk={handleConfirmApproval}
-        onCancel={() => {
-          setApprovalModalVisible(false)
-          setApprovalReason('')
-        }}
-        confirmLoading={approvalLoading}
-        okText={t('common.confirm')}
-        cancelText={t('common.cancel')}
-        width={500}
-      >
-        <Space direction="vertical" style={{width: '100%'}} size="large">
-          <div>
-            <div style={{marginBottom: 12, fontWeight: 500}}>请选择审批结果：</div>
-            <Radio.Group
-              value={approvalAction}
-              onChange={(e) => setApprovalAction(e.target.value)}
-              style={{width: '100%'}}
-            >
-              <Space direction="vertical" style={{width: '100%'}}>
-                <Radio value="approve">
-                  <Space>
-                    <CheckCircleOutlined style={{color: '#52c41a'}}/>
-                    <span>审批通过</span>
-                  </Space>
-                </Radio>
-                <Radio value="reject">
-                  <Space>
-                    <CloseCircleOutlined style={{color: '#ff4d4f'}}/>
-                    <span>审批拒绝</span>
-                  </Space>
-                </Radio>
-              </Space>
-            </Radio.Group>
-          </div>
-
-          {approvalAction === 'reject' && (
-            <div>
-              <div style={{marginBottom: 8, fontWeight: 500}}>
-                拒绝原因 <span style={{color: '#ff4d4f'}}>*</span>：
-              </div>
-              <TextArea
-                rows={4}
-                placeholder="请输入拒绝原因..."
-                value={approvalReason}
-                onChange={(e) => setApprovalReason(e.target.value)}
-                maxLength={500}
-                showCount
-              />
-            </div>
-          )}
-        </Space>
-      </Modal>
-
-      {/* 修改批次 Drawer */}
-      <BatchEditDrawer
-        open={editDrawerOpen}
-        batch={editingBatch}
-        onClose={() => {
-          setEditDrawerOpen(false)
-          setEditingBatch(null)
-        }}
-        onSuccess={() => {
-          setEditDrawerOpen(false)
-          setEditingBatch(null)
-          refetchTabs()
-          refetchDetail()
-        }}
-      />
     </div>
   )
 }

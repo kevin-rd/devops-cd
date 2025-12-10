@@ -307,7 +307,7 @@
 }
 
 .batch-content-card .ant-table-tbody > tr > td {
-  padding: 10px 16px;
+  padding: 10px 10px;
 }
 
 /* DependencyGraph 容器优化 */

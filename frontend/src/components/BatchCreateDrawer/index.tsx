@@ -66,7 +66,7 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
     mutationFn: (data: CreateBatchRequest) => batchService.create(data),
     onSuccess: () => {
       message.success(t('batch.createSuccess'))
-      queryClient.invalidateQueries({queryKey: ['batchList']})
+      queryClient.invalidateQueries({queryKey: ['batchList']}).then()
       handleClose()
       onSuccess()
     },
@@ -123,10 +123,10 @@ export default function BatchCreateDrawer({open, onClose, onSuccess}: BatchCreat
 
   // 步骤2：创建批次
   const handleCreate = async () => {
-    if (selectedAppIds.length === 0) {
-      message.warning(t('batch.selectAtLeastOneApp'))
-      return
-    }
+    // if (selectedAppIds.length === 0) {
+    //   message.warning(t('batch.selectAtLeastOneApp'))
+    //   return
+    // }
 
     const formValues = form.getFieldsValue()
 

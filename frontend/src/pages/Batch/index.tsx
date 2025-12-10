@@ -19,7 +19,6 @@ import {
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
-  EditOutlined,
   PlusOutlined,
   ReloadOutlined,
   SaveOutlined,
@@ -37,7 +36,6 @@ import {useAuthStore} from '@/stores/authStore'
 import {BATCH_STATUS_CONFIG, StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import BatchCreateDrawer from '@/components/BatchCreateDrawer'
-import BatchEditDrawer from '@/components/BatchEditDrawer'
 import type {BatchActionRequest, BatchQueryParams, BuildSummary} from '@/types'
 import './index.css'
 import {Batch, BatchAction, BatchStatus} from "@/types/batch.ts";
@@ -62,8 +60,6 @@ export default function BatchList() {
   const [cancelReason, setCancelReason] = useState('')
   const [currentBatchId, setCurrentBatchId] = useState<number | null>(null)
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false)
-  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [editingBatch, setEditingBatch] = useState<Batch | null>(null)
   const [refreshingList, setRefreshingList] = useState(false)
   const [refreshingDetails, setRefreshingDetails] = useState(false)
 
@@ -425,38 +421,25 @@ export default function BatchList() {
     if (expandedRowKeys.length > 0) {
       setRefreshingDetails(true)
       try {
-        const detailResult = await refetchDetails()
-        if (detailResult.error) {
-          throw detailResult.error
-        }
+        await refetchDetails()
       } catch (error: any) {
-        console.error('刷新批次详情失败:', error)
         message.error('刷新批次详情失败，请稍后重试')
       }
 
       try {
-        const listResult = await refetch()
-        if (listResult.error) {
-          throw listResult.error
-        }
+        await refetch()
       } catch (error: any) {
-        console.error('刷新批次列表失败:', error)
         message.error('刷新批次列表失败，请稍后重试')
       } finally {
         setRefreshingDetails(false)
       }
-
       return
     }
 
     try {
       setRefreshingList(true)
-      const listResult = await refetch()
-      if (listResult.error) {
-        throw listResult.error
-      }
+      await refetch()
     } catch (error: any) {
-      console.error('刷新批次列表失败:', error)
       message.error('刷新批次列表失败，请稍后重试')
     } finally {
       setRefreshingList(false)
@@ -473,21 +456,21 @@ export default function BatchList() {
     return (
       <Space size="small" wrap>
         {/*编辑按钮*/}
-        {(record.status === 0) && (
-          <Button
-            size="small"
-            icon={<EditOutlined/>}
-            onClick={(e) => {
-              e.stopPropagation()
-              // 优先使用已展开的详情数据，否则使用列表数据
-              const batchToEdit = batchDetailsMap[record.id] || record
-              setEditingBatch(batchToEdit)
-              setEditDrawerOpen(true)
-            }}
-          >
-            {t('common.edit')}
-          </Button>
-        )}
+        {/*{(record.status === 0) && (*/}
+        {/*  <Button*/}
+        {/*    size="small"*/}
+        {/*    icon={<EditOutlined/>}*/}
+        {/*    onClick={(e) => {*/}
+        {/*      e.stopPropagation()*/}
+        {/*      // 优先使用已展开的详情数据，否则使用列表数据*/}
+        {/*      const batchToEdit = batchDetailsMap[record.id] || record*/}
+        {/*      setEditingBatch(batchToEdit)*/}
+        {/*      setEditDrawerOpen(true)*/}
+        {/*    }}*/}
+        {/*  >*/}
+        {/*    {t('common.edit')}*/}
+        {/*  </Button>*/}
+        {/*)}*/}
 
         {/*封板按钮*/}
         {record.status === 0 && (
@@ -1051,43 +1034,6 @@ export default function BatchList() {
     );
   }
 
-  const renderBatchCards = () => {
-    if (isLoading && !batchResponse) {
-      return (
-        <div className="batch-card-empty">
-          <Spin/>
-        </div>
-      )
-    }
-
-    // 只在用户主动刷新列表时显示 loading 状态，自动轮询不显示
-    const shouldShowRefreshing = refreshingList && expandedRowKeys.length === 0
-
-    return (
-      <div className={`batch-card-list-wrapper ${shouldShowRefreshing ? 'refreshing' : ''}`}>
-        <div className="batch-card-list">
-          <div className="batch-card-header">
-            <div className="batch-header-cell batch-cell-number">{t('batch.batchNumber')}</div>
-            <div className="batch-header-cell batch-cell-created">{t('batch.createdAt')}</div>
-            <div className="batch-header-cell batch-cell-apps">{t('batch.appCount')}</div>
-            <div className="batch-header-cell batch-cell-approval">{t('batch.approvalStatus')}</div>
-            <div className="batch-header-cell batch-cell-actions">{t('common.action')}</div>
-          </div>
-          {batches.length ? (
-            batches.map((record) => renderBatchCard(record))
-          ) : (
-            <div className="batch-card-empty">暂无批次数据</div>
-          )}
-        </div>
-        {shouldShowRefreshing && (
-          <div className="batch-list-refresh-mask">
-            <Spin/>
-          </div>
-        )}
-      </div>
-    )
-  }
-
 
   return (
     <div className="batch-list-container">
@@ -1209,7 +1155,30 @@ export default function BatchList() {
         </div>
 
         {/* 列表区域 */}
-        {renderBatchCards()}
+        {/* 只在用户主动刷新列表时显示 loading 状态，自动轮询不显示 */}
+        <div className="batch-card-list">
+          <div className="batch-card-header">
+            <div className="batch-header-cell batch-cell-number">{t('batch.batchNumber')}</div>
+            <div className="batch-header-cell batch-cell-created">{t('batch.createdAt')}</div>
+            <div className="batch-header-cell batch-cell-apps">{t('batch.appCount')}</div>
+            <div className="batch-header-cell batch-cell-approval">{t('batch.approvalStatus')}</div>
+            <div className="batch-header-cell batch-cell-actions">{t('common.action')}</div>
+          </div>
+
+          <div>
+            {batches.length ? (
+              batches.map((record) => renderBatchCard(record))
+            ) : (
+              <div className="batch-card-empty">暂无批次数据</div>
+            )}
+            {(isLoading || (refreshingList && expandedRowKeys.length === 0)) && (
+              <div className="batch-list-refresh-mask">
+                <Spin/>
+              </div>
+            )}
+          </div>
+
+        </div>
 
         <div className="batch-pagination">
           <Pagination
@@ -1313,21 +1282,6 @@ export default function BatchList() {
         onClose={() => setCreateDrawerOpen(false)}
         onSuccess={() => {
           setCreateDrawerOpen(false)
-          refetch()
-        }}
-      />
-
-      {/* 修改批次 Drawer */}
-      <BatchEditDrawer
-        open={editDrawerOpen}
-        batch={editingBatch}
-        onClose={() => {
-          setEditDrawerOpen(false)
-          setEditingBatch(null)
-        }}
-        onSuccess={() => {
-          setEditDrawerOpen(false)
-          setEditingBatch(null)
           refetch()
         }}
       />
