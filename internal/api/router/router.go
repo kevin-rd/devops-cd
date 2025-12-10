@@ -68,7 +68,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	appEnvConfigService := service.NewAppEnvConfigService(appEnvConfigRepo, applicationRepo, db)
 	clusterService := service.NewClusterService(db)
 	batchService := service.NewBatchService(db)
-	buildService := service.NewBuildService(db, buildRepo, repositoryRepo, applicationRepo, coreEngine)
+	buildService := service.NewBuildService(buildRepo, repositoryRepo, applicationRepo, coreEngine)
 
 	// 初始化Handler
 	authHandler := handler.NewAuthHandler(authService)

@@ -21,10 +21,10 @@ type RepositoryService interface {
 
 type repositoryService struct {
 	repo    repository.RepositoryRepository
-	appRepo repository.ApplicationRepository
+	appRepo *repository.ApplicationRepository
 }
 
-func NewRepositoryService(repo repository.RepositoryRepository, appRepo repository.ApplicationRepository) RepositoryService {
+func NewRepositoryService(repo repository.RepositoryRepository, appRepo *repository.ApplicationRepository) RepositoryService {
 	return &repositoryService{
 		repo:    repo,
 		appRepo: appRepo,

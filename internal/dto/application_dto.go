@@ -89,15 +89,6 @@ type ApplicationBuildInfo struct {
 	CreatedAt     string  `json:"created_at"`
 }
 
-// ApplicationSearchQuery 应用搜索查询参数（包含构建信息）
-type ApplicationSearchQuery struct {
-	PageQuery          // 分页参数（page, page_size, keyword）
-	ProjectID *int64   `form:"project_id"` // 可选：按项目ID过滤
-	RepoID    *int64   `form:"repo_id"`    // 可选：按代码库ID过滤
-	TeamIDs   []int64  `form:"team_ids"`   // 可选：按团队ID过滤（多选）
-	AppTypes  []string `form:"app_types"`  // 可选：按应用类型过滤（多选）
-}
-
 // LatestBuildInfo 最新构建信息
 type LatestBuildInfo struct {
 	BuildID       int64   `json:"build_id"`
@@ -112,16 +103,18 @@ type LatestBuildInfo struct {
 
 // ApplicationBuildResponse 应用搜索响应（包含构建信息）
 type ApplicationBuildResponse struct {
-	ID           int64   `json:"id"`
-	Name         string  `json:"name"`
-	Namespace    string  `json:"namespace"` // 命名空间（从 Repository 继承）
-	Description  *string `json:"description"`
-	ProjectID    int64   `json:"project_id"`             // 关联的项目ID
-	ProjectName  *string `json:"project_name,omitempty"` // 项目名称
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+
+	ProjectID   int64   `json:"project_id"`             // 关联的项目ID
+	ProjectName *string `json:"project_name,omitempty"` // 项目名称
+
 	RepoID       int64   `json:"repo_id"`
 	RepoFullName *string `json:"repo_full_name,omitempty"` // Repository的namespace/name
-	TeamID       *int64  `json:"team_id"`
-	TeamName     *string `json:"team_name,omitempty"` // 团队名称
+
+	TeamID   *int64  `json:"team_id"`
+	TeamName *string `json:"team_name,omitempty"` // 团队名称
 
 	AppType     string  `json:"app_type"`
 	DeployedTag *string `json:"deployed_tag"` // 当前部署的镜像标签

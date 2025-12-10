@@ -212,7 +212,8 @@ func (h *ApplicationHandler) SearchWithBuilds(c *gin.Context) {
 		return
 	}
 
-	data, total, err := h.service.SearchWithBuilds(&query)
+	param := query.ToParam()
+	data, total, err := h.service.SearchWithBuilds(&param)
 	if err != nil {
 		responses.Error(c, err)
 		return

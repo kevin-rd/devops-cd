@@ -3,6 +3,7 @@ package service
 import (
 	pkgErrors "devops-cd/pkg/responses"
 	"fmt"
+	"go.uber.org/zap"
 	"time"
 
 	"gorm.io/gorm"
@@ -23,20 +24,20 @@ type ApplicationService interface {
 	GetBuilds(id int64, page, pageSize int) ([]*dto.ApplicationBuildInfo, int64, error)
 	ListByRepoID(repoID int64) ([]*dto.ApplicationResponse, error)
 	GetAppTypes() (*dto.AppTypesResponse, error)
-	SearchWithBuilds(query *dto.ApplicationSearchQuery) ([]*dto.ApplicationBuildResponse, int64, error)
+	SearchWithBuilds(query *dto.ApplicationSearchParam) ([]*dto.ApplicationBuildResponse, int64, error)
 	GetDefaultDependencies(appID int64) (*dto.ApplicationDependenciesResponse, error)
 	UpdateDefaultDependencies(appID int64, req *dto.UpdateAppDependenciesRequest) (*dto.ApplicationDependenciesResponse, error)
 }
 
 type applicationService struct {
-	appRepo  repository.ApplicationRepository
+	appRepo  *repository.ApplicationRepository
 	repoRepo repository.RepositoryRepository
-	db       *gorm.DB
 
+	db  *gorm.DB
 	log *zap.SugaredLogger
 }
 
-func NewApplicationService(appRepo repository.ApplicationRepository, repoRepo repository.RepositoryRepository, db *gorm.DB, log *zap.Logger) ApplicationService {
+func NewApplicationService(appRepo *repository.ApplicationRepository, repoRepo repository.RepositoryRepository, db *gorm.DB, log *zap.Logger) ApplicationService {
 	return &applicationService{
 		appRepo:  appRepo,
 		repoRepo: repoRepo,
@@ -467,18 +468,9 @@ func (s *applicationService) GetAppTypes() (*dto.AppTypesResponse, error) {
 }
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询）
-func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery) ([]*dto.ApplicationBuildResponse, int64, error) {
+func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchParam) ([]*dto.ApplicationBuildResponse, int64, error) {
 	// 1. 查询应用列表（已包含最新构建信息）
-	apps, total, err := s.appRepo.SearchWithBuilds(
-		query.GetPage(),
-		query.GetPageSize(),
-		query.Keyword,
-		query.ProjectID,
-		query.RepoID,
-		query.TeamIDs,  // 支持多选
-		query.AppTypes, // 支持多选
-		query.Status,
-	)
+	apps, total, err := s.appRepo.SearchWithBuilds(query)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -500,23 +492,15 @@ func (s *applicationService) SearchWithBuilds(query *dto.ApplicationSearchQuery)
 			TeamID:      app.TeamID,
 			DeployedTag: app.DeployedTag,
 			Status:      app.Status,
-		}
 
-		// 添加项目名称
-		if app.Project != nil {
-			resp.ProjectName = &app.Project.Name
+			ProjectName: app.ProjectName,
+			TeamName:    app.TeamName,
 		}
 
 		// 添加代码库信息（namespace 和名称）
-		if app.Repository != nil {
-			resp.Namespace = app.Repository.Namespace // 从 Repository 获取 namespace
-			repoFullName := fmt.Sprintf("%s/%s", app.Repository.Namespace, app.Repository.Name)
-			resp.RepoFullName = &repoFullName
-		}
-
-		// 添加团队名称
-		if app.Team != nil {
-			resp.TeamName = &app.Team.Name
+		if app.RepoName != nil && app.RepoNamespace != nil {
+			fullname := fmt.Sprintf("%s/%s", *app.RepoNamespace, *app.RepoName)
+			resp.RepoFullName = &fullname
 		}
 
 		// 添加最新构建信息

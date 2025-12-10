@@ -35,6 +35,12 @@ func (Application) TableName() string {
 type ApplicationWithBuild struct {
 	Application // 嵌入 Application，继承所有字段
 
+	// 元数据信息
+	ProjectName   *string `gorm:"column:project_name" json:"project_name"`
+	TeamName      *string `gorm:"column:team_name" json:"team_name"`
+	RepoNamespace *string `gorm:"column:repo_namespace" json:"repo_namespace"`
+	RepoName      *string `gorm:"column:repo_name" json:"repo_name"`
+
 	// 最新构建信息（用于排序、过滤和显示）
 	LatestBuildID        *int64     `gorm:"column:latest_build_id" json:"latest_build_id,omitempty"`
 	LatestBuildNumber    *int64     `gorm:"column:latest_build_number" json:"latest_build_number,omitempty"`

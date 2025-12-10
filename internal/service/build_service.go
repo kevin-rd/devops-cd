@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-	"gorm.io/gorm"
-
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
+	"go.uber.org/zap"
 )
 
 // BuildService 构建服务接口
@@ -28,23 +26,15 @@ type BuildService interface {
 }
 
 type buildService struct {
-	db         *gorm.DB
 	buildRepo  repository.BuildRepository
 	repoRepo   repository.RepositoryRepository
-	appRepo    repository.ApplicationRepository
+	appRepo    *repository.ApplicationRepository
 	coreEngine *core.CoreEngine
 }
 
 // NewBuildService 创建构建服务实例
-func NewBuildService(
-	db *gorm.DB,
-	buildRepo repository.BuildRepository,
-	repoRepo repository.RepositoryRepository,
-	appRepo repository.ApplicationRepository,
-	coreEngine *core.CoreEngine,
-) BuildService {
+func NewBuildService(buildRepo repository.BuildRepository, repoRepo repository.RepositoryRepository, appRepo *repository.ApplicationRepository, coreEngine *core.CoreEngine) BuildService {
 	return &buildService{
-		db:         db,
 		buildRepo:  buildRepo,
 		repoRepo:   repoRepo,
 		appRepo:    appRepo,

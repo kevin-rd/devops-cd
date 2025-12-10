@@ -29,15 +29,16 @@ type AppEnvConfigService interface {
 
 type appEnvConfigService struct {
 	repo                 repository.AppEnvConfigRepository
-	appRepo              repository.ApplicationRepository
+	appRepo              *repository.ApplicationRepository
 	projectRepo          repository.ProjectRepository
 	projectEnvConfigRepo repository.ProjectEnvConfigRepository
-	db                   *gorm.DB
+
+	db *gorm.DB
 }
 
 func NewAppEnvConfigService(
 	repo repository.AppEnvConfigRepository,
-	appRepo repository.ApplicationRepository,
+	appRepo *repository.ApplicationRepository,
 	db *gorm.DB,
 ) AppEnvConfigService {
 	return &appEnvConfigService{
