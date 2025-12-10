@@ -542,7 +542,7 @@ func (s *BatchService) toReleaseAppResponses(releases []*model.ReleaseApp, withR
 			ReleaseNotes: release.ReleaseNotes,
 			IsLocked:     release.IsLocked,
 			SkipPreEnv:   release.SkipPreEnv,
-			Reason:       release.Reason,
+			Reasons:      release.GetRecentReason(10),
 			Status:       release.Status,
 
 			// 时间信息

@@ -66,7 +66,7 @@ func (sm *StateMachine) toDeploy(ctx context.Context, dep *model.Deployment) err
 
 // HandleRunning handle Running → Success / Failed
 func (sm *StateMachine) HandleRunning(ctx context.Context, dep *model.Deployment) (string, func(*model.Deployment), error) {
-	log := sm.logger.With(zap.Int64("deployment_id", int64(dep.ID)))
+	log := sm.logger.With(zap.Int64("deployment_id", dep.ID)).Sugar()
 
 	// todo
 	status, err := sm.deployer.CheckStatus(ctx, nil)
@@ -87,7 +87,7 @@ func (sm *StateMachine) HandleRunning(ctx context.Context, dep *model.Deployment
 			d.RetryCount++
 		}, nil
 	default:
-		log.Debug(fmt.Sprintf("[Deployment SM] Batch:%v ReleaseApp:%v 部署进行中", dep.BatchID, dep.ReleaseID), zap.String("external_status", status))
+		log.Debugf("[Deployment SM: %d-%d-%d] 部署进行中: status: %v", dep.BatchID, dep.ReleaseID, dep.ID, status)
 		return "", nil, nil // 继续等待
 	}
 }

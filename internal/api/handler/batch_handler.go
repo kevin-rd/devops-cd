@@ -58,18 +58,9 @@ func (h *BatchHandler) ProcessAction(c *gin.Context) {
 
 	// 处理操作
 	if err := h.coreEngine.ProcessBatchEvent(req.BatchID, req.Action, req.Operator, req.Reason); err != nil {
-		logger.Error("处理批次操作失败",
-			zap.Int64("batch_id", req.BatchID),
-			zap.String("action", req.Action),
-			zap.Error(err))
 		responses.ErrorWithCode(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	logger.Info("批次操作处理成功",
-		zap.Int64("batch_id", req.BatchID),
-		zap.String("action", req.Action),
-		zap.String("operator", req.Operator))
 
 	responses.Success(c, gin.H{
 		"message": "操作成功",

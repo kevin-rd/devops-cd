@@ -103,6 +103,12 @@ func (sm *StateMachine) registerTransitions() {
 			Handler:     TriggerProdDeployTransition{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
+		{
+			From:        constants.BatchStatusPreDeployed,
+			To:          constants.BatchStatusCancelled,
+			Handler:     TriggerCancelTransition{sm: sm},
+			AllowSource: TransitionSourceOutside,
+		},
 		// 正式发布部署中 -> 正式发布已部署 // todo: internal
 		{
 			From:    constants.BatchStatusProdDeploying,

@@ -110,7 +110,7 @@ func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to
 			return fmt.Errorf("update failed: status conflict")
 		}
 
-		log.Infof("Batch:%v 状态变更成功: %v -> %v", batch.ID, from, to)
+		log.Infof("[Batch SM: %d] 状态变更成功: %v -> %v", batch.ID, from, to)
 		// batch.NextCheckAt = time.Now().Add(30 * time.Second) // 根据层级调整
 		return nil
 	})

@@ -1,4 +1,4 @@
-import {Button, Descriptions, message, Modal, Popconfirm, Select, Space, Spin, Tag} from 'antd'
+import {Button, Descriptions, List, message, Modal, Popconfirm, Popover, Select, Space, Spin, Tag} from 'antd'
 import {useEffect, useState} from 'react'
 import {CheckCircleOutlined, FastForwardOutlined, RetweetOutlined, RocketOutlined} from '@ant-design/icons'
 import type {BuildSummary} from '@/types'
@@ -207,9 +207,20 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
               </Space>
             </Descriptions.Item>
             <Descriptions.Item label="当前状态" span={4}>
-              <Tag color={AppStatusLabel[displayData.status]?.color}>
-                {AppStatusLabel[displayData.status]?.label || `状态${displayData.status}`}
-              </Tag>
+              <Popover title="最近10行错误"
+                       content={
+                         <div style={{maxHeight: '400px', maxWidth: '680px', overflow: 'auto', whiteSpace: 'nowrap',}}>
+                           <List
+                             size="small"
+                             dataSource={displayData.reasons}
+                             renderItem={(item) => <List.Item>{item}</List.Item>}
+                           />
+                         </div>
+                       }>
+                <Tag color={AppStatusLabel[displayData.status]?.color}>
+                  {AppStatusLabel[displayData.status]?.label || `状态${displayData.status}`}
+                </Tag>
+              </Popover>
             </Descriptions.Item>
 
             {/* 最新 Build 信息 - 根据 recent_builds 数量显示不同的UI */}

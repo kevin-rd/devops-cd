@@ -31,8 +31,14 @@ func (sm *StateMachine) ProcessStateChange(batchID int64, event string, operator
 	}
 
 	// 事务更新
-	return sm.ChangeStatus(context.TODO(), &model.Batch{BaseModel: model.BaseModel{ID: batchID}}, e.To, TransitionSourceOutside,
+	if err := sm.ChangeStatus(context.TODO(), &model.Batch{BaseModel: model.BaseModel{ID: batchID}}, e.To, TransitionSourceOutside,
 		WithOperator(operator),
 		WithReason(reason),
-	)
+	); err != nil {
+		sm.logger.Sugar().Errorf("处理批次操作：%v失败： %v", event, err)
+		return err
+	}
+
+	sm.logger.Sugar().Infof("处理批次操作：%v by %v 成功", event, operator)
+	return nil
 }

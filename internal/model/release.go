@@ -1,6 +1,9 @@
 package model
 
 import (
+	"devops-cd/pkg/constants"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -82,4 +85,43 @@ type ReleaseApp struct {
 // TableName 指定表名
 func (ReleaseApp) TableName() string {
 	return BatchReleaseAppTableName
+}
+
+const ReasonMaxLine = 100
+
+func (r *ReleaseApp) AppendReasonf(format string, args ...interface{}) {
+	msg := strings.TrimSpace(fmt.Sprintf(format, args...))
+	if msg == "" {
+		return
+	}
+
+	// 追加新行
+	r.Reason += "\n" + msg
+
+	lines := strings.Split(r.Reason, "\n")
+	if len(lines) > ReasonMaxLine {
+		r.Reason = strings.Join(lines[len(lines)-ReasonMaxLine:], "\n")
+	}
+	r.Reason = strings.Trim(r.Reason, "\n")
+}
+
+func (r *ReleaseApp) GetRecentReason(recentLines int) []string {
+	if recentLines <= 0 {
+		return []string{}
+	}
+
+	lines := strings.Split(r.Reason, "\n")
+	if len(lines) > recentLines {
+		lines = lines[len(lines)-recentLines:]
+	}
+	return lines
+}
+
+func ToFailed(cur int8) int8 {
+	if cur >= constants.ReleaseAppStatusPreWaiting && cur < constants.ReleaseAppStatusProdWaiting {
+		return constants.ReleaseAppStatusPreFailed
+	} else if cur >= constants.ReleaseAppStatusProdWaiting && cur < constants.BatchStatusCompleted {
+		return constants.ReleaseAppStatusProdFailed
+	}
+	return cur
 }

@@ -6,10 +6,15 @@ import (
 	"devops-cd/pkg/constants"
 	"fmt"
 	"go.uber.org/zap"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 )
 
 type Handler interface {
 	Handle(ctx context.Context, release *model.ReleaseApp) (nextStatus *int8, updateFunc func(*model.ReleaseApp), err error)
+	Name() string
 }
 
 type HandlerFunc func(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error)
@@ -21,6 +26,51 @@ func (h HandlerFunc) Handle(ctx context.Context, release *model.ReleaseApp) (nex
 		nextStatus = &status
 	}
 	return
+}
+
+func (h HandlerFunc) Name() string {
+	if h == nil {
+		return "<nil>"
+	}
+
+	// 拿到函数的程序计数器
+	pc := reflect.ValueOf(h).Pointer()
+	if pc == 0 {
+		return "<zero>"
+	}
+
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		return "<unknown>"
+	}
+
+	fullName := fn.Name()
+
+	// case 1: 方法值
+	if strings.Contains(fullName, "-fm") {
+		// 去掉包名和类型，只保留方法名
+		if idx := strings.LastIndex(fullName, "."); idx != -1 {
+			name := fullName[idx+1:]
+			// 去掉 Go 自动加的 -fm 后缀
+			if dash := strings.Index(name, "-fm"); dash != -1 {
+				name = name[:dash]
+			}
+			// 可选：去掉公共的 "Handle" 前缀，让日志更简洁
+			return strings.TrimPrefix(name, "Handle")
+		}
+	}
+
+	// case 2: 匿名函数
+	if strings.Contains(fullName, "func") {
+		// 尝试从文件名+行号提取有意义的名字
+		_, file, line, ok := runtime.Caller(3) // 上上上层调用者
+		if ok {
+			fileName := filepath.Base(file)
+			return fmt.Sprintf("%s:%d", fileName, line)
+		}
+	}
+
+	return fullName
 }
 
 func (sm *ReleaseStateMachine) registerHandlers() {
@@ -118,14 +168,14 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 			return 0, nil, fmt.Errorf("项目 Pre 环境配置未配置 namespace")
 		}
 
-		deploymentName, err := parseDeploymentName(&app, &projectConfigs, &config)
+		deploymentName, err := ParseDeploymentName(&app, &projectConfigs, &config)
 		if err != nil {
-			return 0, nil, err
+			return 0, nil, fmt.Errorf("计算 Deployment Name 失败: %w", err)
 		}
 
-		values, err := parseValues(&app, &build, &projectConfigs, &config)
+		values, err := ParseValues(&app, &build, &projectConfigs, &config)
 		if err != nil {
-			return 0, nil, err
+			return 0, nil, fmt.Errorf("计算 values.yaml 失败: %w", err)
 		}
 
 		dep := model.Deployment{

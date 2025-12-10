@@ -35,7 +35,7 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		ReleaseNotes: release.ReleaseNotes,
 		IsLocked:     release.IsLocked,
 		SkipPreEnv:   release.SkipPreEnv,
-		Reason:       release.Reason,
+		Reasons:      release.GetRecentReason(10),
 		Status:       release.Status,
 
 		CreatedAt: release.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),

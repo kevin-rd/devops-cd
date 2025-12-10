@@ -43,7 +43,7 @@ func HandleSealed(ctx context.Context, batch *model.Batch) (int8, func(*model.Ba
 
 // HandlePreWaiting handle StatusPreWaiting:20 -> StatusPreDeploying:21
 func (sm *StateMachine) HandlePreWaiting(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
-	batchName := fmt.Sprintf("%s[%v]", batch.BatchNumber, batch.ID)
+	batchName := fmt.Sprintf("%d「%s」", batch.ID, batch.BatchNumber)
 
 	// 更新 all releaseApp.status -> PreWaiting (只更新需要 pre 的应用)
 	result := sm.db.Model(&model.ReleaseApp{}).
@@ -55,7 +55,7 @@ func (sm *StateMachine) HandlePreWaiting(ctx context.Context, batch *model.Batch
 		return 0, nil, fmt.Errorf("更新发布记录状态失败: %w", result.Error)
 	}
 
-	sm.logger.Info(fmt.Sprintf("Batch:%s === %d 条ReleaseApp更新为 PreWaiting", batchName, result.RowsAffected))
+	sm.logger.Info(fmt.Sprintf("[Batch SM: %d]:%s :: %d条ReleaseApp更新为 PreWaiting", batch.ID, batchName, result.RowsAffected))
 	return constants.BatchStatusPreDeploying, nil, nil
 }
 

@@ -12,7 +12,7 @@ import (
 
 var helmProviders = getter.All(cli.New())
 
-func parseDeploymentName(app *model.Application, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (string, error) {
+func ParseDeploymentName(app *model.Application, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (string, error) {
 	if appEnvConfig.DeploymentNameOverride != nil && *appEnvConfig.DeploymentNameOverride != "" {
 		return projectConfig.Namespace, nil
 	}
@@ -33,7 +33,7 @@ func parseDeploymentName(app *model.Application, projectConfig *model.ProjectEnv
 }
 
 // 生成 values.yaml 文件
-func parseValues(app *model.Application, build *model.Build, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (map[string]interface{}, error) {
+func ParseValues(app *model.Application, build *model.Build, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (map[string]interface{}, error) {
 	options := values.Options{}
 
 	// 1. 从cd仓库文件中获取values.yaml
@@ -62,6 +62,10 @@ func parseValues(app *model.Application, build *model.Build, projectConfig *mode
 		options.Values = append(options.Values, fmt.Sprintf("image.tag=%s", build.ImageTag))
 	}
 	return options.MergeValues(helmProviders)
+}
+
+func Diff() {
+
 }
 
 func parseTemplate(tpl string, data map[string]interface{}) (string, error) {

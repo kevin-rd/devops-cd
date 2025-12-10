@@ -102,11 +102,11 @@ type ReleaseAppResponse struct {
 	CommitBranch  *string `json:"commit_branch,omitempty"`  // 分支
 
 	// 发布信息
-	ReleaseNotes *string `json:"release_notes,omitempty"` // 应用级发布说明
-	IsLocked     bool    `json:"is_locked"`               // 是否已锁定（封板后为true）
-	SkipPreEnv   bool    `json:"skip_pre_env"`            // 是否跳过预发布环境（封板时从app_env_configs计算得出）
-	Reason       string  `json:"reason,omitempty"`
-	Status       int8    `json:"status"`
+	ReleaseNotes *string  `json:"release_notes,omitempty"` // 应用级发布说明
+	IsLocked     bool     `json:"is_locked"`               // 是否已锁定（封板后为true）
+	SkipPreEnv   bool     `json:"skip_pre_env"`            // 是否跳过预发布环境（封板时从app_env_configs计算得出）
+	Reasons      []string `json:"reasons,omitempty"`
+	Status       int8     `json:"status"`
 
 	// 时间信息
 	CreatedAt string `json:"created_at"`

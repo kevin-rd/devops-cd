@@ -27,8 +27,7 @@ func (sm *ReleaseStateMachine) ManualDeploy(releaseAppID int64, action, operator
 	return sm.UpdateStatus(context.TODO(), releaseAppID,
 		WithStatus(utils.CopyInt8(e.To)),
 		WithSource(TransitionSourceOutside),
-		WithOperator(operator),
-		WithReason(reason),
+		WithOperationExplain(operator, reason),
 	)
 }
 
@@ -37,7 +36,7 @@ func (sm *ReleaseStateMachine) SwitchVersion(releaseAppID, buildID int64, operat
 	// 事务更新
 	return sm.UpdateStatus(context.TODO(), releaseAppID,
 		WithSource(TransitionSourceOutside),
-		WithTarget(func(r model.ReleaseApp) int8 {
+		WithToFunc(func(r model.ReleaseApp) int8 {
 			if r.SkipPreEnv {
 				return constants.ReleaseAppStatusProdCanTrigger
 			} else {
