@@ -59,8 +59,7 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 			Handler:     ManualTriggerPreDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
-		// 提前Prod发布(Pre发布完成或没有Pre环境)
-		// 手动触发Prod发布(包括没有Pre环境的情况)
+		// 手动触发Prod发布(Pre发布完成后提前触发Prod/没有Pre环境直接提交触发Prod)
 		{
 			From:        []int8{constants.ReleaseAppStatusTagged, constants.ReleaseAppStatusPreDeployed},
 			To:          constants.ReleaseAppStatusProdCanTrigger,

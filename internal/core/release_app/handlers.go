@@ -74,14 +74,19 @@ func (h HandlerFunc) Name() string {
 }
 
 func (sm *ReleaseStateMachine) registerHandlers() {
+	// Pre
 	sm.handlers[constants.ReleaseAppStatusPreWaiting] = HandlerFunc(sm.HandlePreWaiting)
 	sm.handlers[constants.ReleaseAppStatusPreCanTrigger] = HandlerFunc(sm.HandlePreCanTrigger)
 	sm.handlers[constants.ReleaseAppStatusPreTriggered] = HandlerFunc(sm.HandlePreTriggered)
 	sm.handlers[constants.ReleaseAppStatusPreDeployed] = HandlerFunc(sm.HandlePreDeployed)
+	sm.handlers[constants.ReleaseAppStatusPreFailed] = HandlerFunc(sm.HandleEmpty)
+
+	// Prod
 	sm.handlers[constants.ReleaseAppStatusProdWaiting] = HandlerFunc(sm.HandleProdWaiting)
 	sm.handlers[constants.ReleaseAppStatusProdCanTrigger] = HandlerFunc(sm.HandleProdCanTrigger)
 	sm.handlers[constants.ReleaseAppStatusProdTriggered] = HandlerFunc(sm.HandleProdTriggered)
 	sm.handlers[constants.ReleaseAppStatusProdDeployed] = HandlerFunc(sm.HandleProdDeployed)
+	sm.handlers[constants.ReleaseAppStatusProdFailed] = HandlerFunc(sm.HandleEmpty)
 }
 
 // handlers
@@ -413,5 +418,10 @@ func (sm *ReleaseStateMachine) HandleProdTriggered(ctx context.Context, release 
 
 // HandleProdDeployed handle StatusProdDeployed:23
 func (sm *ReleaseStateMachine) HandleProdDeployed(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+	return 0, nil, nil
+}
+
+func (sm *ReleaseStateMachine) HandleEmpty(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+	// todo
 	return 0, nil, nil
 }

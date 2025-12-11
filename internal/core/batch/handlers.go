@@ -5,6 +5,7 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -59,29 +60,34 @@ func (sm *StateMachine) HandlePreWaiting(ctx context.Context, batch *model.Batch
 	return constants.BatchStatusPreDeploying, nil, nil
 }
 
-// HandlePreDeploying handle StatusPreDeploying:21 -> StatusPreDeployed:22
+// HandlePreDeploying handle StatusPreDeploying:21
+// When all success -> StatusPreDeployed:22
+// When any failed -> StatusPreFailed:24
+// todo: 需要添加失败情况
 func (sm *StateMachine) HandlePreDeploying(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	batchName := fmt.Sprintf("%s[%v]", batch.BatchNumber, batch.ID)
 
 	// 统计status < PreDeployed的release_app数量 (只统计需要 pre 的应用)
-	var notDeployedCount int64
+	var countInDoing int64
 	if err := sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ? AND skip_pre_env = ? AND status < ?", batch.ID, false, constants.ReleaseAppStatusPreDeployed).
-		Count(&notDeployedCount).Error; err != nil {
-		return 0, nil, fmt.Errorf("查询未部署应用失败: %w", err)
+		Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).
+		Scopes(StatusIn(constants.BatchStatusPreWaiting)).
+		Where("status != ?", constants.ReleaseAppStatusPreDeployed).
+		Count(&countInDoing).Error; err != nil {
+		return 0, nil, fmt.Errorf("[db] 查询未部署应用时失败: %w", err)
 	}
-	if notDeployedCount > 0 {
-		sm.logger.Debug(fmt.Sprintf("Batch:%s -> PreDeploying 进行中，剩余 %d 条", batchName, notDeployedCount))
+	if countInDoing > 0 {
+		sm.logger.Debug(fmt.Sprintf("Batch:%s -> PreDeploying 进行中，剩余 %d 条", batchName, countInDoing))
 		return 0, nil, nil // 继续等待
 	}
 
 	// 检查是否有release, 防止空批次误判
-	var total int64
-	sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).Count(&total)
-	if total == 0 {
+	var countInPre int64
+	sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).Count(&countInPre)
+	if countInPre == 0 {
 		// 不应该到达这里,但保险起见,直接跳到 prod
-		sm.logger.Warn(fmt.Sprintf("Batch:%s -> PreDeploying 但无需要 pre 的应用,跳转到 ProdWaiting", batchName))
-		return constants.BatchStatusProdWaiting, nil, nil
+		sm.logger.Error(fmt.Sprintf("Batch:%s -> PreDeploying 没有需要 pre 的应用, 直接跳转到 ProdWaiting", batchName))
+		return constants.BatchStatusPreDeployed, nil, nil
 	}
 
 	return constants.BatchStatusPreDeployed, func(b *model.Batch) {
@@ -121,18 +127,20 @@ func (sm *StateMachine) HandleProdWaiting(ctx context.Context, batch *model.Batc
 	return constants.BatchStatusProdDeploying, nil, nil
 }
 
-// HandleProdDeploying handle StatusProdDeploying:31 -> StatusProdDeployed:32
+// HandleProdDeploying handle StatusProdDeploying:31
+// When all success -> StatusProdDeployed:32
+// When any failed -> StatusProdFailed:34
+// todo: 需要添加失败情况
 func (sm *StateMachine) HandleProdDeploying(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	batchName := fmt.Sprintf("%s[%v]", batch.BatchNumber, batch.ID)
 
 	// 统计 status < ProdDeployed 的 release_app 数量
 	var notDeployedCount int64
-	if err := sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ? AND status < ?", batch.ID, constants.ReleaseAppStatusProdDeployed).
+	if err := sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).
+		Scopes(StatusIn(constants.BatchStatusProdWaiting)).Where("status != ?", constants.ReleaseAppStatusProdDeployed).
 		Count(&notDeployedCount).Error; err != nil {
-		return 0, nil, fmt.Errorf("查询未部署应用失败: %w", err)
+		return 0, nil, fmt.Errorf("[db] 统计未部署应用时失败: %w", err)
 	}
-
 	if notDeployedCount > 0 {
 		sm.logger.Debug(fmt.Sprintf("[Batch SM] Batch:%s -> ProdDeploying 进行中，剩余 %d 条", batchName, notDeployedCount))
 		return 0, nil, nil // 继续等待
@@ -154,4 +162,14 @@ func (sm *StateMachine) HandleProdDeploying(ctx context.Context, batch *model.Ba
 // HandleProdDeployed handle StatusProdDeployed:32
 func (sm *StateMachine) HandleProdDeployed(ctx context.Context, batch *model.Batch) (int8, func(*model.Batch), error) {
 	return 0, nil, nil
+}
+
+// ---- common functions -----
+
+// StatusIn 批量查询指定范围内的状态, 左闭右开区间
+func StatusIn(status int8) func(db *gorm.DB) *gorm.DB {
+	start, end := constants.Range10(status)
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Where("status >= ? AND status < ?", start, end)
+	}
 }

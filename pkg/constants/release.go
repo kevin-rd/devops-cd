@@ -16,6 +16,12 @@ const (
 	ReleaseAppStatusProdFailed     int8 = 34
 )
 
+func Range10(status int8) (start, end int8) {
+	start = (status / 10) * 10
+	end = start + 10
+	return start, end
+}
+
 // DeploymentStatus 部署状态
 const (
 	DeploymentStatusPending = "pending"
