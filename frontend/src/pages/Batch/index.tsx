@@ -1,29 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
-import {
-  Badge,
-  Button,
-  Card,
-  DatePicker,
-  Input,
-  message,
-  Modal,
-  Pagination,
-  Radio,
-  Select,
-  Space,
-  Spin,
-  Table,
-  Tag,
-  Tooltip,
-} from 'antd'
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  SaveOutlined,
-  UndoOutlined,
-} from '@ant-design/icons'
+import {Badge, Button, Card, DatePicker, Input, message, Modal, Pagination, Radio, Select, Space, Spin, Table, Tag, Tooltip,} from 'antd'
+import {CheckCircleOutlined, CloseCircleOutlined, PlusOutlined, ReloadOutlined, SaveOutlined, UndoOutlined,} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useTranslation} from 'react-i18next'
 import dayjs from 'dayjs'
@@ -33,13 +10,15 @@ import type {ColumnsType} from 'antd/es/table'
 import {batchService} from '@/services/batch'
 import {useNavigate} from 'react-router-dom'
 import {useAuthStore} from '@/stores/authStore'
-import {BATCH_STATUS_CONFIG, StatusTag} from '@/components/StatusTag'
+import {StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
 import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import type {BatchActionRequest, BatchQueryParams, BuildSummary} from '@/types'
 import './index.css'
+import './status-card.css'
 import {Batch, BatchAction, BatchStatus} from "@/types/batch.ts";
 import {ReleaseApp} from "@/types/release_app.ts";
+import {BatchStatusConfig} from "@/pages/Batch/utils/status.tsx";
 
 const {RangePicker} = DatePicker
 const {TextArea} = Input
@@ -931,16 +910,7 @@ export default function BatchList() {
 
     // 根据状态添加 CSS 类（使用最新的状态）
     const currentStatus = mergedBatch.status
-    const statusConfig = BATCH_STATUS_CONFIG[currentStatus] || {label: '未知', color: 'default'}
-    const statusClass =
-      currentStatus === 0 ? 'status-draft' :            // 草稿 - 淡黄色
-        currentStatus === 10 ? 'status-sealed' :          // 已封板 - 紫色
-          currentStatus === 20 || currentStatus === 21 ? 'status-pre-deploying' : // 预发布中 - 蓝色流光
-            currentStatus === 22 ? 'status-pre-deployed' :     // 预发布完成 - 固定蓝色
-              currentStatus === 30 || currentStatus === 31 ? 'status-prod-deploying' : // 生产部署中 - 橙色流光
-                currentStatus === 32 ? 'status-prod-deployed' :    // 生产部署完成 - 固定橙色
-                  currentStatus === 40 ? 'status-completed' :        // 已完成 - 绿色
-                    currentStatus === 90 ? 'status-cancelled' : ''     // 已取消 - 灰色
+    const statusClass = BatchStatusConfig[currentStatus].class_name || 'default'
 
     // 时间轴使用合并后的数据
     const timelineBatch: Batch = mergedBatch
@@ -956,7 +926,7 @@ export default function BatchList() {
     )
     return (
       <Badge.Ribbon className="batch-status-ribbon" placement="start"
-                    text={statusConfig.label} color={statusConfig.color}>
+                    text={BatchStatusConfig[currentStatus].label} color={BatchStatusConfig[currentStatus].color}>
         <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
           <div className="batch-card-main" onClick={() => navigate(`/batch/${record.id}/detail`)}>
             {record.release_notes ? (

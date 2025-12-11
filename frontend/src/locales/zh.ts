@@ -281,7 +281,7 @@ export default {
       // 操作
       seal: '封板确认',
       startPreDeploy: '开始预发布',
-      finishPreDeploy: '完成预发布',
+      finishPreDeploy: '预发布验收',
       startProdDeploy: '开始生产部署',
       finishProdDeploy: '完成生产部署',
       prodAcceptance: '生产验收',

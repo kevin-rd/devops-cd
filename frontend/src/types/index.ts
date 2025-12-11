@@ -1,5 +1,7 @@
 // API Response Types
 
+import {BatchAction} from "@/types/batch.ts";
+
 export interface ApiResponse<T = any> {
   code: number
   message: string
@@ -265,7 +267,7 @@ export interface BatchQueryParams extends PaginationParams {
 
 export interface BatchActionRequest {
   batch_id: number
-  action: 'seal' | 'start_pre_deploy' | 'finish_pre_deploy' | 'start_prod_deploy' | 'finish_prod_deploy' | 'complete' | 'cancel'
+  action: BatchAction
   operator: string
   reason?: string
 }

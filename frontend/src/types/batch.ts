@@ -38,12 +38,19 @@ export interface Batch {
 export enum BatchStatus {
   Draft = 0,  // 草稿/准备中
   Sealed = 10, // 已封板
+
   PreTriggered = 20, // 预发布已触发
   PreDeploying = 21, // 预发布部署中
   PreDeployed = 22, // 预发布已部署完成, 验收中
+  PreFailed = 23, // Prod发布失败
+  PreAccepted = 25, // Pre已验收完成
+
   ProdTriggered = 30, // 生产已触发
   ProdDeploying = 31, // 生产部署中
   ProdDeployed = 32, // 生产已部署完成, 验收中
+  ProdFailed = 33, // Prod发布失败
+  ProdAccepted = 35, // Prod已验收完成
+
   Completed = 40, // 已完成
   FinalAccepted = 40,
   Cancelled = 90, // 已取消
@@ -52,7 +59,9 @@ export enum BatchStatus {
 export enum BatchAction {
   Seal = 'seal',
   StartPreDeploy = 'start_pre_deploy',
+  ConfirmPre = 'confirm_pre',
   StartProdDeploy = 'start_prod_deploy',
+  ConfirmProd = 'confirm_prod',
   Complete = 'complete',
   Cancel = 'cancel',
 }

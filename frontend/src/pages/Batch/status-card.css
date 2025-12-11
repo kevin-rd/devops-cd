@@ -1,0 +1,146 @@
+/* 自定义 Ribbon 样式（更高优先级覆盖 Antd 默认值） */
+.ant-ribbon.batch-status-ribbon {
+  top: 8px;
+  inset-inline-start: -18px !important; /* 兼容 RTL，等同于 left: -10px */
+  height: 22px !important;
+  line-height: 22px !important;
+  padding: 0 6px !important;
+  font-size: 12px !important;
+  z-index: 5 !important;
+}
+
+/* 确保包裹元素不裁剪 Ribbon */
+.ant-ribbon-wrapper {
+  overflow: visible;
+}
+
+
+/* 通用批次状态卡片样式（列表 & 详情复用） */
+
+/* 草稿 - 淡黄色背景 */
+.status-draft {
+  background: linear-gradient(to bottom, var(--status-draft-bg-start) 0%, var(--status-draft-bg-end) 120%);
+}
+
+/* 已封板 - 紫色背景 */
+.status-sealed {
+  background: linear-gradient(to bottom, var(--status-sealed-bg-start) 0%, var(--status-sealed-bg-end) 120%);
+  position: relative;
+}
+
+/* 预发布中 - 蓝色虚线滚动边框 + 日暮背景 */
+.status-pre-deploying {
+  border: var(--status-border-width-normal, 2px) solid transparent;
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%);
+  position: relative;
+  overflow: visible;
+}
+
+.status-pre-deploying::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--status-border-radius, 6px);
+  padding: var(--status-border-width-normal, 2px);
+  background: repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px)),
+  repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px)),
+  repeating-linear-gradient(90deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px)),
+  repeating-linear-gradient(0deg, var(--status-pre-border-deploying) 0, var(--status-pre-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px));
+  background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-repeat: no-repeat;
+  mask: linear-gradient(#fff, 0, 0) content-box, linear-gradient(#fff, 0, 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  animation: statusBorderDashMove var(--status-animation-duration, 1.5s) linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.status-pre-deploying::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--status-border-radius-inner, 4px);
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 120%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 预发布完成 - 蓝色实线边框 + 日暮背景 */
+.status-pre-deployed {
+  border: var(--status-border-width-normal, 2px) solid var(--status-pre-border-deployed);
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 150%);
+  position: relative;
+}
+
+/* 生产部署中 - 橙红虚线滚动边框 + 火山背景 */
+.status-prod-deploying {
+  border: none;
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%);
+  position: relative;
+  overflow: visible;
+}
+
+.status-prod-deploying::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--status-border-radius, 6px);
+  padding: var(--status-border-width-normal, 2px);
+  background: repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px)),
+  repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px)),
+  repeating-linear-gradient(90deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px)),
+  repeating-linear-gradient(0deg, var(--status-prod-border-deploying) 0, var(--status-prod-border-deploying) var(--status-dash-length, 12px), transparent var(--status-dash-length, 12px), transparent var(--status-dash-gap, 24px));
+  background-size: 200% 2px, 2px 200%, 200% 2px, 2px 200%;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-repeat: no-repeat;
+  mask: linear-gradient(#fff, 0, 0) content-box, linear-gradient(#fff, 0, 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  animation: statusBorderDashMove var(--status-animation-duration, 1.5s) linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.status-prod-deploying::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--status-border-radius-inner, 4px);
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 120%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 生产部署完成 - 绿色实线边框 + 火山背景 */
+.status-prod-deployed {
+  border: var(--status-border-width-normal, 2px) solid var(--status-prod-border-deployed);
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 150%);
+}
+
+/* 已完成状态 - 绿色背景 */
+.status-completed {
+  border: var(--status-border-width-thin, 1px) solid var(--status-completed-border);
+  background: linear-gradient(to bottom, var(--status-completed-bg-start) 0%, var(--status-completed-bg-end) 100%);
+}
+
+/* 已取消状态 - 灰色背景 */
+.status-cancelled {
+  border: var(--status-border-width-thin, 1px) solid var(--status-cancelled-border, #d9d9d9);
+  background: linear-gradient(to bottom, var(--status-cancelled-bg-start, #fafafa) 0%, var(--status-cancelled-bg-end, #ffffff) 100%);
+  opacity: var(--status-cancelled-opacity, 0.85);
+}
+
+/* 动画 */
+@keyframes statusBorderDashMove {
+  0% {
+    background-position: 0 0, 100% 0, 0 100%, 0 0;
+  }
+  100% {
+    background-position: 24px 0, 100% 24px, -24px 100%, 0 -24px;
+  }
+}
+

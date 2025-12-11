@@ -274,7 +274,7 @@ export default {
       reject: 'Reject',
       seal: 'Seal',
       startPreDeploy: 'Start Pre-deploy',
-      finishPreDeploy: 'Finish Pre-deploy',
+      finishPreDeploy: 'Acceptance Pre-deploy',
       startProdDeploy: 'Start Prod Deploy',
       finishProdDeploy: 'Finish Prod Deploy',
       prodAcceptance: 'Prod Acceptance',

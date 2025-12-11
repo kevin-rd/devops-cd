@@ -1,17 +1,7 @@
 import type {ReactNode} from 'react'
 import {useEffect, useMemo, useState} from 'react'
-import {Button, Card, Checkbox, Empty, Input, message, Modal, Segmented, Select, Space, Spin, Table, Tag,} from 'antd'
-import {
-  CheckCircleOutlined,
-  EditOutlined,
-  FastForwardOutlined,
-  LeftOutlined,
-  PlayCircleOutlined,
-  ReloadOutlined,
-  SaveOutlined,
-  StopOutlined,
-  UndoOutlined,
-} from '@ant-design/icons'
+import {Badge, Button, Card, Checkbox, Empty, Input, message, Modal, Segmented, Select, Space, Spin, Table, Tag,} from 'antd'
+import {CheckCircleOutlined, EditOutlined, FastForwardOutlined, LeftOutlined, ReloadOutlined, SaveOutlined, UndoOutlined,} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useNavigate, useParams, useSearchParams} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
@@ -25,8 +15,12 @@ import DependencyGraph from '@/components/BatchInsight/DependencyGraph'
 import AppSelectionTable from '@/components/AppSelectionTable'
 import '@/styles/status-theme.css'
 import './Detail.css'
+import './status-card.css'
 import {ReleaseApp} from "@/types/release_app.ts";
 import {Batch, BatchAction, BatchStatus} from "@/types/batch.ts";
+import {getAvailableActions} from "@/pages/Batch/utils/actions.tsx";
+import {BATCH_STATUS_CONFIG} from "@/components/StatusTag";
+import {BatchStatusConfig} from "@/pages/Batch/utils/status.tsx";
 
 type DependencyOption = {
   label: ReactNode
@@ -176,7 +170,7 @@ export default function BatchDetail() {
   })
 
   // 处理操作
-  const handleAction = (action: BatchActionRequest['action'], needConfirm = true) => {
+  const handleAction = (action: BatchAction, needConfirm = true) => {
     if (!batch) return
 
     const confirmMessages: Record<string, string> = {
@@ -219,7 +213,7 @@ export default function BatchDetail() {
       message.warning('请输入取消原因')
       return
     }
-    handleAction('cancel', false)
+    handleAction(BatchAction.Cancel, false)
   }
 
   // 提交应用修改
@@ -358,113 +352,6 @@ export default function BatchDetail() {
     return defaultDeps.filter(id => !appIdMap.has(id))
   }, [editingRelease, appIdMap])
 
-  // 根据状态判断可用操作
-  const getAvailableActions = () => {
-    if (!batch) return []
-
-    const actions: Array<{
-      key: string
-      label: string
-      icon: React.ReactNode
-      type?: 'primary' | 'default' | 'link'
-      danger?: boolean
-      action: BatchActionRequest['action']
-    }> = []
-
-    // 已封板：根据是否有pre应用决定显示哪个按钮
-    if (batch.status === 10) {
-      if (appStatistics.hasPreApps) {
-        // 有需要pre的应用，显示"开始预发布"按钮
-        actions.push({
-          key: 'start_pre_deploy',
-          label: `${t('batch.startPreDeploy')} (${appStatistics.preAppsCount} 个应用)`,
-          icon: <PlayCircleOutlined/>,
-          type: 'primary',
-          action: BatchAction.StartPreDeploy,
-        })
-      }
-
-      if (appStatistics.allSkipPre) {
-        // 所有应用都跳过pre，显示"直接开始生产部署"按钮
-        actions.push({
-          key: 'start_prod_deploy',
-          label: `${t('batch.startProdDeploy')} (跳过预发布)`,
-          icon: <FastForwardOutlined/>,
-          type: 'primary',
-          action: BatchAction.StartProdDeploy,
-        })
-      }
-    }
-
-    // 预发布中：可以完成预发布
-    if (batch.status === 21) {
-      actions.push({
-        key: 'finish_pre_deploy',
-        label: t('batch.finishPreDeploy'),
-        icon: <CheckCircleOutlined/>,
-        type: 'primary',
-        action: 'finish_pre_deploy',
-      })
-    }
-
-    // 预发布完成：可以开始生产部署
-    if (batch.status === 22) {
-      actions.push({
-        key: 'start_prod_deploy',
-        label: t('batch.startProdDeploy'),
-        icon: <PlayCircleOutlined/>,
-        type: 'primary',
-        action: BatchAction.StartProdDeploy,
-      })
-    }
-
-    // 生产部署中：可以完成生产部署
-    if (batch.status === 31) {
-      actions.push({
-        key: 'finish_prod_deploy',
-        label: t('batch.finishProdDeploy'),
-        icon: <CheckCircleOutlined/>,
-        type: 'primary',
-        action: 'finish_prod_deploy',
-      })
-    }
-
-    // 生产部署完成：可以最终验收
-    if (batch.status === 32) {
-      actions.push({
-        key: 'complete',
-        label: t('batch.complete'),
-        icon: <CheckCircleOutlined/>,
-        type: 'primary',
-        action: 'complete',
-      })
-    }
-
-    // 审批通过：可以封板
-    if (batch.status === 0 && batch.approval_status === 'approved') {
-      actions.push({
-        key: 'seal',
-        label: t('batch.seal'),
-        icon: <CheckCircleOutlined/>,
-        type: 'primary',
-        action: 'seal',
-      })
-    }
-
-    // 未完成且未取消的批次可以取消
-    if (batch.status < 40 && batch.status !== 90) {
-      actions.push({
-        key: 'cancel',
-        label: t('batch.cancelBatch'),
-        icon: <StopOutlined/>,
-        danger: true,
-        type: 'link',
-        action: 'cancel',
-      })
-    }
-
-    return actions
-  }
 
   if (isLoading) {
     return (
@@ -793,95 +680,101 @@ export default function BatchDetail() {
 
       {/* 主区域 */}
       <div className="batch-detail-content">
+
         {/* 上方: 批次信息和时间线 Section */}
-        <Card
-          className={`batch-detail-section batch-info-section batch-info-fixed-height ${getStatusClassName()}`}
-          title={
-            <div className="batch-info-title">
-              <div className="title-main">
-                <span className="batch-id">#{batch.id}</span>
-                <span className="batch-name">{batch.batch_number}</span>
+        <Badge.Ribbon placement="start" className="batch-status-ribbon"
+                      style={{top: 50}}
+                      text={BatchStatusConfig[batch.status].label || 'unknown'}
+                      color={BATCH_STATUS_CONFIG[batch.status].color || 'default'}>
+          <Card
+            className={`batch-detail-section batch-info-section batch-info-fixed-height ${getStatusClassName()}`}
+            title={
+              <div className="batch-info-title">
+                <div className="title-main">
+                  <span className="batch-id">#{batch.id}</span>
+                  <span className="batch-name">{batch.batch_number}</span>
+                </div>
+                {batch.release_notes && (
+                  <div className="release-notes">{batch.release_notes}</div>
+                )}
               </div>
-              {batch.release_notes && (
-                <div className="release-notes">{batch.release_notes}</div>
-              )}
-            </div>
-          }
-          extra={
-            <Space size="small">
-              {/* 操作按钮 */}
-              {getAvailableActions().map((action) => (
-                <Button
-                  key={action.key}
-                  type={action.type}
-                  size="small"
-                  danger={action.danger}
-                  icon={action.icon}
-                  loading={actionMutation.isPending}
-                  onClick={() => {
-                    if (action.action === 'cancel') {
-                      handleCancel()
-                    } else {
-                      handleAction(action.action)
-                    }
-                  }}
-                >{action.label}
-                </Button>
-              ))}
-            </Space>
-          }
-        >
-          <div className="batch-info-content">
-            {viewMode === 'list' ? (
-              /* 应用列表模式：显示批次基本信息 */
-              <div className="batch-descriptions-wrapper">
-                <div className="batch-info-item">
-                  <span className="batch-info-label">{t('batch.initiator')}:</span>
-                  <span className="batch-info-value">{batch.initiator}</span>
-                </div>
-                <div className="batch-info-item">
-                  <span className="batch-info-label">{t('batch.createdAt')}:</span>
-                  <span className="batch-info-value">{dayjs(batch.created_at).format('YYYY-MM-DD HH:mm:ss')}</span>
-                </div>
-                <div className="batch-info-item">
-                  <span className="batch-info-label">{t('batch.totalApps')}:</span>
-                  <span className="batch-info-value">
+            }
+            extra={
+              <Space size="small">
+                {/* 操作按钮 */}
+                {getAvailableActions(batch, appStatistics).map((action) => (
+                  <Button
+                    key={action.key}
+                    type={action.type}
+                    size="small"
+                    danger={action.danger}
+                    icon={action.icon}
+                    loading={actionMutation.isPending}
+                    onClick={() => {
+                      if (action.action === BatchAction.Cancel) {
+                        handleCancel()
+                      } else {
+                        handleAction(action.action)
+                      }
+                    }}
+                  >{action.label}
+                  </Button>
+                ))}
+              </Space>
+            }
+          >
+            <div className="batch-info-content">
+              {viewMode === 'list' ? (
+                /* 应用列表模式：显示批次基本信息 */
+                <div className="batch-descriptions-wrapper">
+                  <div className="batch-info-item">
+                    <span className="batch-info-label">{t('batch.initiator')}:</span>
+                    <span className="batch-info-value">{batch.initiator}</span>
+                  </div>
+                  <div className="batch-info-item">
+                    <span className="batch-info-label">{t('batch.createdAt')}:</span>
+                    <span className="batch-info-value">{dayjs(batch.created_at).format('YYYY-MM-DD HH:mm:ss')}</span>
+                  </div>
+                  <div className="batch-info-item">
+                    <span className="batch-info-label">{t('batch.totalApps')}:</span>
+                    <span className="batch-info-value">
                     {appStatistics.total} 个应用
-                    {appStatistics.total > 0 && (
-                      <span style={{marginLeft: 8, fontSize: 12, color: '#8c8c8c'}}>
+                      {appStatistics.total > 0 && (
+                        <span style={{marginLeft: 8, fontSize: 12, color: '#8c8c8c'}}>
                         (
-                        {appStatistics.hasPreApps && (
-                          <span>
+                          {appStatistics.hasPreApps && (
+                            <span>
                             <Tag color="blue" style={{margin: '0 4px'}}>
                               {appStatistics.preAppsCount} 需预发布
                             </Tag>
                           </span>
-                        )}
-                        {appStatistics.skipPreCount > 0 && (
-                          <span>
+                          )}
+                          {appStatistics.skipPreCount > 0 && (
+                            <span>
                             <Tag color="orange" style={{margin: '0 4px'}}>
                               {appStatistics.skipPreCount} 跳过预发布
                             </Tag>
                           </span>
-                        )}
-                        )
+                          )}
+                          )
                       </span>
-                    )}
+                      )}
                   </span>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              /* 发布详情模式：显示上线流程时间线 */
-              <div className="batch-timeline-wrapper">
-                <BatchTimeline
-                  batch={batch}
-                  hasPreApps={appStatistics.hasPreApps}
-                  onAction={(action) => handleAction(action as BatchActionRequest['action'])}
-                />
-              </div>
-            )}
-          </div>
-        </Card>
+              ) : (
+                /* 发布详情模式：显示上线流程时间线 */
+                <div className="batch-timeline-wrapper">
+                  <BatchTimeline
+                    batch={batch}
+                    hasPreApps={appStatistics.hasPreApps}
+                    onAction={(action) => handleAction(action as BatchAction)}
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+        </Badge.Ribbon>
 
         {/* 下方: 应用列表或依赖图 Section */}
         <Card
@@ -911,7 +804,7 @@ export default function BatchDetail() {
                       <Button
                         type="primary"
                         icon={<CheckCircleOutlined/>}
-                        onClick={() => handleAction('seal')}
+                        onClick={() => handleAction(BatchAction.Seal)}
                         size="small"
                       >
                         {t('batch.seal')}
