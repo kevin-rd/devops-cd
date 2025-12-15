@@ -8,11 +8,11 @@ import {formatCreatedTime} from '@/utils/time'
 
 import type {ColumnsType} from 'antd/es/table'
 import {batchService} from '@/services/batch'
+import {projectService, ProjectSimple} from '@/services/project'
 import {useNavigate} from 'react-router-dom'
 import {useAuthStore} from '@/stores/authStore'
 import {StatusTag} from '@/components/StatusTag'
 import {BatchTimeline} from '@/components/BatchTimeline'
-import BatchCreateDrawer from '@/components/BatchCreateDrawer'
 import type {BatchActionRequest, BatchQueryParams, BuildSummary} from '@/types'
 import './index.css'
 import './status-card.css'
@@ -38,9 +38,17 @@ export default function BatchList() {
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [currentBatchId, setCurrentBatchId] = useState<number | null>(null)
-  const [createDrawerOpen, setCreateDrawerOpen] = useState(false)
   const [refreshingList, setRefreshingList] = useState(false)
   const [refreshingDetails, setRefreshingDetails] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+
+  // 创建Modal相关状态
+  const [createFormData, setCreateFormData] = useState({
+    batch_number: '',
+    project_id: undefined as number | undefined,
+    initiator: '',
+    release_notes: '',
+  })
 
   // 审批相关状态
   const [approvalModalVisible, setApprovalModalVisible] = useState(false)
@@ -74,6 +82,21 @@ export default function BatchList() {
     }, 500)
     return () => clearTimeout(timer)
   }, [keywordInput])
+
+  // 查询项目列表（用于创建Modal）
+  const {data: projectsData} = useQuery({
+    queryKey: ['projects'],
+    queryFn: async (): Promise<ProjectSimple[]> => {
+      const res = await projectService.getAll()
+      return res.data
+    },
+    enabled: createModalOpen, // 只有打开Modal时才查询
+  })
+
+  const projectOptions = projectsData?.map(project => ({
+    label: project.name,
+    value: project.id,
+  }))
 
   // 查询批次列表 - 如果有待部署中的批次，每5秒自动刷新
   const {data: batchResponse, isLoading, refetch} = useQuery({
@@ -297,6 +320,26 @@ export default function BatchList() {
     },
   })
 
+  // 创建批次 Mutation
+  const createBatchMutation = useMutation({
+    mutationFn: (data: any) => batchService.create(data),
+    onSuccess: () => {
+      message.success(t('batch.createSuccess'))
+      setCreateModalOpen(false)
+      setCreateFormData({
+        batch_number: '',
+        project_id: undefined,
+        initiator: '',
+        release_notes: '',
+      })
+      refetch()
+    },
+    onError: (error: any) => {
+      const errorMsg = error.response?.data?.message || error.message || t('common.error')
+      message.error(errorMsg)
+    },
+  })
+
   // 处理展开/折叠
   const handleExpand = (expanded: boolean, record: Batch) => {
     if (expanded) {
@@ -393,6 +436,51 @@ export default function BatchList() {
     } finally {
       setApprovalLoading(false)
     }
+  }
+
+  // 处理创建Modal
+  const handleCreateModalOpen = () => {
+    setCreateFormData({
+      batch_number: '',
+      project_id: undefined,
+      initiator: user?.username || '',
+      release_notes: '',
+    })
+    setCreateModalOpen(true)
+  }
+
+  const handleCreateModalClose = () => {
+    setCreateModalOpen(false)
+    setCreateFormData({
+      batch_number: '',
+      project_id: undefined,
+      initiator: '',
+      release_notes: '',
+    })
+  }
+
+  const handleCreateBatch = async () => {
+    if (!createFormData.batch_number.trim()) {
+      message.warning('请输入批次编号')
+      return
+    }
+    if (!createFormData.project_id) {
+      message.warning('请选择所属项目')
+      return
+    }
+
+    const requestData: any = {
+      batch_number: createFormData.batch_number.trim(),
+      project_id: createFormData.project_id,
+      initiator: createFormData.initiator || user?.username || 'unknown',
+      apps: [], // 空的应用列表
+    }
+
+    if (createFormData.release_notes.trim()) {
+      requestData.release_notes = createFormData.release_notes.trim()
+    }
+
+    createBatchMutation.mutate(requestData)
   }
 
   // 处理刷新按钮
@@ -1022,7 +1110,7 @@ export default function BatchList() {
             <Button
               type="primary"
               icon={<PlusOutlined/>}
-              onClick={() => setCreateDrawerOpen(true)}
+              onClick={handleCreateModalOpen}
             >
               {t('batch.create')}
             </Button>
@@ -1167,6 +1255,71 @@ export default function BatchList() {
 
       </Card>
 
+      {/* 创建批次 Modal */}
+      <Modal
+        title="创建批次"
+        open={createModalOpen}
+        onOk={handleCreateBatch}
+        onCancel={handleCreateModalClose}
+        confirmLoading={createBatchMutation.isPending}
+        okText="创建"
+        cancelText="取消"
+        width={600}
+      >
+        <div style={{padding: '16px 0'}}>
+          <Space direction="vertical" style={{width: '100%'}} size="large">
+            <div>
+              <div style={{marginBottom: 8, fontWeight: 500}}>
+                批次编号 <span style={{color: '#ff4d4f'}}>*</span>
+              </div>
+              <Input
+                placeholder="请输入批次编号"
+                value={createFormData.batch_number}
+                onChange={(e) => setCreateFormData(prev => ({...prev, batch_number: e.target.value}))}
+              />
+            </div>
+
+            <div>
+              <div style={{marginBottom: 8, fontWeight: 500}}>
+                所属项目 <span style={{color: '#ff4d4f'}}>*</span>
+              </div>
+              <Select
+                placeholder="请选择项目"
+                style={{width: '100%'}}
+                value={createFormData.project_id}
+                onChange={(value) => setCreateFormData(prev => ({...prev, project_id: value}))}
+                options={projectOptions}
+                showSearch
+                optionFilterProp="label"
+              />
+            </div>
+
+            <div>
+              <div style={{marginBottom: 8, fontWeight: 500}}>
+                发起人
+              </div>
+              <Input
+                value={createFormData.initiator}
+                onChange={(e) => setCreateFormData(prev => ({...prev, initiator: e.target.value}))}
+                disabled
+              />
+            </div>
+
+            <div>
+              <div style={{marginBottom: 8, fontWeight: 500}}>
+                发布说明
+              </div>
+              <TextArea
+                rows={4}
+                placeholder="请输入发布说明（可选）"
+                value={createFormData.release_notes}
+                onChange={(e) => setCreateFormData(prev => ({...prev, release_notes: e.target.value}))}
+              />
+            </div>
+          </Space>
+        </div>
+      </Modal>
+
       {/* 取消批次 Modal */}
       <Modal
         title={t('batch.cancelBatch')}
@@ -1247,15 +1400,6 @@ export default function BatchList() {
         </Space>
       </Modal>
 
-      {/* 创建批次 Drawer */}
-      <BatchCreateDrawer
-        open={createDrawerOpen}
-        onClose={() => setCreateDrawerOpen(false)}
-        onSuccess={() => {
-          setCreateDrawerOpen(false)
-          refetch()
-        }}
-      />
     </div>
   )
 }
