@@ -81,21 +81,45 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({batch, onAction, ha
 
   // 获取预发布步骤的状态描述（用于 subTitle，带样式类）
   const getPreDeployStatusText = () => {
-    if (batch.pre_deploy_finished_at) {
+    if (batch.status >= BatchStatus.ProdTriggered) {
       return {text: t('batch.statusCompleted'), className: 'status-tag status-finished'}
     }
-    if (batch.status === 21) {
-      return {text: t('batch.statusPreDeploying'), className: 'status-tag status-pending'}
+
+    switch (batch.status) {
+      case BatchStatus.PreTriggered:
+        return {text: t('batch.statusPreTriggered'), className: 'status-tag status-pending'}
+      case BatchStatus.PreDeploying:
+        return {text: t('batch.statusPreDeploying'), className: 'status-tag status-pending'}
+      case BatchStatus.PreDeployed:
+        return {text: t('batch.statusDeployed'), className: 'status-tag status-finished'}
+      case BatchStatus.PreAccepted:
+        return {text: t('batch.statusAccepted'), className: 'status-tag status-finished'}
+      default:
+        return {text: '-', className: ''}
     }
-    if (batch.status === 20) {
-      return {text: t('batch.statusPreTriggered'), className: 'status-tag status-pending'}
-    }
-    return {text: '-', className: ''}
   }
-
-
   const preDeployStatus = getPreDeployStatusText()
   const preDeployTimes = getPreDeployTimeDescription()
+
+  const getProdStatusText = () => {
+    if (batch.status >= BatchStatus.FinalAccepted) {
+      return {text: t('batch.statusCompleted'), className: 'status-tag status-finished'}
+    }
+
+    switch (batch.status) {
+      case BatchStatus.ProdTriggered:
+        return {text: t('batch.statusTriggered'), className: 'status-tag status-pending'}
+      case BatchStatus.ProdDeploying:
+        return {text: t('batch.statusDeploying'), className: 'status-tag status-pending'}
+      case BatchStatus.ProdDeployed:
+        return {text: t('batch.statusDeployed'), className: 'status-tag status-finished'}
+      case BatchStatus.ProdAccepted:
+        return {text: t('batch.statusAccepted'), className: 'status-tag status-finished'}
+      default:
+        return {text: '-', className: ''}
+    }
+  }
+  const prodStatus = getProdStatusText()
 
   // 获取自定义图标（用于可点击和进行中状态）
   const getCustomIcon = (stepIndex: number) => {
@@ -224,12 +248,8 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({batch, onAction, ha
       {
         title: t('batch.timelineProdDeploy'),
         subTitle:
-          <Tag className={batch.status === BatchStatus.ProdDeployed ? 'status-tag status-finished' :
-            batch.status === BatchStatus.ProdDeploying ? 'status-tag status-processing' :
-              batch.status === BatchStatus.ProdTriggered ? 'status-tag status-processing' : ''}>
-            {batch.status === BatchStatus.ProdDeployed ? t('batch.statusCompleted') :
-              batch.status === BatchStatus.ProdDeploying ? t('batch.statusProdDeploying') :
-                batch.status === BatchStatus.ProdTriggered ? t('batch.statusProdTriggered') : '-'}
+          <Tag className={prodStatus.className}>
+            {prodStatus.text}
           </Tag>,
         description: (
           <div className="timeline-step-description">
@@ -241,13 +261,20 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({batch, onAction, ha
       title: t('batch.timelineProdDeploy'),
       subTitle: '-',
       description: formatTime(batch.prod_deploy_started_at),
-    }),
+    })
+  )
+
+  // 最终验收
+  steps.push(batch.status >= BatchStatus.FinalAccepted ? (
     {
       title: t('batch.timelineAccept'),
-      description: formatTime(batch.final_accepted_at),
       subTitle: batch.final_accepted_by || '-',
-    }
-  )
+      description: formatTime(batch.final_accepted_at)
+    }) : ({
+    title: t('batch.timelineAccept'),
+    subTitle: '-',
+    description: '-'
+  }))
 
   return (
     <div className="batch-timeline">

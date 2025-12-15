@@ -910,7 +910,7 @@ export default function BatchList() {
 
     // 根据状态添加 CSS 类（使用最新的状态）
     const currentStatus = mergedBatch.status
-    const statusClass = BatchStatusConfig[currentStatus].class_name || 'default'
+    const statusClass = BatchStatusConfig[currentStatus]?.class_name || 'default'
 
     // 时间轴使用合并后的数据
     const timelineBatch: Batch = mergedBatch
@@ -926,7 +926,8 @@ export default function BatchList() {
     )
     return (
       <Badge.Ribbon className="batch-status-ribbon" placement="start"
-                    text={BatchStatusConfig[currentStatus].label} color={BatchStatusConfig[currentStatus].color}>
+                    text={BatchStatusConfig[currentStatus]?.label || 'unknown: ' + currentStatus}
+                    color={BatchStatusConfig[currentStatus]?.color}>
         <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
           <div className="batch-card-main" onClick={() => navigate(`/batch/${record.id}/detail`)}>
             {record.release_notes ? (

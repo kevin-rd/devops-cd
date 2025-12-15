@@ -23,6 +23,17 @@ export function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
   const actions: Array<BatchActionMeta> = []
   if (!batch) return actions
 
+  // 审批通过：可以封板
+  if (batch.status === BatchStatus.Draft && batch.approval_status === 'approved') {
+    actions.push({
+      key: 'seal',
+      label: t('batch.seal'),
+      icon: <CheckCircleOutlined/>,
+      type: 'primary',
+      action: BatchAction.Seal,
+    })
+  }
+
   // 已封板：根据是否有pre应用决定显示哪个按钮
   if (batch.status === 10) {
     if (statistics.preAppsCount > 0) {
@@ -48,7 +59,8 @@ export function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
     }
   }
 
-  // 预发布部署完成：可以验收
+
+  // Pre 部署完成：可以Pre验收
   if (batch.status === BatchStatus.PreDeployed) {
     actions.push({
       key: 'finish_pre_deploy',
@@ -59,7 +71,7 @@ export function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
     })
   }
 
-  // 预发布完成：可以开始生产部署
+  // Pre 验收完成：可以开始Prod部署
   if (batch.status === BatchStatus.PreAccepted) {
     actions.push({
       key: 'start_prod_deploy',
@@ -70,38 +82,29 @@ export function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
     })
   }
 
-  // 生产部署中：可以完成生产部署
+
+  // Prod 部署完成：可以prod验收
   if (batch.status === BatchStatus.ProdDeployed) {
     actions.push({
       key: 'finish_prod_deploy',
-      label: t('batch.finishProdDeploy'),
+      label: t('batch.acceptProd'),
       icon: <CheckCircleOutlined/>,
       type: 'primary',
       action: BatchAction.ConfirmProd,
     })
   }
 
-  // 生产部署完成：可以最终验收(PM验收)
+  // Prod 部署完成：可以最终验收(PM验收)
   if (batch.status === BatchStatus.ProdAccepted) {
     actions.push({
       key: 'complete',
-      label: t('batch.complete'),
+      label: t('batch.acceptFinally'),
       icon: <CheckCircleOutlined/>,
       type: 'primary',
       action: BatchAction.Complete,
     })
   }
 
-  // 审批通过：可以封板
-  if (batch.status === BatchStatus.Draft && batch.approval_status === 'approved') {
-    actions.push({
-      key: 'seal',
-      label: t('batch.seal'),
-      icon: <CheckCircleOutlined/>,
-      type: 'primary',
-      action: BatchAction.Seal,
-    })
-  }
 
   // 未完成且未取消的批次可以取消
   if (batch.status < 40 && batch.status !== BatchStatus.Cancelled) {

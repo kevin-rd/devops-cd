@@ -75,6 +75,11 @@
   position: relative;
 }
 
+.status-pre-accepted {
+  border: var(--status-border-width-normal, 2px) solid var(--status-pre-border-accepted);
+  background: linear-gradient(to bottom, var(--status-pre-bg-start) 0%, var(--status-pre-bg-end) 150%);
+}
+
 /* 生产部署中 - 橙红虚线滚动边框 + 火山背景 */
 .status-prod-deploying {
   border: none;
@@ -118,6 +123,12 @@
 /* 生产部署完成 - 绿色实线边框 + 火山背景 */
 .status-prod-deployed {
   border: var(--status-border-width-normal, 2px) solid var(--status-prod-border-deployed);
+  background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 150%);
+}
+
+/* Prod Accepted */
+.status-prod-accepted {
+  border: var(--status-border-width-normal, 2px) solid var(--status-prod-border-accepted);
   background: linear-gradient(to bottom, var(--status-prod-bg-start) 0%, var(--status-prod-bg-end) 150%);
 }
 

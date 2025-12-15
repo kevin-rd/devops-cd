@@ -251,6 +251,11 @@ export default {
       statusProdDeploying: 'Prod Deploying',
       statusProdDeployed: 'Prod Finished',
       statusProdDeployFailed: 'Prod Failed',
+      statusTriggered: 'Triggered',
+      statusDeploying: 'Deploying',
+      statusDeployed: 'Deployed',
+      statusFailed: 'Failed',
+      statusAccepted: 'Accepted',
       statusCompleted: 'Completed',
       statusCancelled: 'Cancelled',
 
@@ -276,9 +281,9 @@ export default {
       startPreDeploy: 'Start Pre-deploy',
       finishPreDeploy: 'Acceptance Pre-deploy',
       startProdDeploy: 'Start Prod Deploy',
-      finishProdDeploy: 'Finish Prod Deploy',
+      acceptProd: 'Finish Prod Deploy',
       prodAcceptance: 'Prod Acceptance',
-      complete: 'Finish Acceptance',
+      acceptFinally: 'Finish Acceptance',
       cancelBatch: 'Cancel Batch',
       viewInsights: 'Release Insights',
 

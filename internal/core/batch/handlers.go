@@ -69,8 +69,7 @@ func (sm *StateMachine) HandlePreDeploying(ctx context.Context, batch *model.Bat
 
 	// 统计status < PreDeployed的release_app数量 (只统计需要 pre 的应用)
 	var countInDoing int64
-	if err := sm.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).
+	if err := sm.db.Model(&model.ReleaseApp{}).Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).
 		Scopes(StatusIn(constants.BatchStatusPreWaiting)).
 		Where("status != ?", constants.ReleaseAppStatusPreDeployed).
 		Count(&countInDoing).Error; err != nil {

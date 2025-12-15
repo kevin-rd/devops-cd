@@ -59,9 +59,9 @@ export enum BatchStatus {
 export enum BatchAction {
   Seal = 'seal',
   StartPreDeploy = 'start_pre_deploy',
-  ConfirmPre = 'confirm_pre',
+  ConfirmPre = 'accept_pre',
   StartProdDeploy = 'start_prod_deploy',
-  ConfirmProd = 'confirm_prod',
+  ConfirmProd = 'accept_prod',
   Complete = 'complete',
   Cancel = 'cancel',
 }

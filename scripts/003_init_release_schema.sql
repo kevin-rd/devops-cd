@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `release_apps` (
 
   -- 业务字段
   `release_notes`         TEXT                DEFAULT NULL COMMENT '应用级发布说明（可选）',
-  `is_locked`             BOOLEAN             DEFAULT FALSE COMMENT '是否已锁定（封板后为true，不可再修改）',
+  `is_locked`             BOOLEAN    NOT NULL DEFAULT FALSE COMMENT '是否已锁定（封板后为true，不可再修改）',
   `skip_pre_env`          TINYINT(1) NOT NULL DEFAULT 0,
   `status`                TINYINT    NOT NULL DEFAULT 0 COMMENT '应用级发布状态(0:待发布)',
   `failed_reason`         TEXT                DEFAULT NULL COMMENT '应用级发布失败原因（可选）',

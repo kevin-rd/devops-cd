@@ -624,18 +624,7 @@ export default function BatchDetail() {
 
   // 根据批次状态获取对应的CSS类名（用于卡片样式）
   const getStatusClassName = () => {
-    const status = Number(batch.status)
-    if (status === BatchStatus.Draft) return 'status-draft'
-    if (status === BatchStatus.Sealed) return 'status-sealed'
-    if (status === BatchStatus.PreTriggered) return 'status-pre-deploying' // 不是用waiting css
-    if (status === BatchStatus.PreDeploying) return 'status-pre-deploying'
-    if (status === BatchStatus.PreDeployed) return 'status-pre-deployed'
-    if (status === BatchStatus.ProdTriggered) return 'status-prod-deploying' // 不使用waiting css
-    if (status === BatchStatus.ProdDeploying) return 'status-prod-deploying'
-    if (status === BatchStatus.ProdDeployed) return 'status-prod-deployed'
-    if (status === BatchStatus.Completed) return 'status-completed'
-    if (status === BatchStatus.Cancelled) return 'status-cancelled'
-    return ''
+    return BatchStatusConfig[batch?.status]?.class_name || 'default';
   }
 
   return (
@@ -684,8 +673,8 @@ export default function BatchDetail() {
         {/* 上方: 批次信息和时间线 Section */}
         <Badge.Ribbon placement="start" className="batch-status-ribbon"
                       style={{top: 50}}
-                      text={BatchStatusConfig[batch.status].label || 'unknown'}
-                      color={BATCH_STATUS_CONFIG[batch.status].color || 'default'}>
+                      text={BatchStatusConfig[batch.status]?.label || 'unknown'}
+                      color={BATCH_STATUS_CONFIG[batch.status]?.color || 'default'}>
           <Card
             className={`batch-detail-section batch-info-section batch-info-fixed-height ${getStatusClassName()}`}
             title={

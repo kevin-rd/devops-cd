@@ -203,7 +203,16 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
                 {displayData.build_id && (
                   <span style={{fontSize: 12, color: '#999', userSelect: 'none'}}>#{displayData.build_id}</span>
                 )}
-                <span style={{fontWeight: 500}}>{displayData.target_tag || '-'}</span>
+                <Popover title={displayData.target_tag} content={
+                  <div style={{display: 'flex', flexDirection: 'column', minWidth: '300px'}}>
+                    <code>    Commit SHA: {displayData.commit_sha?.substring(0, 8) || '-'}</code>
+                    <code>Commit Message: {displayData.commit_message}</code>
+                    <code> Commit Branch: {displayData.commit_branch}</code>
+                  </div>
+                }>
+                  <span style={{fontWeight: 600}}>{displayData.target_tag || '-'}</span>
+                </Popover>
+
               </Space>
             </Descriptions.Item>
             <Descriptions.Item label="当前状态" span={4}>
@@ -235,7 +244,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
                         color: '#999',
                         userSelect: 'none'
                       }}>#{displayData.recent_builds[0].id}</span>
-                      <span style={{fontWeight: 600}}>{displayData.recent_builds[0].image_tag}</span>
+                      <span style={{fontWeight: 500}}>{displayData.recent_builds[0].image_tag}</span>
                       <span style={{color: '#ff4d4f'}}>有新版本可用</span>
                     </Space>
                   ) : (

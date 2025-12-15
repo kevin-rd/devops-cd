@@ -2,6 +2,7 @@ package batch
 
 import (
 	"context"
+	transitions2 "devops-cd/internal/core/batch/transitions"
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
@@ -17,7 +18,7 @@ type StateMachine struct {
 	handlers map[int8]StateHandler
 
 	// 状态转换
-	transitions map[int8]map[int8]StateTransition
+	transitions map[int8]map[int8]transitions2.StateTransition
 }
 
 func NewBatchStateMachine(db *gorm.DB, logger *zap.Logger) *StateMachine {
@@ -25,7 +26,7 @@ func NewBatchStateMachine(db *gorm.DB, logger *zap.Logger) *StateMachine {
 		db:          db,
 		logger:      logger,
 		handlers:    make(map[int8]StateHandler),
-		transitions: make(map[int8]map[int8]StateTransition),
+		transitions: make(map[int8]map[int8]transitions2.StateTransition),
 	}
 
 	sm.registerHandlers()
@@ -53,17 +54,17 @@ func (sm *StateMachine) Process(ctx context.Context, batch *model.Batch) {
 
 	// 3. 状态更新
 	if nextStatus != 0 && nextStatus != batch.Status {
-		if err = sm.ChangeStatus(ctx, batch, nextStatus, TransitionSourceInside, WithModelEffects(updateFunc)); err != nil {
+		if err = sm.ChangeStatus(ctx, batch, nextStatus, transitions2.SourceInside, transitions2.WithModelEffects(updateFunc)); err != nil {
 			sm.logger.Error(fmt.Sprintf("Batch:%v(%s) -> 状态流转失败 %d→%d: %v", batch.ID, batch.BatchNumber, batch.Status, nextStatus, err))
 			return
 		}
 	}
 }
 
-func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to, source int8, opts ...TransitionOption) error {
+func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to, source int8, opts ...transitions2.TransitionOption) error {
 	log := sm.logger.Sugar().With(zap.Int64("batch_id", batch.ID))
 
-	option := &transitionOptions{}
+	option := &transitions2.TransitionOptions{}
 	for _, opt := range opts {
 		opt(option)
 	}
@@ -85,8 +86,8 @@ func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to
 		}
 
 		// 3. 执行业务字段更新
-		if option.sideEffect != nil {
-			option.sideEffect(batch)
+		if option.SideEffect != nil {
+			option.SideEffect(batch)
 		}
 
 		if h != nil {
@@ -95,6 +96,7 @@ func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to
 				return err
 			}
 
+			// 后处理函数
 			afterHandler = func() {
 				h.After(batch, from, to, option)
 			}
@@ -120,4 +122,31 @@ func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to
 		afterHandler()
 	}
 	return err
+}
+
+// canTransition 检查是否可以进行状态转换
+func (sm *StateMachine) canTransition(from, to int8, source int8) (transitions2.TransitionHandler, bool) {
+	if transitions, ok := sm.transitions[from]; ok {
+		if transition, ok := transitions[to]; ok && transition.AllowSource&source != 0 {
+			return transition.Handler, true
+		}
+	}
+
+	// 内部默认允许
+	if source == transitions2.SourceInside {
+		return nil, true
+	}
+
+	return nil, false
+}
+
+func (sm *StateMachine) registerTransitions() {
+	trans := transitions2.AllTransitions(sm.db)
+
+	for _, t := range trans {
+		if sm.transitions[t.From] == nil {
+			sm.transitions[t.From] = make(map[int8]transitions2.StateTransition)
+		}
+		sm.transitions[t.From][t.To] = t
+	}
 }

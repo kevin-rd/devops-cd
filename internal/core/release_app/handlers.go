@@ -307,7 +307,7 @@ func (sm *ReleaseStateMachine) HandleProdWaiting(ctx context.Context, release *m
 
 // HandleProdCanTrigger handle ProdCanTrigger:21 -> ProdTriggered:22, gen deployments record
 func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
-	log := sm.logger.With(zap.Int64("release_id", release.ID))
+	log := sm.logger.With(zap.Int64("release_id", release.ID)).Sugar()
 
 	// 1. 校验 Build
 	if release.BuildID == nil {
@@ -351,12 +351,10 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 			RetryCount:     0,
 		}
 
-		result := sm.db.Where("release_id = ? AND environment = ? AND cluster = ?", release.ID, constants.EnvTypeProd, config.Cluster).
-			FirstOrCreate(&dep)
-
+		result := sm.db.Where("release_id = ? AND env = ? AND cluster = ?", release.ID, constants.EnvTypeProd, config.Cluster).FirstOrCreate(&dep)
 		if result.Error != nil {
 			failed = append(failed, config.Cluster)
-			log.Error("创建 Deployment 失败", zap.String("cluster", config.Cluster), zap.Error(result.Error))
+			log.With(zap.String("cluster", config.Cluster)).Errorf("创建 Deployment 失败, %v", result.Error)
 		}
 	}
 

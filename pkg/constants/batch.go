@@ -46,10 +46,16 @@ func BatchStatusToString(status int8) string {
 	return fmt.Sprintf("Unknown(%d)", status)
 }
 
+// BatchAction 批次操作
 const (
-	BatchActionSeal      = "seal"
+	BatchActionSeal   = "seal"
+	BatchActionCancel = "cancel"
+
 	BatchActionStartPre  = "start_pre_deploy"
-	BatchActionStartProd = "start_prod_deploy"
-	BatchActionComplete  = "complete"
-	BatchActionCancel    = "cancel"
+	BatchActionAcceptPre = "accept_pre"
+
+	BatchActionStartProd  = "start_prod_deploy"
+	BatchActionAcceptProd = "accept_prod"
+
+	BatchActionComplete = "complete"
 )
