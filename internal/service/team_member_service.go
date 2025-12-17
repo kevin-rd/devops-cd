@@ -46,12 +46,12 @@ type TeamMemberService interface {
 type teamMemberService struct {
 	repo     *repository.TeamMemberRepository
 	teamRepo repository.TeamRepository
-	userRepo repository.UserRepository
+	userRepo *repository.UserRepository
 
 	log *zap.SugaredLogger
 }
 
-func NewTeamMemberService(log *zap.Logger, repo *repository.TeamMemberRepository, teamRepo repository.TeamRepository, userRepo repository.UserRepository) TeamMemberService {
+func NewTeamMemberService(log *zap.Logger, repo *repository.TeamMemberRepository, teamRepo repository.TeamRepository, userRepo *repository.UserRepository) TeamMemberService {
 	return &teamMemberService{
 		repo:     repo,
 		teamRepo: teamRepo,

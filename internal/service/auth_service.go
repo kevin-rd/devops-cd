@@ -20,15 +20,11 @@ type AuthService interface {
 
 type authService struct {
 	cfg         *config.AuthConfig
-	userRepo    repository.UserRepository
+	userRepo    *repository.UserRepository
 	ldapService LDAPService
 }
 
-func NewAuthService(
-	cfg *config.AuthConfig,
-	userRepo repository.UserRepository,
-	ldapService LDAPService,
-) AuthService {
+func NewAuthService(cfg *config.AuthConfig, userRepo *repository.UserRepository, ldapService LDAPService) AuthService {
 	return &authService{
 		cfg:         cfg,
 		userRepo:    userRepo,

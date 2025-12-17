@@ -312,7 +312,7 @@ func (s *applicationService) UpdateDefaultDependencies(appID int64, req *dto.Upd
 	}
 
 	// 校验依赖是否存在
-	deps, err := s.appRepo.FindByIDs(normalized)
+	deps, err := s.appRepo.GetApplications(normalized)
 	if err != nil {
 		return nil, err
 	}

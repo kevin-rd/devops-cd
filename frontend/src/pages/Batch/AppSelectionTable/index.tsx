@@ -4,8 +4,8 @@ import {useTranslation} from 'react-i18next'
 import {useQuery, useQueryClient} from '@tanstack/react-query'
 import type {ColumnsType} from 'antd/es/table'
 import type {ApplicationType, ApplicationWithBuild} from '@/types'
-import {applicationService} from '@/services/application'
-import {teamService, TeamSimple} from '@/services/team'
+import {applicationService} from '@/services/application.ts'
+import {teamService, TeamSimple} from '@/services/team.ts'
 import './index.css'
 import {ReloadOutlined} from "@ant-design/icons";
 

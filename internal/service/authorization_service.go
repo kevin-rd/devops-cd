@@ -24,12 +24,12 @@ type AuthorizationService interface {
 }
 
 type authorizationService struct {
-	userRepo       repository.UserRepository
+	userRepo       *repository.UserRepository
 	teamMemberRepo *repository.TeamMemberRepository
 }
 
 // NewAuthorizationService 创建 AuthorizationService
-func NewAuthorizationService(userRepo repository.UserRepository, teamMemberRepo *repository.TeamMemberRepository) AuthorizationService {
+func NewAuthorizationService(userRepo *repository.UserRepository, teamMemberRepo *repository.TeamMemberRepository) AuthorizationService {
 	return &authorizationService{
 		userRepo:       userRepo,
 		teamMemberRepo: teamMemberRepo,

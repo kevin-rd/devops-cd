@@ -234,7 +234,7 @@ func (r *BatchRepository) GetReleaseAppsByAppIDAndNotSealed(appID int64) ([]*mod
 }
 
 // CheckAppConflict 检查应用是否在进行中的批次里
-func (r *BatchRepository) CheckAppConflict(appIDs []int64, excludeBatchID *int64) (map[int64]*model.Batch, error) {
+func (r *BatchRepository) CheckAppConflict(tx *gorm.DB, appIDs []int64, excludeBatchID *int64) (map[int64]*model.Batch, error) {
 	type Result struct {
 		AppID       int64
 		BatchID     int64
@@ -243,7 +243,7 @@ func (r *BatchRepository) CheckAppConflict(appIDs []int64, excludeBatchID *int64
 	}
 
 	var results []Result
-	query := r.db.Table("release_apps").
+	query := tx.Table("release_apps").
 		Select("release_apps.app_id, release_batches.id as batch_id, release_batches.batch_number, release_batches.status").
 		Joins("JOIN release_batches ON release_apps.batch_id = release_batches.id").
 		Where("release_apps.app_id IN ?", appIDs).
@@ -279,7 +279,7 @@ func (r *BatchRepository) CheckAppConflict(appIDs []int64, excludeBatchID *int64
 // GetLatestBuildsAfterDeployment 获取应用列表在上次部署后的最新成功构建
 // 如果应用有 deployed_tag，则获取该 tag 之后的最新构建
 // 如果没有 deployed_tag 或查找失败，则 fallback 到最新成功构建
-func (r *BatchRepository) GetLatestBuildsAfterDeployment(appIDs []int64) (map[int64]*model.Build, error) {
+func (r *BatchRepository) GetLatestBuildsAfterDeployment(tx *gorm.DB, appIDs []int64) (map[int64]*model.Build, error) {
 	// 1. 查询所有应用的信息（包括 deployed_tag）
 	var apps []*model.Application
 	if err := r.db.Where("id IN ?", appIDs).Find(&apps).Error; err != nil {
@@ -363,42 +363,4 @@ func (r *BatchRepository) CreateBuild(build *model.Build) error {
 // UpdateBuild 更新构建记录
 func (r *BatchRepository) UpdateBuild(build *model.Build) error {
 	return r.db.Save(build).Error
-}
-
-// ================== Application 相关 ==================
-
-// GetApplicationByID 根据ID获取应用
-func (r *BatchRepository) GetApplicationByID(id int64) (*model.Application, error) {
-	var app model.Application
-	err := r.db.First(&app, id).Error
-	if err != nil {
-		return nil, err
-	}
-	return &app, nil
-}
-
-// GetApplicationsByIDs 批量获取应用
-func (r *BatchRepository) GetApplicationsByIDs(ids []int64) (map[int64]*model.Application, error) {
-	var apps []*model.Application
-	err := r.db.Where("id IN ?", ids).Find(&apps).Error
-	if err != nil {
-		return nil, err
-	}
-
-	appMap := make(map[int64]*model.Application)
-	for _, app := range apps {
-		appMap[app.ID] = app
-	}
-
-	return appMap, nil
-}
-
-// GetApplicationWithBatch 获取应用及其关联的批次信息
-func (r *BatchRepository) GetApplicationWithBatch(batchID, appID int64) (*model.ReleaseApp, error) {
-	var releaseApp model.ReleaseApp
-	err := r.db.Where("batch_id = ? AND app_id = ?", batchID, appID).First(&releaseApp).Error
-	if err != nil {
-		return nil, err
-	}
-	return &releaseApp, nil
 }

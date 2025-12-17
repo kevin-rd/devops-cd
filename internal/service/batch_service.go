@@ -19,108 +19,49 @@ import (
 
 // BatchService 批次服务
 type BatchService struct {
-	batchRepo *repository.BatchRepository
-	buildRepo repository.BuildRepository
-	db        *gorm.DB
+	batchRepo      *repository.BatchRepository
+	releaseAppRepo *repository.ReleaseAppRepository
+	appRepo        *repository.ApplicationRepository
+	buildRepo      repository.BuildRepository
+
+	db *gorm.DB
 }
 
 // NewBatchService 创建批次服务
 func NewBatchService(db *gorm.DB) *BatchService {
 	return &BatchService{
-		batchRepo: repository.NewBatchRepository(db),
-		buildRepo: repository.NewBuildRepository(db),
-		db:        db,
+		batchRepo:      repository.NewBatchRepository(db),
+		releaseAppRepo: repository.NewReleaseAppRepository(db),
+		appRepo:        repository.NewApplicationRepository(db),
+		db:             db,
 	}
 }
 
 // CreateBatch 创建批次
 func (s *BatchService) CreateBatch(req *dto.CreateBatchParam) (*model.Batch, error) {
-	// 1. 验证项目是否存在
-	var project model.Project
-	if err := s.db.First(&project, req.ProjectID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("项目 ID %d 不存在", req.ProjectID)
-		}
-		return nil, fmt.Errorf("查询项目失败: %w", err)
-	}
-
-	// 2. 检查批次编号在项目内是否重复
-	var existBatch model.Batch
-	err := s.db.Where("batch_number = ? AND project_id = ?", req.BatchNumber, req.ProjectID).
-		First(&existBatch).Error
-	if err == nil {
-		return nil, fmt.Errorf("批次编号 %s 在该项目下已存在", req.BatchNumber)
-	}
-	if err != gorm.ErrRecordNotFound {
-		return nil, fmt.Errorf("查询批次失败: %w", err)
-	}
-
-	// 3. 如果没有应用，直接创建空批次
-	if len(req.Apps) == 0 {
-		logger.Info("创建空批次（无应用）",
-			zap.String("batch_number", req.BatchNumber),
-			zap.Int64("project_id", req.ProjectID),
-			zap.String("initiator", req.Operator))
-
-		batch := &model.Batch{
-			BatchNumber:    req.BatchNumber,
-			ProjectID:      req.ProjectID,
-			Initiator:      req.Operator,
-			ReleaseNotes:   req.ReleaseNotes,
-			Status:         constants.BatchStatusDraft,      // 草稿状态
-			ApprovalStatus: constants.ApprovalStatusPending, // 待审批
-		}
-		if err := s.db.Create(batch).Error; err != nil {
-			return nil, fmt.Errorf("创建批次失败: %w", err)
-		}
-		return batch, nil
-	}
-
-	// 4. 提取应用ID列表
-	appIDs := make([]int64, len(req.Apps))
-	for i, app := range req.Apps {
-		appIDs[i] = app.AppID
-	}
-
-	// 5. 检查应用是否存在
-	appMap, err := s.batchRepo.GetApplicationsByIDs(appIDs)
-	if err != nil {
-		return nil, fmt.Errorf("查询应用失败: %w", err)
-	}
-	if len(appMap) != len(appIDs) {
-		return nil, fmt.Errorf("部分应用不存在")
-	}
-
-	// 6. 验证所有应用都属于指定项目
-	for appID, app := range appMap {
-		if app.ProjectID != req.ProjectID {
-			return nil, fmt.Errorf("应用 %s (ID: %d) 不属于项目 %s (ID: %d)",
-				app.Name, appID, project.Name, req.ProjectID)
-		}
-	}
-
-	// 7. 检查应用冲突（严格模式）
-	conflicts, err := s.batchRepo.CheckAppConflict(appIDs, nil)
-	if err != nil {
-		return nil, fmt.Errorf("检查应用冲突失败: %w", err)
-	}
-	if len(conflicts) > 0 {
-		return nil, &AppConflictError{Conflicts: conflicts, AppMap: appMap}
-	}
-
-	// 8. 获取每个应用在上次部署后的最新成功构建（可能部分应用没有构建）
-	buildMap, err := s.batchRepo.GetLatestBuildsAfterDeployment(appIDs)
-	if err != nil {
-		return nil, fmt.Errorf("查询部署后最新构建失败: %w", err)
-	}
-
-	// 注意：不再强制要求所有应用都有构建，允许无构建的应用加入批次
-	// 无构建的应用会在封板时进行校验
-
-	// 9. 使用事务创建批次和应用记录
 	var batch *model.Batch
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// 创建批次
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 验证项目是否存在
+		var project model.Project
+		if err := tx.First(&project, req.ProjectID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("项目 ID %d 不存在", req.ProjectID)
+			}
+			return fmt.Errorf("查询项目失败: %w", err)
+		}
+
+		// 2. 检查批次编号在项目内是否重复
+		var existBatch model.Batch
+		err := tx.Where("batch_number = ? AND project_id = ?", req.BatchNumber, req.ProjectID).
+			First(&existBatch).Error
+		if err == nil {
+			return fmt.Errorf("批次编号 %s 在该项目下已存在", req.BatchNumber)
+		}
+		if err != gorm.ErrRecordNotFound {
+			return fmt.Errorf("查询批次失败: %w", err)
+		}
+
+		// 3. 创建批次
 		batch = &model.Batch{
 			BatchNumber:    req.BatchNumber,
 			ProjectID:      req.ProjectID,
@@ -133,35 +74,6 @@ func (s *BatchService) CreateBatch(req *dto.CreateBatchParam) (*model.Batch, err
 			return fmt.Errorf("创建批次失败: %w", err)
 		}
 
-		// 创建应用发布记录
-		releaseApps := make([]*model.ReleaseApp, 0, len(req.Apps))
-		for _, app := range req.Apps {
-			build, hasBuild := buildMap[app.AppID]
-
-			releaseApp := &model.ReleaseApp{
-				BatchID:      batch.ID,
-				AppID:        app.AppID,
-				ReleaseNotes: app.ReleaseNotes,
-				IsLocked:     false,
-			}
-
-			// 如果有构建记录，填充构建信息
-			if hasBuild {
-				releaseApp.BuildID = &build.ID
-				releaseApp.TargetTag = &build.ImageTag
-				releaseApp.LatestBuildID = &build.ID
-			} else {
-				// 无构建记录，留空
-				releaseApp.BuildID = nil
-			}
-
-			releaseApps = append(releaseApps, releaseApp)
-		}
-
-		if err := tx.Create(&releaseApps).Error; err != nil {
-			return fmt.Errorf("创建应用发布记录失败: %w", err)
-		}
-
 		return nil
 	})
 
@@ -169,16 +81,12 @@ func (s *BatchService) CreateBatch(req *dto.CreateBatchParam) (*model.Batch, err
 		return nil, err
 	}
 
-	logger.Info("批次创建成功",
-		zap.String("batch_number", batch.BatchNumber),
-		zap.Int64("batch_id", batch.ID),
-		zap.Int64("project_id", req.ProjectID),
-		zap.Int("app_count", len(req.Apps)))
+	logger.Info("批次创建成功", zap.String("batch_number", batch.BatchNumber), zap.Int64("batch_id", batch.ID), zap.Int64("project_id", req.ProjectID))
 
 	return batch, nil
 }
 
-// UpdateBatch 更新批次（通用）
+// UpdateBatch 更新批次
 func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map[string]interface{}, error) {
 	// 1. 获取批次
 	batch, err := s.batchRepo.GetByID(req.BatchID)
@@ -216,8 +124,7 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 
 		// 4. 删除应用
 		if len(req.RemoveAppIDs) > 0 {
-			if err := tx.Where("batch_id = ? AND app_id IN ?", batch.ID, req.RemoveAppIDs).
-				Delete(&model.ReleaseApp{}).Error; err != nil {
+			if err = s.releaseAppRepo.DeleteByAppIDs(tx, batch.ID, req.RemoveAppIDs); err != nil {
 				return fmt.Errorf("删除应用失败: %w", err)
 			}
 			updatedFields["remove_app_ids"] = req.RemoveAppIDs
@@ -231,26 +138,35 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 				addAppIDs[i] = app.AppID
 			}
 
-			// 检查应用冲突
-			conflicts, err := s.batchRepo.CheckAppConflict(addAppIDs, &batch.ID)
-			if err != nil {
-				return fmt.Errorf("检查应用冲突失败: %w", err)
+			// 查询应用
+			var addApps map[int64]*model.Application
+			if addApps, err = s.appRepo.FindByIDs(tx, addAppIDs, repository.WithPreloadEnvConfigs()); err != nil {
+				return fmt.Errorf("查询应用失败: %w", err)
 			}
-			if len(conflicts) > 0 {
-				appMap, _ := s.batchRepo.GetApplicationsByIDs(addAppIDs)
+			if len(addApps) != len(addAppIDs) {
+				return fmt.Errorf("部分应用不存在")
+			}
+			for _, app := range addApps {
+				if app.ProjectID != batch.ProjectID {
+					return fmt.Errorf("应用 %s (ID: %d) 不属于项目 %s (ID: %d)", app.Name, app.ID, batch.ProjectID)
+				}
+			}
+
+			// 检查应用冲突
+			var conflicts map[int64]*model.Batch
+			if conflicts, err = s.batchRepo.CheckAppConflict(tx, addAppIDs, &batch.ID); err != nil {
+				return fmt.Errorf("检查应用冲突失败: %w", err)
+			} else if len(conflicts) > 0 {
+				appMap, _ := s.appRepo.FindByIDs(tx, addAppIDs)
 				return &AppConflictError{Conflicts: conflicts, AppMap: appMap}
 			}
 
-			// 获取上次部署后的最新构建（可能部分应用没有构建）
-			buildMap, err := s.batchRepo.GetLatestBuildsAfterDeployment(addAppIDs)
+			// 获取build信息
+			buildMap, err := s.batchRepo.GetLatestBuildsAfterDeployment(tx, addAppIDs)
 			if err != nil {
 				return fmt.Errorf("查询部署后最新构建失败: %w", err)
 			}
 
-			// 注意：不再强制要求所有应用都有构建，允许无构建的应用加入批次
-			// 无构建的应用会在封板时进行校验
-
-			// 创建应用发布记录
 			releaseApps := make([]*model.ReleaseApp, 0, len(req.AddApps))
 			for _, app := range req.AddApps {
 				build, hasBuild := buildMap[app.AppID]
@@ -260,6 +176,20 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 					AppID:        app.AppID,
 					ReleaseNotes: app.ReleaseNotes,
 					IsLocked:     false,
+				}
+
+				var hasPre bool
+				envConfigs := addApps[app.AppID].EnvConfigs
+				if envConfigs != nil {
+					for _, envConfig := range envConfigs {
+						if envConfig.Env == constants.EnvTypePre && envConfig.Cluster != "" {
+							hasPre = true
+							break
+						}
+					}
+					releaseApp.SkipPreEnv = !hasPre
+				} else {
+					logger.Sugar().Warnf("应用 %s (ID: %d) 没有配置环境", addApps[app.AppID].Name, addApps[app.AppID].ID)
 				}
 
 				// 如果有构建记录，填充构建信息
@@ -278,6 +208,7 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 			if err := tx.Create(&releaseApps).Error; err != nil {
 				return fmt.Errorf("创建应用发布记录失败: %w", err)
 			}
+
 			updatedFields["add_apps"] = addAppIDs
 		}
 
@@ -302,10 +233,7 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 		return nil, nil, err
 	}
 
-	logger.Info("批次更新成功",
-		zap.String("batch_number", batch.BatchNumber),
-		zap.Int64("batch_id", batch.ID),
-		zap.Any("updated_fields", updatedFields))
+	logger.Info("批次更新成功", zap.String("batch_number", batch.BatchNumber), zap.Int64("batch_id", batch.ID), zap.Any("updated_fields", updatedFields))
 
 	return batch, updatedFields, nil
 }
@@ -463,9 +391,7 @@ func (s *BatchService) DeleteBatch(batchID int64, operator string) error {
 		return err
 	}
 
-	logger.Info("批次删除成功",
-		zap.Int64("batch_id", batchID),
-		zap.String("operator", operator))
+	logger.Info("批次删除成功", zap.Int64("batch_id", batchID), zap.String("operator", operator))
 
 	return nil
 }

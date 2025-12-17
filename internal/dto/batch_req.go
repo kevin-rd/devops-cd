@@ -64,16 +64,14 @@ type CreateBatchApp struct {
 
 // CreateBatchRequest 创建批次请求
 type CreateBatchRequest struct {
-	BatchNumber  string           `json:"batch_number" binding:"required"` // 批次编号/标题，用户填写
-	ProjectID    int64            `json:"project_id" binding:"required"`   // 关联的项目ID
-	ReleaseNotes *string          `json:"release_notes"`                   // 批次级发布说明（可选）
-	Apps         []CreateBatchApp `json:"apps"`                            // 应用列表（允许为空，封板时校验）
+	BatchNumber  string  `json:"batch_number" binding:"required"` // 批次编号/标题，用户填写
+	ProjectID    int64   `json:"project_id" binding:"required"`   // 关联的项目ID
+	ReleaseNotes *string `json:"release_notes"`                   // 批次级发布说明（可选）
 }
 
 type CreateBatchParam struct {
 	BatchNumber  string
 	ReleaseNotes *string
-	Apps         []CreateBatchApp
 
 	ProjectID int64
 	Operator  string
@@ -84,7 +82,6 @@ func (q *CreateBatchRequest) ToParam() CreateBatchParam {
 	return CreateBatchParam{
 		BatchNumber:  q.BatchNumber,
 		ReleaseNotes: q.ReleaseNotes,
-		Apps:         q.Apps,
 		ProjectID:    q.ProjectID,
 	}
 }

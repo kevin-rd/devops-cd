@@ -27,11 +27,7 @@ func (r *ApplicationRepository) Create(app *model.Application) error {
 
 func (r *ApplicationRepository) FindByID(id int64) (*model.Application, error) {
 	var app model.Application
-	err := r.db.Preload("Project").
-		Preload("Repository").
-		Preload("Team").
-		Preload("EnvConfigs", "deleted_at IS NULL").
-		First(&app, id).Error
+	err := r.db.Preload("Project").Preload("Repository").Preload("Team").Preload("EnvConfigs", "deleted_at IS NULL").First(&app, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, pkgErrors.ErrRecordNotFound
@@ -176,16 +172,41 @@ func (r *ApplicationRepository) ListAllWithDependencies() ([]*model.Application,
 	return apps, nil
 }
 
-func (r *ApplicationRepository) FindByIDs(ids []int64) ([]*model.Application, error) {
+func (r *ApplicationRepository) GetApplications(ids []int64, options ...QueryOption) ([]*model.Application, error) {
 	if len(ids) == 0 {
 		return []*model.Application{}, nil
 	}
 
+	tx := r.db.Where("id IN ? AND deleted_at IS NULL", ids)
+	for _, opt := range options {
+		tx = opt(tx)
+	}
+
 	var apps []*model.Application
-	if err := r.db.Where("id IN ? AND deleted_at IS NULL", ids).Find(&apps).Error; err != nil {
+	if err := tx.Find(&apps).Error; err != nil {
 		return nil, pkgErrors.Wrap(pkgErrors.CodeDatabaseError, "批量查询应用失败", err)
 	}
 	return apps, nil
+}
+
+func (r *ApplicationRepository) FindByIDs(tx *gorm.DB, ids []int64, options ...QueryOption) (map[int64]*model.Application, error) {
+
+	sql := tx.Where("id IN ? AND deleted_at IS NULL", ids)
+	for _, opt := range options {
+		sql = opt(sql)
+	}
+
+	var apps []*model.Application
+	if err := sql.Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	appMap := make(map[int64]*model.Application)
+	for _, app := range apps {
+		appMap[app.ID] = app
+	}
+
+	return appMap, nil
 }
 
 // SearchWithBuilds 搜索应用（包含构建信息，支持模糊查询 app、repo、commit、tag 等字段）
@@ -269,4 +290,10 @@ LIMIT ? OFFSET ?
 	}
 
 	return apps, total, nil
+}
+
+func WithPreloadEnvConfigs() QueryOption {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Preload("EnvConfigs")
+	}
 }
