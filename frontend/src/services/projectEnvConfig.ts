@@ -13,18 +13,22 @@ export interface ProjectEnvConfig {
   chart_repo_url: string
   values_repo_url?: string
   values_path_template?: string
+  schema_version?: number
+  artifacts_json?: unknown
   created_at: string
   updated_at: string
 }
 
 export interface ProjectEnvConfigRequest {
   allow_clusters: string[]
-  default_clusters: string[]
-  namespace: string
-  deployment_name_template: string
-  chart_repo_url: string
+  default_clusters?: string[]
+  namespace?: string
+  deployment_name_template?: string
+  chart_repo_url?: string
   values_repo_url?: string
   values_path_template?: string
+  schema_version?: number
+  artifacts_json?: unknown
 }
 
 export interface UpdateProjectEnvConfigsRequest {

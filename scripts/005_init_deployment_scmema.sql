@@ -50,6 +50,8 @@ CREATE TABLE `project_env_configs` (
   `chart_repo_url`           VARCHAR(255)    NOT NULL DEFAULT '' COMMENT 'Chart仓库URL',
   `values_repo_url`          VARCHAR(255)             DEFAULT NULL COMMENT 'Values仓库URL, 若为空则不配置',
   `values_path_template`     VARCHAR(255)             DEFAULT NULL COMMENT 'Values仓库路径, 可以使用go-template',
+  `schema_version`           INTEGER         NOT NULL DEFAULT 1 COMMENT 'artifacts_json schema version',
+  `artifacts_json`           JSON            NOT NULL COMMENT '统一配置(JSON): namespace_template + config_chart/app_chart',
   `created_at`               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

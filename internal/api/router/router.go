@@ -52,6 +52,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	projectEnvConfigRepo := repository.NewProjectEnvConfigRepository(db)
 	teamRepo := repository.NewTeamRepository(db)
 	teamMemberRepo := repository.NewTeamMemberRepository(db)
+	credentialRepo := repository.NewCredentialRepository(db)
 	authz = service.NewAuthorizationService(userRepo, teamMemberRepo)
 
 	// 初始化Service
@@ -69,6 +70,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	clusterService := service.NewClusterService(db)
 	batchService := service.NewBatchService(db)
 	buildService := service.NewBuildService(buildRepo, repositoryRepo, applicationRepo, coreEngine)
+	credentialService := service.NewCredentialService(credentialRepo)
 
 	// 初始化Handler
 	authHandler := handler.NewAuthHandler(authService)
@@ -84,6 +86,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	batchHandler := handler.NewBatchHandler(coreEngine, batchService)
 	buildHandler := handler.NewBuildHandler(buildService, batchService)
 	releaseAppHandler := handler.NewReleaseAppHandler(batchService)
+	credentialHandler := handler.NewCredentialHandler(credentialService)
 
 	// API v1
 	v1 := r.Group("/api/v1")
@@ -119,6 +122,16 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 				// 项目环境配置管理（作为项目的附属资源）
 				groupProject.GET("/:id/env", projectHandler.GetEnvConfigs)    // 获取项目的环境配置
 				groupProject.PUT("/:id/env", projectHandler.UpdateEnvConfigs) // 批量更新项目的环境配置
+			}
+
+			// 凭据管理（系统内加密存储；不回传明文）
+			credentialsGroup := authed.Group("/credentials")
+			{
+				credentialsGroup.POST("", credentialHandler.Create)
+				credentialsGroup.GET("", credentialHandler.List)
+				credentialsGroup.GET("/:id", credentialHandler.Get)
+				credentialsGroup.PUT("/:id", credentialHandler.Update)
+				credentialsGroup.DELETE("/:id", credentialHandler.Delete)
 			}
 
 			// 团队管理

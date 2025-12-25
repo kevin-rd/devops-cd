@@ -548,6 +548,19 @@ func (s *projectService) UpdateEnvConfigs(projectID int64, configs map[string]*d
 			existing.ValuesPathTemplate = reqConfig.ValuesPathTemplate
 		}
 
+		// v1: artifacts_json（可选，优先级高）
+		if reqConfig.SchemaVersion != nil {
+			existing.SchemaVersion = *reqConfig.SchemaVersion
+		}
+		if reqConfig.ArtifactsJSON != nil && len(reqConfig.ArtifactsJSON) > 0 {
+			raw := string(reqConfig.ArtifactsJSON)
+			existing.ArtifactsJSON = &raw
+			// 若未显式传 schema_version，默认保持 1
+			if existing.SchemaVersion == 0 {
+				existing.SchemaVersion = 1
+			}
+		}
+
 		// update or create
 		if ok {
 			if err := s.envConfigRepo.Update(existing); err != nil {
@@ -574,8 +587,13 @@ func (s *projectService) toEnvConfigResponse(config *model.ProjectEnvConfig) *dt
 		ChartRepoURL:           config.ChartRepoURL,
 		ValuesRepoURL:          config.ValuesRepoURL,
 		ValuesPathTemplate:     config.ValuesPathTemplate,
+		SchemaVersion:          config.SchemaVersion,
 		CreatedAt:              config.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:              config.UpdatedAt.Format(time.RFC3339),
+	}
+
+	if config.ArtifactsJSON != nil && *config.ArtifactsJSON != "" {
+		resp.ArtifactsJSON = []byte(*config.ArtifactsJSON)
 	}
 
 	// 反序列化集群列表

@@ -27,7 +27,7 @@ func NewTeamHandler(teamService service.TeamService) *TeamHandler {
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateTeamRequest true "创建团队请求"
-// @Success 200 {object} utils.Response{data=dto.TeamResponse}
+// @Success 200 {object} responses.Response{data=dto.TeamResponse}
 // @Router /api/v1/team [post]
 func (h *TeamHandler) Create(c *gin.Context) {
 	var req dto.CreateTeamRequest
@@ -51,7 +51,7 @@ func (h *TeamHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id query int64 true "团队ID"
-// @Success 200 {object} utils.Response{data=dto.TeamResponse}
+// @Success 200 {object} responses.Response{data=dto.TeamResponse}
 // @Router /api/v1/team [get]
 func (h *TeamHandler) GetByID(c *gin.Context) {
 	var req dto.GetTeamRequest
@@ -75,7 +75,7 @@ func (h *TeamHandler) GetByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param project_id query int false "项目ID"
-// @Success 200 {object} utils.Response{data=[]dto.TeamSimpleResponse}
+// @Success 200 {object} responses.Response{data=[]dto.TeamSimpleResponse}
 // @Router /api/v1/teams [get]
 func (h *TeamHandler) List(c *gin.Context) {
 	var projectID *int64
@@ -103,7 +103,7 @@ func (h *TeamHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.UpdateTeamRequest true "更新团队请求"
-// @Success 200 {object} utils.Response{data=dto.TeamResponse}
+// @Success 200 {object} responses.Response{data=dto.TeamResponse}
 // @Router /api/v1/team [put]
 func (h *TeamHandler) Update(c *gin.Context) {
 	var req dto.UpdateTeamRequest
@@ -127,7 +127,7 @@ func (h *TeamHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int64 true "团队ID"
-// @Success 200 {object} utils.Response
+// @Success 200 {object} responses.Response
 // @Router /api/v1/team/{id} [delete]
 func (h *TeamHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")

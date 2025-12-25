@@ -169,8 +169,12 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 	// 为Helm计算values.yaml
 	var failed []string
 	for _, config := range configs {
-		if projectConfigs.Namespace == "" {
-			return 0, nil, fmt.Errorf("项目 Pre 环境配置未配置 namespace")
+		namespace, err := ParseNamespaceTemplate(&projectConfigs, &app, &build, &config)
+		if err != nil {
+			return 0, nil, fmt.Errorf("计算 namespace 失败: %w", err)
+		}
+		if strings.TrimSpace(namespace) == "" {
+			return 0, nil, fmt.Errorf("项目 Pre 环境配置未配置 namespace_template/namespace")
 		}
 
 		deploymentName, err := ParseDeploymentName(&app, &projectConfigs, &config)
@@ -178,7 +182,7 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 			return 0, nil, fmt.Errorf("计算 Deployment Name 失败: %w", err)
 		}
 
-		values, err := ParseValues(&app, &build, &projectConfigs, &config)
+		values, err := ParseValues(sm.db, &app, &build, &projectConfigs, &config)
 		if err != nil {
 			return 0, nil, fmt.Errorf("计算 values.yaml 失败: %w", err)
 		}
@@ -190,7 +194,7 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 
 			Env:            constants.EnvTypePre,
 			ClusterName:    config.Cluster,
-			Namespace:      projectConfigs.Namespace,
+			Namespace:      namespace,
 			DeploymentName: deploymentName,
 			Values:         values,
 
@@ -323,7 +327,7 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 
 	// 2. 加载 App
 	var app model.Application
-	if err := sm.db.First(&app, release.AppID).Error; err != nil {
+	if err := sm.db.Preload("Project").First(&app, release.AppID).Error; err != nil {
 		return 0, nil, fmt.Errorf("app record not found: %w", err)
 	}
 
@@ -337,18 +341,46 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 		return 0, nil, fmt.Errorf("应用未配置生产环境")
 	}
 
-	// 4. 为每个集群创建 Deployment
+	// 3.1 查询 project 级配置
+	var projectConfigs model.ProjectEnvConfig
+	if err := sm.db.Where("project_id = ? AND env = ?", app.ProjectID, constants.EnvTypeProd).First(&projectConfigs).Error; err != nil {
+		return 0, nil, fmt.Errorf("查询项目 Prod 环境配置失败: %w", err)
+	}
+
+	// 4. 为每个集群创建 Deployment（与 Pre 保持一致：namespace/deployment_name/values）
 	var failed []string
 	for _, config := range configs {
+		namespace, err := ParseNamespaceTemplate(&projectConfigs, &app, &build, &config)
+		if err != nil {
+			return 0, nil, fmt.Errorf("计算 namespace 失败: %w", err)
+		}
+		if strings.TrimSpace(namespace) == "" {
+			return 0, nil, fmt.Errorf("项目 Prod 环境配置未配置 namespace_template/namespace")
+		}
+
+		deploymentName, err := ParseDeploymentName(&app, &projectConfigs, &config)
+		if err != nil {
+			return 0, nil, fmt.Errorf("计算 Deployment Name 失败: %w", err)
+		}
+
+		values, err := ParseValues(sm.db, &app, &build, &projectConfigs, &config)
+		if err != nil {
+			return 0, nil, fmt.Errorf("计算 values.yaml 失败: %w", err)
+		}
+
 		dep := model.Deployment{
-			BatchID:        release.BatchID,
-			AppID:          release.AppID,
-			ReleaseID:      release.ID,
-			DeploymentName: app.Name,
-			Env:            constants.EnvTypeProd, // 生产环境
+			BatchID:   release.BatchID,
+			AppID:     release.AppID,
+			ReleaseID: release.ID,
+
+			Env:            constants.EnvTypeProd,
 			ClusterName:    config.Cluster,
-			Status:         "pending",
-			RetryCount:     0,
+			Namespace:      namespace,
+			DeploymentName: deploymentName,
+			Values:         values,
+
+			Status:     "pending",
+			RetryCount: 0,
 		}
 
 		result := sm.db.Where("release_id = ? AND env = ? AND cluster = ?", release.ID, constants.EnvTypeProd, config.Cluster).FirstOrCreate(&dep)
@@ -375,7 +407,7 @@ func (sm *ReleaseStateMachine) HandleProdTriggered(ctx context.Context, release 
 
 	// 1. 查询该 ReleaseApp 下的所有 Production Deployment
 	var deployments []model.Deployment
-	if err := sm.db.Where("release_id = ? AND environment = ?", release.ID, constants.EnvTypeProd).Find(&deployments).Error; err != nil {
+	if err := sm.db.Where("release_id = ? AND env = ?", release.ID, constants.EnvTypeProd).Find(&deployments).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询Deployment 失败: %w", err)
 	}
 	if len(deployments) == 0 {

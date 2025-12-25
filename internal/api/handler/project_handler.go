@@ -27,7 +27,7 @@ func NewProjectHandler(projectService service.ProjectService) *ProjectHandler {
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateProjectRequest true "创建项目请求"
-// @Success 200 {object} utils.Response{data=dto.ProjectResponse}
+// @Success 200 {object} responses.Response{data=dto.ProjectResponse}
 // @Router /api/v1/projects [post]
 func (h *ProjectHandler) Create(c *gin.Context) {
 	var req dto.CreateProjectRequest
@@ -52,7 +52,7 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 // @Produce json
 // @Param id query int64 true "项目ID"
 // @Param with_teams query bool false "是否包含团队列表"
-// @Success 200 {object} utils.Response{data=dto.ProjectResponse}
+// @Success 200 {object} responses.Response{data=dto.ProjectResponse}
 // @Router /api/v1/project [get]
 func (h *ProjectHandler) GetByID(c *gin.Context) {
 	var req dto.GetProjectRequest
@@ -78,8 +78,8 @@ func (h *ProjectHandler) GetByID(c *gin.Context) {
 // @Param page query int false "页码"
 // @Param page_size query int false "每页数量"
 // @Param keyword query string false "关键字搜索"
-// @Success 200 {object} utils.Response{data=[]dto.ProjectSimpleResponse}
-// @Success 200 {object} utils.Response{data=dto.PageResponse}
+// @Success 200 {object} responses.Response{data=[]dto.ProjectSimpleResponse}
+// @Success 200 {object} responses.Response{data=dto.PageResponse}
 // @Router /api/v1/projects [get]
 func (h *ProjectHandler) List(c *gin.Context) {
 	var query dto.ProjectListQuery
@@ -115,7 +115,7 @@ func (h *ProjectHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.UpdateProjectRequest true "更新项目请求"
-// @Success 200 {object} utils.Response{data=dto.ProjectResponse}
+// @Success 200 {object} responses.Response{data=dto.ProjectResponse}
 // @Router /api/v1/projects [put]
 func (h *ProjectHandler) Update(c *gin.Context) {
 	var req dto.UpdateProjectRequest
@@ -139,7 +139,7 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int64 true "项目ID"
-// @Success 200 {object} utils.Response
+// @Success 200 {object} responses.Response
 // @Router /api/v1/projects/{id} [delete]
 func (h *ProjectHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")
@@ -164,7 +164,7 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Param project_id query int64 true "项目ID"
 // @Param env query string false "环境名称(pre/prod),不传返回全部配置"
-// @Success 200 {object} utils.Response{data=dto.ProjectAvailableEnvClustersResponse}
+// @Success 200 {object} responses.Response{data=dto.ProjectAvailableEnvClustersResponse}
 // @Router /api/v1/projects/available-env-clusters [get]
 func (h *ProjectHandler) GetAvailableEnvClusters(c *gin.Context) {
 	var req dto.GetProjectAvailableEnvClustersRequest
@@ -188,7 +188,7 @@ func (h *ProjectHandler) GetAvailableEnvClusters(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int64 true "项目ID"
-// @Success 200 {object} utils.Response{data=[]dto.ProjectEnvConfigResponse}
+// @Success 200 {object} responses.Response{data=[]dto.ProjectEnvConfigResponse}
 // @Router /api/v1/project/{id}/env [get]
 func (h *ProjectHandler) GetEnvConfigs(c *gin.Context) {
 	idStr := c.Param("id")
@@ -214,7 +214,7 @@ func (h *ProjectHandler) GetEnvConfigs(c *gin.Context) {
 // @Produce json
 // @Param id path int64 true "项目ID"
 // @Param request body dto.UpdateProjectEnvConfigsRequest true "环境配置"
-// @Success 200 {object} utils.Response
+// @Success 200 {object} responses.Response
 // @Router /api/v1/project/{id}/env [put]
 func (h *ProjectHandler) UpdateEnvConfigs(c *gin.Context) {
 	idStr := c.Param("id")

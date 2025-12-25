@@ -4,7 +4,9 @@ import (
 	"context"
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/internal/repository"
+	"fmt"
 	"go.uber.org/zap"
+	"hash/crc32"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -13,6 +15,10 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 )
 
 type HelmDeployer struct {
@@ -95,23 +101,58 @@ func (d *HelmDeployer) CheckStatus(ctx context.Context, param *DeploymentParam) 
 }
 
 func (d *HelmDeployer) loadChart(param *DeploymentParam) (*chart.Chart, error) {
-	url, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoURL)
-	username, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoUsername)
-	password, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoPassword)
+	// v1：优先使用 param 指定的 chart 来源（项目/环境级）；为空则 fallback 到全局配置
+	sourceType := param.ChartSourceType
+	if sourceType == "" {
+		sourceType = "helm_repo"
+	}
+
+	if sourceType == "pipeline_artifact" {
+		if param.ChartArtifactURL == "" {
+			return nil, fmt.Errorf("chart_artifact_url 为空")
+		}
+		tmpFile, cleanup, err := downloadToTempFile(param.ChartArtifactURL)
+		if err != nil {
+			return nil, err
+		}
+		defer cleanup()
+		return loader.Load(tmpFile)
+	}
+
+	url := param.ChartRepoURL
+	username := param.ChartUsername
+	password := param.ChartPassword
+	if url == "" {
+		u, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoURL)
+		url = u
+	}
+	if username == "" {
+		u, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoUsername)
+		username = u
+	}
+	if password == "" {
+		p, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoPassword)
+		password = p
+	}
 
 	chartPathOptions := action.ChartPathOptions{
 		RepoURL:  url,
 		Username: username,
 		Password: password,
+		Version:  param.ChartVersion,
 	}
 
 	// 更新repo
-	if _, err := d.updateRepo(); err != nil {
+	if _, err := d.updateRepo(url, username, password); err != nil {
 		return nil, err
 	}
 
 	// 加载chart
-	chartPath, err := chartPathOptions.LocateChart(param.AppType, settings)
+	chartName := param.ChartName
+	if chartName == "" {
+		chartName = param.AppType
+	}
+	chartPath, err := chartPathOptions.LocateChart(chartName, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +163,14 @@ func (d *HelmDeployer) loadChart(param *DeploymentParam) (*chart.Chart, error) {
 	return ch, nil
 }
 
-func (d *HelmDeployer) updateRepo() (string, error) {
-	url, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoURL)
-	username, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoUsername)
-	password, _ := d.configRepository.GetConfig(0, ConfigKeyChartRepoPassword)
+func (d *HelmDeployer) updateRepo(url, username, password string) (string, error) {
+	if url == "" {
+		return "", fmt.Errorf("chart repo url 为空")
+	}
+	name := fmt.Sprintf("devops-cd-%08x", crc32.ChecksumIEEE([]byte(url)))
 
 	repoEntry := &repo.Entry{
-		Name:     "devops-cd",
+		Name:     name,
 		URL:      url,
 		Username: username,
 		Password: password,
@@ -143,4 +185,37 @@ func (d *HelmDeployer) updateRepo() (string, error) {
 		return "", err
 	}
 	return "", nil
+}
+
+func downloadToTempFile(url string) (path string, cleanup func(), err error) {
+	dir, err := os.MkdirTemp("", "devops-cd-chart-*")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanup = func() { _ = os.RemoveAll(dir) }
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", cleanup, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", cleanup, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+		return "", cleanup, fmt.Errorf("下载 chart 失败 HTTP %d: %s", resp.StatusCode, string(b))
+	}
+
+	path = filepath.Join(dir, "chart.tgz")
+	f, err := os.Create(path)
+	if err != nil {
+		return "", cleanup, err
+	}
+	defer f.Close()
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		return "", cleanup, err
+	}
+	return path, cleanup, nil
 }

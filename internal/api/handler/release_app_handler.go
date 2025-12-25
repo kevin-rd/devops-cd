@@ -3,8 +3,9 @@ package handler
 import (
 	"devops-cd/internal/pkg/logger"
 	"devops-cd/pkg/responses"
-	"go.uber.org/zap"
 	"net/http"
+
+	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 
@@ -29,7 +30,7 @@ func NewReleaseAppHandler(batchService *service.BatchService) *ReleaseAppHandler
 // @Accept json
 // @Produce json
 // @Param body body dto.GetReleaseAppRequest true "发布应用ID"
-// @Success 200 {object} utils.Response{data=dto.ReleaseAppResponse}
+// @Success 200 {object} responses.Response{data=dto.ReleaseAppResponse}
 // @Router /api/v1/release_app [get]
 func (h *ReleaseAppHandler) GetByID(c *gin.Context) {
 	var req dto.GetReleaseAppRequest
@@ -93,7 +94,7 @@ func (h *ReleaseAppHandler) UpdateBuilds(c *gin.Context) {
 // @Produce json
 // @Param id path int true "ReleaseApp ID"
 // @Param body body dto.UpdateReleaseDependenciesRequest true "依赖更新请求"
-// @Success 200 {object} utils.Response{data=dto.ReleaseDependenciesResponse}
+// @Success 200 {object} responses.Response{data=dto.ReleaseDependenciesResponse}
 // @Router /api/v1/release_app/{id}/dependencies [put]
 func (h *ReleaseAppHandler) UpdateDependencies(c *gin.Context) {
 	releaseID, ok := parseIDParam(c.Param("id"))
@@ -125,7 +126,7 @@ func (h *ReleaseAppHandler) UpdateDependencies(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.SwitchVersionRequest true "切换请求"
-// @Success 200 {object} utils.Response{data=string}
+// @Success 200 {object} responses.Response{data=string}
 // @Router /api/v1/release_app/trigger_deploy [post]
 func (h *BatchHandler) SwitchVersion(c *gin.Context) {
 	var req dto.SwitchVersionRequest

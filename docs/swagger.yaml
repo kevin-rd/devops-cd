@@ -479,11 +479,6 @@ definitions:
     type: object
   devops-cd_internal_dto.CreateBatchRequest:
     properties:
-      apps:
-        description: 应用列表（允许为空，封板时校验）
-        items:
-          $ref: '#/definitions/devops-cd_internal_dto.CreateBatchApp'
-        type: array
       batch_number:
         description: 批次编号/标题，用户填写
         type: string
@@ -496,6 +491,41 @@ definitions:
     required:
     - batch_number
     - project_id
+    type: object
+  devops-cd_internal_dto.CreateCredentialRequest:
+    properties:
+      data:
+        description: 加密存储
+        items:
+          type: integer
+        type: array
+      meta:
+        description: 非敏感展示信息（可选）
+        items:
+          type: integer
+        type: array
+      name:
+        maxLength: 128
+        type: string
+      project_id:
+        type: integer
+      scope:
+        enum:
+        - global
+        - project
+        type: string
+      type:
+        enum:
+        - basic_auth
+        - token
+        - ssh_key
+        - tls_client_cert
+        type: string
+    required:
+    - data
+    - name
+    - scope
+    - type
     type: object
   devops-cd_internal_dto.CreateProjectRequest:
     properties:
@@ -571,6 +601,27 @@ definitions:
     required:
     - name
     - project_id
+    type: object
+  devops-cd_internal_dto.CredentialResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      meta_json:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      project_id:
+        type: integer
+      scope:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
     type: object
   devops-cd_internal_dto.DeleteApplicationRequest:
     properties:
@@ -655,6 +706,11 @@ definitions:
         items:
           type: string
         type: array
+      artifacts_json:
+        description: v1 统一配置（可选，优先级高于旧字段）
+        items:
+          type: integer
+        type: array
       chart_repo_url:
         maxLength: 255
         type: string
@@ -668,6 +724,8 @@ definitions:
       namespace:
         maxLength: 63
         type: string
+      schema_version:
+        type: integer
       values_path_template:
         maxLength: 255
         type: string
@@ -682,6 +740,10 @@ definitions:
       allow_clusters:
         items:
           type: string
+        type: array
+      artifacts_json:
+        items:
+          type: integer
         type: array
       chart_repo_url:
         type: string
@@ -700,6 +762,8 @@ definitions:
       namespace:
         type: string
       project_id:
+        type: integer
+      schema_version:
         type: integer
       updated_at:
         type: string
@@ -816,8 +880,10 @@ definitions:
       previous_deployed_tag:
         description: 部署前的版本（封板时记录）
         type: string
-      reason:
-        type: string
+      reasons:
+        items:
+          type: string
+        type: array
       recent_builds:
         description: 最近的构建记录（自上次部署以来，最多15条）
         items:
@@ -1189,7 +1255,7 @@ definitions:
       username:
         type: string
     type: object
-  devops-cd_pkg_utils.Response:
+  devops-cd_pkg_responses.Response:
     properties:
       code:
         type: integer
@@ -1286,7 +1352,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   items:
@@ -1313,7 +1379,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
@@ -1338,7 +1404,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 删除应用环境配置
       tags:
       - AppEnvConfig
@@ -1359,7 +1425,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
@@ -1390,7 +1456,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.AppEnvConfigResponse'
@@ -1416,7 +1482,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   items:
@@ -1443,7 +1509,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
@@ -1468,7 +1534,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
@@ -1491,7 +1557,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ApplicationDependenciesResponse'
@@ -1521,7 +1587,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ApplicationDependenciesResponse'
@@ -1554,7 +1620,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
@@ -1579,7 +1645,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 删除应用
       tags:
       - Application
@@ -1595,7 +1661,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.AppTypesResponse'
@@ -1644,7 +1710,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
@@ -1692,7 +1758,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
@@ -1717,7 +1783,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ApplicationResponse'
@@ -2205,7 +2271,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.BuildResponse'
@@ -2235,7 +2301,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.BuildResponse'
@@ -2295,7 +2361,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
@@ -2415,6 +2481,60 @@ paths:
       summary: 更新集群
       tags:
       - 集群管理
+  /api/v1/credentials:
+    get:
+      parameters:
+      - description: global/project
+        in: query
+        name: scope
+        type: string
+      - description: 项目ID(scope=project时)
+        format: int64
+        in: query
+        name: project_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/devops-cd_internal_dto.CredentialResponse'
+                  type: array
+              type: object
+      summary: 凭据列表
+      tags:
+      - Credential
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建凭据请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devops-cd_internal_dto.CreateCredentialRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/devops-cd_internal_dto.CredentialResponse'
+              type: object
+      summary: 创建凭据
+      tags:
+      - Credential
   /api/v1/project:
     get:
       consumes:
@@ -2437,7 +2557,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ProjectResponse'
@@ -2463,7 +2583,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   items:
@@ -2495,7 +2615,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 批量更新项目的环境配置
       tags:
       - Project
@@ -2523,7 +2643,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
@@ -2548,7 +2668,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ProjectResponse'
@@ -2573,7 +2693,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ProjectResponse'
@@ -2598,7 +2718,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 删除项目
       tags:
       - Project
@@ -2624,7 +2744,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ProjectAvailableEnvClustersResponse'
@@ -2650,7 +2770,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ReleaseAppResponse'
@@ -2681,7 +2801,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.ReleaseDependenciesResponse'
@@ -2707,7 +2827,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   type: string
@@ -2759,7 +2879,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.PageResponse'
@@ -2784,7 +2904,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.RepositoryResponse'
@@ -2809,7 +2929,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.RepositoryResponse'
@@ -2834,7 +2954,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.RepositoryResponse'
@@ -2859,7 +2979,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 删除代码库
       tags:
       - Repository
@@ -2881,7 +3001,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
@@ -2906,7 +3026,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
@@ -2931,7 +3051,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   $ref: '#/definitions/devops-cd_internal_dto.TeamResponse'
@@ -2956,7 +3076,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 删除团队
       tags:
       - Team
@@ -2976,7 +3096,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            - $ref: '#/definitions/devops-cd_pkg_responses.Response'
             - properties:
                 data:
                   items:
@@ -3004,7 +3124,7 @@ paths:
         "200":
           description: 成功响应
           schema:
-            $ref: '#/definitions/devops-cd_pkg_utils.Response'
+            $ref: '#/definitions/devops-cd_pkg_responses.Response'
       summary: 接收构建通知
       tags:
       - Build

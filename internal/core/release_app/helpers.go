@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"devops-cd/internal/model"
 	"fmt"
+	"gorm.io/gorm"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
@@ -33,7 +34,18 @@ func ParseDeploymentName(app *model.Application, projectConfig *model.ProjectEnv
 }
 
 // 生成 values.yaml 文件
-func ParseValues(app *model.Application, build *model.Build, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (map[string]interface{}, error) {
+func ParseValues(db *gorm.DB, app *model.Application, build *model.Build, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig) (map[string]interface{}, error) {
+	// v1：优先使用 artifacts_json（values 作为 app_chart 的子结构 list，不固定层级）
+	artifacts, err := LoadArtifactsV1(projectConfig)
+	if err == nil && artifacts != nil && artifacts.AppChart != nil && len(artifacts.AppChart.Values) > 0 {
+		m, err := ParseValuesV1(db, app, build, projectConfig, appEnvConfig, artifacts.AppChart.Values)
+		if err != nil {
+			return nil, err
+		}
+		return marshalMeta(m)
+	}
+
+	// legacy：保持旧逻辑（ValuesRepoURL + ValuesPathTemplate）
 	options := values.Options{}
 
 	// 1. 从cd仓库文件中获取values.yaml
@@ -80,6 +92,11 @@ func parseTemplate(tpl string, data map[string]interface{}) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// ParseTemplateForInternal 仅用于内部模块复用模板渲染逻辑（v1 artifacts_json）
+func ParseTemplateForInternal(tpl string, data map[string]interface{}) (string, error) {
+	return parseTemplate(tpl, data)
 }
 
 func notEmpty(ptr *string) bool {

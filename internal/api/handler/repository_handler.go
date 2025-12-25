@@ -25,7 +25,7 @@ func NewRepositoryHandler(service service.RepositoryService) *RepositoryHandler 
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateRepositoryRequest true "创建代码库请求"
-// @Success 200 {object} utils.Response{data=dto.RepositoryResponse}
+// @Success 200 {object} responses.Response{data=dto.RepositoryResponse}
 // @Router /api/v1/repository [post]
 func (h *RepositoryHandler) Create(c *gin.Context) {
 	var req dto.CreateRepositoryRequest
@@ -49,7 +49,7 @@ func (h *RepositoryHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id query int true "代码库ID"
-// @Success 200 {object} utils.Response{data=dto.RepositoryResponse}
+// @Success 200 {object} responses.Response{data=dto.RepositoryResponse}
 // @Router /api/v1/repository [get]
 func (h *RepositoryHandler) GetByID(c *gin.Context) {
 	var req dto.GetRepositoryRequest
@@ -80,7 +80,7 @@ func (h *RepositoryHandler) GetByID(c *gin.Context) {
 // @Param keyword query string false "关键字"
 // @Param status query int false "状态"
 // @Param with_applications query bool false "是否包含应用列表"
-// @Success 200 {object} utils.Response{data=dto.PageResponse}
+// @Success 200 {object} responses.Response{data=dto.PageResponse}
 // @Router /api/v1/repositories [get]
 func (h *RepositoryHandler) List(c *gin.Context) {
 	var query dto.RepositoryListQuery
@@ -104,7 +104,7 @@ func (h *RepositoryHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body dto.UpdateRepositoryRequest true "更新代码库请求"
-// @Success 200 {object} utils.Response{data=dto.RepositoryResponse}
+// @Success 200 {object} responses.Response{data=dto.RepositoryResponse}
 // @Router /api/v1/repository [put]
 func (h *RepositoryHandler) Update(c *gin.Context) {
 	var req dto.UpdateRepositoryRequest
@@ -128,7 +128,7 @@ func (h *RepositoryHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body dto.DeleteRepositoryRequest true "删除代码库请求"
-// @Success 200 {object} utils.Response
+// @Success 200 {object} responses.Response
 // @Router /api/v1/repository/delete [post]
 func (h *RepositoryHandler) Delete(c *gin.Context) {
 	var req dto.DeleteRepositoryRequest

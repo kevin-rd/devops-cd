@@ -32,7 +32,7 @@ func NewBuildHandler(buildService service.BuildService, batchService *service.Ba
 // @Accept json
 // @Produce json
 // @Param request body dto.BuildNotifyRequest true "构建通知请求"
-// @Success 200 {object} utils.Response "成功响应"
+// @Success 200 {object} responses.Response "成功响应"
 // @Router /build/notify [post]
 func (h *BuildHandler) Notify(c *gin.Context) {
 	var req dto.BuildNotifyRequest
@@ -75,7 +75,7 @@ func (h *BuildHandler) Notify(c *gin.Context) {
 // @Param commit_sha query string false "Commit SHA"
 // @Param environment query string false "环境"
 // @Param keyword query string false "关键字"
-// @Success 200 {object} utils.Response{data=dto.PageResponse}
+// @Success 200 {object} responses.Response{data=dto.PageResponse}
 // @Router /api/v1/builds [get]
 func (h *BuildHandler) List(c *gin.Context) {
 	var query dto.BuildListQuery
@@ -99,7 +99,7 @@ func (h *BuildHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id query int true "构建记录ID"
-// @Success 200 {object} utils.Response{data=dto.BuildResponse}
+// @Success 200 {object} responses.Response{data=dto.BuildResponse}
 // @Router /api/v1/build [get]
 func (h *BuildHandler) GetByID(c *gin.Context) {
 	var req dto.GetBuildRequest
@@ -124,7 +124,7 @@ func (h *BuildHandler) GetByID(c *gin.Context) {
 // @Produce json
 // @Param app_id query int true "应用ID"
 // @Param build_number query int true "构建号"
-// @Success 200 {object} utils.Response{data=dto.BuildResponse}
+// @Success 200 {object} responses.Response{data=dto.BuildResponse}
 // @Router /api/v1/build/app [get]
 func (h *BuildHandler) GetByAppAndNumber(c *gin.Context) {
 	var req dto.GetBuildByAppAndNumberRequest

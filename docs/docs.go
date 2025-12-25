@@ -56,7 +56,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -102,7 +102,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -147,7 +147,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -194,7 +194,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -245,7 +245,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -285,7 +285,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -318,7 +318,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -361,7 +361,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -416,7 +416,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -459,7 +459,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -484,7 +484,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -524,7 +524,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -574,7 +574,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -653,7 +653,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -731,7 +731,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -774,7 +774,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1519,7 +1519,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1569,7 +1569,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1665,7 +1665,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1852,6 +1852,98 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/credentials": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Credential"
+                ],
+                "summary": "凭据列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "global/project",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "项目ID(scope=project时)",
+                        "name": "project_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/devops-cd_internal_dto.CredentialResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Credential"
+                ],
+                "summary": "创建凭据",
+                "parameters": [
+                    {
+                        "description": "创建凭据请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devops-cd_internal_dto.CreateCredentialRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/devops-cd_internal_dto.CredentialResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/project": {
             "get": {
                 "consumes": [
@@ -1886,7 +1978,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1930,7 +2022,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1982,7 +2074,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -2026,7 +2118,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2069,7 +2161,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2112,7 +2204,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2162,7 +2254,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2204,7 +2296,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -2239,7 +2331,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2284,7 +2376,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2336,7 +2428,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2420,7 +2512,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2463,7 +2555,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2506,7 +2598,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2549,7 +2641,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2592,7 +2684,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -2626,7 +2718,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2669,7 +2761,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2712,7 +2804,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2754,7 +2846,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -2786,7 +2878,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                                    "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2833,7 +2925,7 @@ const docTemplate = `{
                     "200": {
                         "description": "成功响应",
                         "schema": {
-                            "$ref": "#/definitions/devops-cd_pkg_utils.Response"
+                            "$ref": "#/definitions/devops-cd_pkg_responses.Response"
                         }
                     }
                 }
@@ -3512,13 +3604,6 @@ const docTemplate = `{
                 "project_id"
             ],
             "properties": {
-                "apps": {
-                    "description": "应用列表（允许为空，封板时校验）",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/devops-cd_internal_dto.CreateBatchApp"
-                    }
-                },
                 "batch_number": {
                     "description": "批次编号/标题，用户填写",
                     "type": "string"
@@ -3530,6 +3615,54 @@ const docTemplate = `{
                 "release_notes": {
                     "description": "批次级发布说明（可选）",
                     "type": "string"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CreateCredentialRequest": {
+            "type": "object",
+            "required": [
+                "data",
+                "name",
+                "scope",
+                "type"
+            ],
+            "properties": {
+                "data": {
+                    "description": "加密存储",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "meta": {
+                    "description": "非敏感展示信息（可选）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "project_id": {
+                    "type": "integer"
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": [
+                        "global",
+                        "project"
+                    ]
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "basic_auth",
+                        "token",
+                        "ssh_key",
+                        "tls_client_cert"
+                    ]
                 }
             }
         },
@@ -3637,6 +3770,38 @@ const docTemplate = `{
                 },
                 "project_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "devops-cd_internal_dto.CredentialResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "meta_json": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "integer"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -3766,6 +3931,13 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "artifacts_json": {
+                    "description": "v1 统一配置（可选，优先级高于旧字段）",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "chart_repo_url": {
                     "type": "string",
                     "maxLength": 255
@@ -3784,6 +3956,9 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 63
                 },
+                "schema_version": {
+                    "type": "integer"
+                },
                 "values_path_template": {
                     "type": "string",
                     "maxLength": 255
@@ -3801,6 +3976,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "artifacts_json": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     }
                 },
                 "chart_repo_url": {
@@ -3828,6 +4009,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "project_id": {
+                    "type": "integer"
+                },
+                "schema_version": {
                     "type": "integer"
                 },
                 "updated_at": {
@@ -3996,8 +4180,11 @@ const docTemplate = `{
                     "description": "部署前的版本（封板时记录）",
                     "type": "string"
                 },
-                "reason": {
-                    "type": "string"
+                "reasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "recent_builds": {
                     "description": "最近的构建记录（自上次部署以来，最多15条）",
@@ -4539,7 +4726,7 @@ const docTemplate = `{
                 }
             }
         },
-        "devops-cd_pkg_utils.Response": {
+        "devops-cd_pkg_responses.Response": {
             "type": "object",
             "properties": {
                 "code": {

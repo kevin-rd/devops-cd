@@ -148,7 +148,7 @@ func (s *BatchService) UpdateBatch(req *dto.UpdateBatchParam) (*model.Batch, map
 			}
 			for _, app := range addApps {
 				if app.ProjectID != batch.ProjectID {
-					return fmt.Errorf("应用 %s (ID: %d) 不属于项目 %s (ID: %d)", app.Name, app.ID, batch.ProjectID)
+					return fmt.Errorf("应用 %s (ID: %d) 不属于项目 (ID: %d)", app.Name, app.ID, batch.ProjectID)
 				}
 			}
 

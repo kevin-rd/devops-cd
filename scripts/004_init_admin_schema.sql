@@ -68,3 +68,25 @@ CREATE TABLE `clusters` (
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='集群元数据表';
 
+
+-- =====================================================
+-- 4. credentials 表
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `config_credentials` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `scope`         VARCHAR(16)     NOT NULL COMMENT 'global/project',
+  `project_id`    BIGINT UNSIGNED          DEFAULT NULL COMMENT 'scope=project 时必填',
+  `name`          VARCHAR(128)    NOT NULL COMMENT '凭据名称(展示用)',
+  `type`          VARCHAR(32)     NOT NULL COMMENT 'basic_auth/token/ssh_key/tls_client_cert',
+  `encrypted_data` LONGTEXT       NOT NULL COMMENT 'AES-GCM(base64) 密文(包含 nonce)',
+  `meta_json`     JSON                     DEFAULT NULL COMMENT '非敏感元信息',
+  `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at`    DATETIME                 DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_scope_project_name` (`scope`, `project_id`, `name`),
+  KEY `idx_project_id` (`project_id`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;

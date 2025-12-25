@@ -27,7 +27,7 @@ func NewApplicationHandler(service service.ApplicationService) *ApplicationHandl
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateApplicationRequest true "创建应用请求"
-// @Success 200 {object} utils.Response{data=dto.ApplicationResponse}
+// @Success 200 {object} responses.Response{data=dto.ApplicationResponse}
 // @Router /api/v1/applications [post]
 func (h *ApplicationHandler) Create(c *gin.Context) {
 	var req dto.CreateApplicationRequest
@@ -51,7 +51,7 @@ func (h *ApplicationHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id query int true "应用ID"
-// @Success 200 {object} utils.Response{data=dto.ApplicationResponse}
+// @Success 200 {object} responses.Response{data=dto.ApplicationResponse}
 // @Router /api/v1/application [get]
 func (h *ApplicationHandler) GetByID(c *gin.Context) {
 	var req dto.GetApplicationRequest
@@ -81,7 +81,7 @@ func (h *ApplicationHandler) GetByID(c *gin.Context) {
 // @Param app_type query string false "应用类型"
 // @Param keyword query string false "关键字"
 // @Param status query int false "状态"
-// @Success 200 {object} utils.Response{data=dto.PageResponse}
+// @Success 200 {object} responses.Response{data=dto.PageResponse}
 // @Router /api/v1/applications [get]
 func (h *ApplicationHandler) List(c *gin.Context) {
 	var query dto.ApplicationListQuery
@@ -105,7 +105,7 @@ func (h *ApplicationHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body dto.UpdateApplicationRequest true "更新应用请求"
-// @Success 200 {object} utils.Response{data=dto.ApplicationResponse}
+// @Success 200 {object} responses.Response{data=dto.ApplicationResponse}
 // @Router /api/v1/application [put]
 func (h *ApplicationHandler) Update(c *gin.Context) {
 	var req dto.UpdateApplicationRequest
@@ -129,7 +129,7 @@ func (h *ApplicationHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body dto.DeleteApplicationRequest true "删除应用请求"
-// @Success 200 {object} utils.Response
+// @Success 200 {object} responses.Response
 // @Router /api/v1/application/delete [post]
 func (h *ApplicationHandler) Delete(c *gin.Context) {
 	var req dto.DeleteApplicationRequest
@@ -154,7 +154,7 @@ func (h *ApplicationHandler) Delete(c *gin.Context) {
 // @Param id query int true "应用ID"
 // @Param page query int false "页码"
 // @Param page_size query int false "每页数量"
-// @Success 200 {object} utils.Response{data=dto.PageResponse}
+// @Success 200 {object} responses.Response{data=dto.PageResponse}
 // @Router /api/v1/application/builds [get]
 func (h *ApplicationHandler) GetBuilds(c *gin.Context) {
 	var req dto.GetApplicationBuildsRequest
@@ -178,7 +178,7 @@ func (h *ApplicationHandler) GetBuilds(c *gin.Context) {
 // @Tags Application
 // @Accept json
 // @Produce json
-// @Success 200 {object} utils.Response{data=dto.AppTypesResponse}
+// @Success 200 {object} responses.Response{data=dto.AppTypesResponse}
 // @Router /api/v1/application/types [get]
 func (h *ApplicationHandler) GetAppTypes(c *gin.Context) {
 	resp, err := h.service.GetAppTypes()
@@ -203,7 +203,7 @@ func (h *ApplicationHandler) GetAppTypes(c *gin.Context) {
 // @Param team_id query int false "按团队ID过滤"
 // @Param app_type query string false "按应用类型过滤"
 // @Param status query int false "按状态过滤（0/1）"
-// @Success 200 {object} utils.Response{data=dto.PageResponse}
+// @Success 200 {object} responses.Response{data=dto.PageResponse}
 // @Router /api/v1/application_builds [get]
 func (h *ApplicationHandler) SearchWithBuilds(c *gin.Context) {
 	var query dto.ApplicationSearchQuery
@@ -227,7 +227,7 @@ func (h *ApplicationHandler) SearchWithBuilds(c *gin.Context) {
 // @Tags Application
 // @Produce json
 // @Param id path int true "应用ID"
-// @Success 200 {object} utils.Response{data=dto.ApplicationDependenciesResponse}
+// @Success 200 {object} responses.Response{data=dto.ApplicationDependenciesResponse}
 // @Router /api/v1/application/{id}/dependencies [get]
 func (h *ApplicationHandler) GetDependencies(c *gin.Context) {
 	id, ok := parseIDParam(c.Param("id"))
@@ -252,7 +252,7 @@ func (h *ApplicationHandler) GetDependencies(c *gin.Context) {
 // @Produce json
 // @Param id path int true "应用ID"
 // @Param body body dto.UpdateAppDependenciesRequest true "更新依赖请求"
-// @Success 200 {object} utils.Response{data=dto.ApplicationDependenciesResponse}
+// @Success 200 {object} responses.Response{data=dto.ApplicationDependenciesResponse}
 // @Router /api/v1/application/{id}/dependencies [put]
 func (h *ApplicationHandler) UpdateDependencies(c *gin.Context) {
 	id, ok := parseIDParam(c.Param("id"))
