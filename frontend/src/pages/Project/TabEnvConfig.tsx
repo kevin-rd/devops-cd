@@ -8,6 +8,7 @@ import {getClusters} from '@/services/cluster'
 import {useDirtyFields} from '@/hooks/useDirtyFields'
 import type {Credential} from '@/services/credential'
 import {credentialService} from '@/services/credential'
+import {CredentialPicker} from '@/components/CredentialPicker/CredentialPicker.tsx'
 import {DeleteOutlined} from "@ant-design/icons";
 
 interface TabEnvConfigProps {
@@ -138,14 +139,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
     enabled: !!projectId,
   })
   const credentials: Credential[] = credentialsResponse || []
-  const credentialOptions = useMemo(
-    () =>
-      credentials.map((c) => ({
-        label: `${c.name} (${c.type}, ${c.scope}, id:${c.id})`,
-        value: `id:${c.id}`,
-      })),
-    [credentials]
-  )
+  const credentialNamePrefix = 'proj-env/'
 
   // 获取项目环境配置
   const {data: configsResponse, isLoading: configsLoading} = useQuery({
@@ -474,7 +468,13 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                   label="Credential"
                                   name={['artifacts_json', 'config_chart', 'chart', 'credential_ref']}
                                 >
-                                  <Select allowClear options={credentialOptions} placeholder="选择凭据（可选）"/>
+                                  <CredentialPicker
+                                    projectId={projectId}
+                                    credentials={credentials}
+                                    allowedTypes={['basic_auth']}
+                                    namePrefix={credentialNamePrefix}
+                                    onCreated={() => queryClient.invalidateQueries({queryKey: ['credentials']})}
+                                  />
                                 </Form.Item>
                                 <Form.Item
                                   label="Chart Name Template"
@@ -512,8 +512,13 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                             />
                                           </Form.Item>
                                           <Form.Item label="Credential" name={[field.name, 'credential_ref']}>
-                                            <Select allowClear options={credentialOptions}
-                                                    placeholder="选择凭据（可选）"/>
+                                            <CredentialPicker
+                                              projectId={projectId}
+                                              credentials={credentials}
+                                              allowedTypes={['basic_auth', 'token', 'ssh_key']}
+                                              namePrefix={credentialNamePrefix}
+                                              onCreated={() => queryClient.invalidateQueries({queryKey: ['credentials']})}
+                                            />
                                           </Form.Item>
                                           <Form.Item noStyle shouldUpdate>
                                             {({getFieldValue}) => {
@@ -577,7 +582,13 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                     label="Credential"
                                     name={['artifacts_json', 'config_chart', 'chart', 'credential_ref']}
                                   >
-                                    <Select allowClear options={credentialOptions} placeholder="选择凭据（可选）"/>
+                                    <CredentialPicker
+                                      projectId={projectId}
+                                      credentials={credentials}
+                                      allowedTypes={['basic_auth', 'token']}
+                                      namePrefix={credentialNamePrefix}
+                                      onCreated={() => queryClient.invalidateQueries({queryKey: ['credentials']})}
+                                    />
                                   </Form.Item>
                                 </>
                               )}
@@ -642,7 +653,13 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                   label="Credential"
                                   name={['artifacts_json', 'app_chart', 'chart', 'credential_ref']}
                                 >
-                                  <Select allowClear options={credentialOptions} placeholder="选择凭据（可选）"/>
+                                  <CredentialPicker
+                                    projectId={projectId}
+                                    credentials={credentials}
+                                    allowedTypes={['basic_auth']}
+                                    namePrefix={credentialNamePrefix}
+                                    onCreated={() => queryClient.invalidateQueries({queryKey: ['credentials']})}
+                                  />
                                 </Form.Item>
 
                                 <Form.Item
@@ -681,8 +698,13 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                             />
                                           </Form.Item>
                                           <Form.Item label="Credential" name={[field.name, 'credential_ref']}>
-                                            <Select allowClear options={credentialOptions}
-                                                    placeholder="选择凭据（可选）"/>
+                                            <CredentialPicker
+                                              projectId={projectId}
+                                              credentials={credentials}
+                                              allowedTypes={['basic_auth', 'token', 'ssh_key']}
+                                              namePrefix={credentialNamePrefix}
+                                              onCreated={() => queryClient.invalidateQueries({queryKey: ['credentials']})}
+                                            />
                                           </Form.Item>
                                           <Form.Item noStyle shouldUpdate>
                                             {({getFieldValue}) => {

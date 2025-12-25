@@ -12,9 +12,22 @@ export interface Credential {
   updated_at: string
 }
 
+export interface CreateCredentialRequest {
+  scope: 'global' | 'project'
+  project_id?: number
+  name: string
+  type: Credential['type']
+  data: Record<string, any>
+  meta?: Record<string, any>
+}
+
 export const credentialService = {
   list: async (params?: {scope?: 'global' | 'project'; project_id?: number}): Promise<ApiResponse<Credential[]>> => {
     return request.get('/v1/credentials', {params})
+  },
+
+  create: async (payload: CreateCredentialRequest): Promise<ApiResponse<Credential>> => {
+    return request.post('/v1/credentials', payload)
   },
 }
 
