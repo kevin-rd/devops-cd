@@ -15,7 +15,7 @@ export interface Batch {
   reject_reason?: string
   status: number // 0:草稿 10:已封板 21:预发布中 22:预发布完成 31:生产部署中 32:生产部署完成 40:已完成 90:已取消
   status_name?: string // 状态名称（列表接口返回）
-  app_count?: number // 应用数量（列表接口返回）
+  app_count: number // 应用数量（列表接口返回）
   tagged_at?: string
   pre_deploy_started_at?: string
   pre_deploy_finished_at?: string

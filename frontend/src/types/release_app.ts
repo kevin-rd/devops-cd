@@ -41,7 +41,6 @@ export interface ReleaseApp {
   deploy_retry_count?: number
   last_deploy_error?: string
   last_deploy_at?: string
-  deploy_task_id?: string
   created_at: string
   updated_at: string
   recent_builds?: BuildSummary[] // 最近的构建记录（自上次部署以来）

@@ -2,18 +2,20 @@ package deployment
 
 import (
 	"context"
-	"devops-cd/internal/adapter/deploy"
-	"devops-cd/internal/core/release_app"
-	"devops-cd/internal/model"
-	"devops-cd/internal/pkg/crypto"
-	"devops-cd/pkg/constants"
-	"encoding/json"
+	"devops-cd/internal/core/deployment/helpers/tpl"
+	"devops-cd/internal/core/deployment/plan/drivers"
+	helmDriver "devops-cd/internal/core/deployment/plan/drivers/helm"
 	"fmt"
-	"go.uber.org/zap"
-	"strconv"
 	"strings"
 	"time"
+
+	"devops-cd/internal/model"
+	"devops-cd/pkg/constants"
+
+	"go.uber.org/zap"
 )
+
+// ============ handler definition
 
 type Handler interface {
 	Handle(ctx context.Context, dep *model.Deployment) (status string, updateFunc func(*model.Deployment), err error)
@@ -30,225 +32,188 @@ func (sm *StateMachine) registerHandlers() {
 	sm.handlers[constants.DeploymentStatusRunning] = HandlerFunc(sm.HandleRunning)
 }
 
-// handlers
+// ========== all handlers
 
 // HandlePending handle Pending -> Running
 func (sm *StateMachine) HandlePending(ctx context.Context, dep *model.Deployment) (string, func(*model.Deployment), error) {
-	// 1. 触发部署（幂等）
-	if err := sm.toDeploy(ctx, dep); err != nil {
-		return constants.DeploymentStatusFailed, func(deployment *model.Deployment) {
-			setErrorMessage(deployment, err.Error())
-			deployment.RetryCount++
+	startedAt := time.Now()
+
+	// 1. 执行 pre/main 两阶段（当前按同步闭环执行，避免引入 stage 落库字段）
+	namespace, deploymentName, mainDriverType, err := sm.executeStages(ctx, dep.ID)
+	if err != nil {
+		return constants.DeploymentStatusFailed, func(d *model.Deployment) {
+			setErrorMessage(d, err.Error())
+			d.RetryCount++
+			d.StartedAt = &startedAt
+			finishedAt := time.Now()
+			d.FinishedAt = &finishedAt
 		}, nil
 	}
 
-	// 2. 变更为 Running
+	// 2. pre 已同步完成，main 已触发：进入 Running（FinishedAt 不应在此处写入）
 	return constants.DeploymentStatusRunning, func(d *model.Deployment) {
-		d.TaskID = dep.TaskID
+		d.Namespace = namespace
+		d.DeploymentName = deploymentName
+		mt := mainDriverType
+		d.DriverType = &mt
+		d.StartedAt = &startedAt
+		d.FinishedAt = nil
 		setErrorMessage(d, "")
 	}, nil
 }
-func (sm *StateMachine) toDeploy(ctx context.Context, dep *model.Deployment) error {
-	var deployment model.Deployment
-	if err := sm.db.Where("id = ?", dep.ID).Preload("Application").Preload("Cluster").First(&deployment).Error; err != nil {
-		return err
+
+// executeStages:
+// - pre 阶段（config_chart）同步执行，失败直接返回错误
+// - main 阶段（app_chart）触发一次 Deploy，并返回 main driver_type（供 Running 阶段 CheckStatus 使用）
+func (sm *StateMachine) executeStages(ctx context.Context, deploymentID int64) (namespace string, deploymentName string, mainDriverType string, err error) {
+	var dep model.Deployment
+	if err := sm.db.WithContext(ctx).Where("id = ?", deploymentID).Preload("Cluster").First(&dep).Error; err != nil {
+		return "", "", "", err
 	}
 
-	// 加载 ReleaseApp / Build / ProjectEnvConfig，以解析 artifacts_json（chart 来源、chart name、values 等）
+	// 加载 ReleaseApp / Build
 	var rel model.ReleaseApp
-	if err := sm.db.First(&rel, deployment.ReleaseID).Error; err != nil {
-		return fmt.Errorf("load release_app failed: %w", err)
+	if err := sm.db.WithContext(ctx).Preload("Build").First(&rel, dep.ReleaseID).Error; err != nil {
+		return "", "", "", fmt.Errorf("load release_app failed: %w", err)
 	}
-	if rel.BuildID == nil {
-		return fmt.Errorf("release_app.build_id 为空")
-	}
-	var build model.Build
-	if err := sm.db.First(&build, *rel.BuildID).Error; err != nil {
-		return fmt.Errorf("load build failed: %w", err)
+	if rel.Build == nil {
+		return "", "", "", fmt.Errorf("load Build failed when load ReleaseApp")
 	}
 
-	// 需要 Project 用于模板变量
+	// Load App / ProjectEnvConfig
 	var app model.Application
-	if err := sm.db.Preload("Project").First(&app, deployment.AppID).Error; err != nil {
-		return fmt.Errorf("load app failed: %w", err)
+	if err := sm.db.WithContext(ctx).Preload("Project").First(&app, dep.AppID).Error; err != nil {
+		return "", "", "", fmt.Errorf("load app failed: %w", err)
 	}
-
 	var projectCfg model.ProjectEnvConfig
-	if err := sm.db.Where("project_id = ? AND env = ?", app.ProjectID, deployment.Env).First(&projectCfg).Error; err != nil {
-		return fmt.Errorf("load project_env_config failed: %w", err)
+	if err := sm.db.WithContext(ctx).Where("project_id = ? AND env = ?", app.ProjectID, dep.Env).First(&projectCfg).Error; err != nil {
+		return "", "", "", fmt.Errorf("load project_env_config failed: %w", err)
 	}
 
-	artifacts, err := release_app.LoadArtifactsV1(&projectCfg)
+	// 解析 artifacts_json
+	arts, err := model.LoadArtifactsV1(projectCfg.ArtifactsJSON)
 	if err != nil {
-		return err
+		return "", "", "", err
 	}
-	if artifacts.AppChart == nil || !artifacts.AppChart.Enabled {
-		return fmt.Errorf("app_chart 未启用")
+	if arts.AppChart == nil || !arts.AppChart.Enabled {
+		return "", "", "", fmt.Errorf("app_chart 未启用")
 	}
-
-	// appEnvConfig: 仅用于模板变量（cluster/env）
-	appEnvCfg := &model.AppEnvConfig{Env: deployment.Env, Cluster: deployment.ClusterName}
-	tplCtx := release_app.RenderTemplateContext(&app, &build, appEnvCfg)
-
-	// 1) 若需要，先部署 config_chart
-	if artifacts.ConfigChart != nil && artifacts.ConfigChart.Enabled && artifacts.AppChart.DependsOnConfigChart {
-		if err := sm.deployOneChart(ctx, &app, &build, deployment, tplCtx, artifacts.ConfigChart, "config_chart"); err != nil {
-			return err
-		}
+	if strings.TrimSpace(arts.AppChart.Type) == "" {
+		return "", "", "", fmt.Errorf("app_chart.type 为空")
+	}
+	if arts.ConfigChart != nil && arts.ConfigChart.Enabled && strings.TrimSpace(arts.ConfigChart.Type) == "" {
+		return "", "", "", fmt.Errorf("config_chart.type 为空")
 	}
 
-	// 2) 部署 app_chart
-	return sm.deployOneChart(ctx, &app, &build, deployment, tplCtx, artifacts.AppChart, "app_chart")
-}
-
-func (sm *StateMachine) deployOneChart(
-	ctx context.Context,
-	app *model.Application,
-	build *model.Build,
-	deployment model.Deployment,
-	tplCtx map[string]interface{},
-	chartSpec *release_app.ChartSpecV1,
-	kind string,
-) error {
-	if chartSpec == nil || !chartSpec.Enabled {
-		return nil
+	// 1) namespace：由 deployment 层统一计算（driver 外部），并传入各 stage
+	nsTpl := strings.TrimSpace(arts.NamespaceTemplate)
+	if nsTpl == "" {
+		return "", "", "", fmt.Errorf("namespace_template 为空")
 	}
-
-	chartNameTpl := chartSpec.Chart.ChartNameTemplate
-	if chartNameTpl == "" {
-		chartNameTpl = "{{.app_type}}"
-	}
-	chartName, err := release_app.ParseTemplateForInternal(chartNameTpl, tplCtx)
+	ns, err := tpl.ParseTemplate(nsTpl, tpl.RenderTemplateContext(&app, rel.Build, dep.Env, dep.ClusterName))
 	if err != nil {
-		return fmt.Errorf("%s: chart_name_template 解析失败: %w", kind, err)
+		return "", "", "", fmt.Errorf("namespace_template 解析失败: %w", err)
+	}
+	if strings.TrimSpace(ns) == "" {
+		return "", "", "", fmt.Errorf("namespace_template 解析结果为空")
 	}
 
-	chartVersion := ""
-	if chartSpec.Chart.ChartVersionTemplate != "" {
-		chartVersion, err = release_app.ParseTemplateForInternal(chartSpec.Chart.ChartVersionTemplate, tplCtx)
-		if err != nil {
-			return fmt.Errorf("%s: chart_version_template 解析失败: %w", kind, err)
+	helmPayload := &helmDriver.ExecutePayload{
+		Deployment: &dep,
+		App:        &app,
+		Build:      rel.Build,
+		ProjectCfg: &projectCfg,
+		Artifacts:  arts,
+	}
+
+	// 2) Pre: config chart
+	if arts.ConfigChart != nil && arts.ConfigChart.Enabled {
+		dv, ok := sm.registry.Get(arts.ConfigChart.Type)
+		if !ok {
+			return "", "", "", fmt.Errorf("driver not found: %s", arts.ConfigChart.Type)
+		}
+
+		if _, err = dv.Execute(ctx, &drivers.ExecuteRequest{Stage: drivers.StagePre, Namespace: ns, Payload: helmPayload}); err != nil {
+			return ns, "", "", err
 		}
 	}
+	// 3) Main: app chart
+	mainType := strings.TrimSpace(arts.AppChart.Type)
+	dv, ok := sm.registry.Get(mainType)
+	if !ok {
+		return "", "", "", fmt.Errorf("driver not found: %s", mainType)
+	}
+	if _, err = dv.Execute(ctx, &drivers.ExecuteRequest{Stage: drivers.StageMain, Namespace: ns, Payload: helmPayload}); err != nil {
+		return ns, "", mainType, err
+	}
 
-	artifactURL := ""
-	if chartSpec.Chart.ArtifactURLTemplate != "" {
-		artifactURL, err = release_app.ParseTemplateForInternal(chartSpec.Chart.ArtifactURLTemplate, tplCtx)
-		if err != nil {
-			return fmt.Errorf("%s: artifact_url_template 解析失败: %w", kind, err)
+	// main 的 deployment_name：由 deployment 层根据 app_chart.data.release_name_template 计算并回填
+	// 当前先复用 helm driver 的 config 解析（因为 driver_type=helm）
+	deploymentName = app.Name
+	if mainType == "helm" && arts.AppChart != nil {
+		if cfg, err2 := helmDriver.DecodeConfig(arts.AppChart.Data); err2 == nil && strings.TrimSpace(cfg.ReleaseNameTemplate) != "" {
+			if dn, err3 := tpl.ParseTemplate(cfg.ReleaseNameTemplate, tpl.RenderTemplateContext(&app, rel.Build, dep.Env, dep.ClusterName)); err3 == nil && strings.TrimSpace(dn) != "" {
+				deploymentName = dn
+			}
 		}
 	}
-
-	// values[]：kind 为 config_chart 时用其 values；app_chart 的 values 在 release_app 阶段已计算并落库到 deployment.Values
-	valuesMap := map[string]interface{}(deployment.Values)
-	if kind == "config_chart" {
-		// config_chart values 需要在此处计算
-		appEnvCfg := &model.AppEnvConfig{Env: deployment.Env, Cluster: deployment.ClusterName}
-		m, err := release_app.ParseValuesV1(sm.db, app, build, nil, appEnvCfg, chartSpec.Values)
-		if err != nil {
-			return fmt.Errorf("%s: values 计算失败: %w", kind, err)
-		}
-		valuesMap = m
-	}
-
-	param := deploy.DeploymentParam{
-		AppName: app.Name,
-		AppType: app.AppType,
-		Values:  valuesMap,
-
-		ReleaseName: deployment.DeploymentName,
-		Env:         deployment.Env,
-		Namespace:   deployment.Namespace,
-
-		Kubeconfig: deployment.Cluster.Kubeconfig,
-
-		ChartSourceType:  chartSpec.Chart.Type,
-		ChartName:        chartName,
-		ChartVersion:     chartVersion,
-		ChartRepoURL:     chartSpec.Chart.RepoURL,
-		ChartArtifactURL: artifactURL,
-	}
-
-	// chart repo 认证（v1：仅 basic_auth；credential_ref 支持 "id:123" 或 "123"）
-	if chartSpec.Chart.CredentialRef != "" {
-		if u, p, err := sm.resolveBasicAuth(chartSpec.Chart.CredentialRef); err == nil {
-			param.ChartUsername = u
-			param.ChartPassword = p
-		}
-	}
-
-	// config_chart 的 release_name 可以用 template 覆盖
-	if kind == "config_chart" && chartSpec.ReleaseNameTemplate != "" {
-		if rn, err := release_app.ParseTemplateForInternal(chartSpec.ReleaseNameTemplate, tplCtx); err == nil && rn != "" {
-			param.ReleaseName = rn
-		}
-	}
-	if kind == "config_chart" && param.ReleaseName == deployment.DeploymentName {
-		// 没配置模板时，给 config chart 一个默认 release name，避免与 app release 冲突
-		param.ReleaseName = fmt.Sprintf("%s-config", deployment.DeploymentName)
-	}
-	if kind == "app_chart" && chartSpec.ReleaseNameTemplate != "" {
-		if rn, err := release_app.ParseTemplateForInternal(chartSpec.ReleaseNameTemplate, tplCtx); err == nil && rn != "" {
-			param.ReleaseName = rn
-		}
-	}
-
-	return sm.deployer.Deploy(ctx, &param)
-}
-
-func (sm *StateMachine) resolveBasicAuth(ref string) (string, string, error) {
-	ref = strings.TrimSpace(ref)
-	if ref == "" {
-		return "", "", nil
-	}
-	idStr := ref
-	if strings.HasPrefix(ref, "id:") {
-		idStr = strings.TrimPrefix(ref, "id:")
-	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return "", "", err
-	}
-	var c model.Credential
-	if err := sm.db.First(&c, id).Error; err != nil {
-		return "", "", err
-	}
-	plain, err := crypto.Decrypt(c.EncryptedData)
-	if err != nil {
-		return "", "", err
-	}
-	var m map[string]string
-	if err := json.Unmarshal([]byte(plain), &m); err != nil {
-		return "", "", err
-	}
-	// v1: 仅支持 basic_auth 的 username/password
-	return m["username"], m["password"], nil
+	return ns, deploymentName, mainType, nil
 }
 
 // HandleRunning handle Running → Success / Failed
 func (sm *StateMachine) HandleRunning(ctx context.Context, dep *model.Deployment) (string, func(*model.Deployment), error) {
 	log := sm.logger.With(zap.Int64("deployment_id", dep.ID)).Sugar()
 
-	// todo
-	status, err := sm.deployer.CheckStatus(ctx, nil)
+	// 重新加载 deployment + cluster（用于获取 kubeconfig 做状态检查）
+	var full model.Deployment
+	if err := sm.db.WithContext(ctx).Where("id = ?", dep.ID).Preload("Cluster").First(&full).Error; err != nil {
+		return "", nil, err
+	}
+
+	// main 阶段状态检查：根据 dep.driver_type 选择 driver
+	if full.DriverType == nil || strings.TrimSpace(*full.DriverType) == "" {
+		return constants.DeploymentStatusFailed, func(d *model.Deployment) {
+			setErrorMessage(d, "driver_type 为空，无法检查部署状态")
+			now := time.Now()
+			d.FinishedAt = &now
+		}, nil
+	}
+	driverType := strings.TrimSpace(*full.DriverType)
+	dv, ok := sm.registry.Get(driverType)
+	if !ok {
+		return constants.DeploymentStatusFailed, func(d *model.Deployment) {
+			setErrorMessage(d, fmt.Sprintf("driver not found: %s", driverType))
+			now := time.Now()
+			d.FinishedAt = &now
+		}, nil
+	}
+
+	// helm 不使用 task_id，直接用当前 deployment 字段（namespace/deployment_name）
+	res, err := dv.CheckStatus(ctx, &drivers.ExecuteRequest{
+		Stage:     drivers.StageMain,
+		Namespace: full.Namespace,
+		Payload:   &full, // driver 可按需断言使用
+	})
 	if err != nil {
 		return "", nil, fmt.Errorf("check status failed: %w", err)
 	}
 
-	switch status {
-	case "success":
+	switch res.Status {
+	case drivers.StatusSuccess:
 		return constants.DeploymentStatusSuccess, func(d *model.Deployment) {
 			now := time.Now()
 			d.FinishedAt = &now
 			setErrorMessage(d, "")
-		}, nil //nolint:staticcheck
-	case "failed":
+		}, nil
+	case drivers.StatusFailed:
 		return constants.DeploymentStatusFailed, func(d *model.Deployment) {
-			setErrorMessage(d, "deploy failed")
+			setErrorMessage(d, res.Message)
 			d.RetryCount++
+			now := time.Now()
+			d.FinishedAt = &now
 		}, nil
 	default:
-		log.Debugf("[Deployment SM: %d-%d-%d] 部署进行中: status: %v", dep.BatchID, dep.ReleaseID, dep.ID, status)
+		log.Debugf("[Deployment SM: %d-%d-%d] 部署进行中: status: %v", full.BatchID, full.ReleaseID, full.ID, res.Status)
 		return "", nil, nil // 继续等待
 	}
 }

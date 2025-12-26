@@ -540,7 +540,7 @@ export default function BatchList() {
         {/*)}*/}
 
         {/*封板按钮*/}
-        {record.status === 0 && (
+        {record.status === 0 && record.app_count > 0 && (
           <Button
             size="small"
             icon={<CheckCircleOutlined/>}
@@ -1017,7 +1017,13 @@ export default function BatchList() {
                     text={BatchStatusConfig[currentStatus]?.label || 'unknown: ' + currentStatus}
                     color={BatchStatusConfig[currentStatus]?.color}>
         <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
-          <div className="batch-card-main" onClick={() => navigate(`/batch/${record.id}/detail`)}>
+          <div className="batch-card-main" onClick={() => {
+            if (record.status >= BatchStatus.Sealed) {
+              navigate(`/batch/${record.id}/detail?tab=graph`)
+            } else {
+              navigate(`/batch/${record.id}/detail`)
+            }
+          }}>
             {record.release_notes ? (
               <Tooltip title={record.release_notes}
                        overlayInnerStyle={{fontSize: '12px', padding: '6px 10px'}}>
@@ -1061,12 +1067,7 @@ export default function BatchList() {
                 approvedBy={detail?.approved_by ?? record.approved_by}
               />
             </div>
-            <div
-              className="batch-cell batch-cell-actions"
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-            >
+            <div className="batch-cell batch-cell-actions">
               {renderActionButtons(record)}
             </div>
           </div>

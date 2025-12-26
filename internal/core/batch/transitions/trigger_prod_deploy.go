@@ -4,8 +4,9 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // TriggerProdDeployTransition 触发Prod部署
@@ -34,7 +35,7 @@ func (h TriggerProdDeployTransition) Handle(batch *model.Batch, from, to int8, o
 			return fmt.Errorf("有未验收的预发布环境")
 		}
 
-	} else if batch.Status != constants.BatchStatusSealed {
+	} else if batch.Status == constants.BatchStatusSealed {
 		// 当前为封板状态: 检查是否都没有预发布环境
 		// todo: 如果有app已经提前预发布, 是否允许直接prod发布
 		var countInPre int64
@@ -56,7 +57,7 @@ func (h TriggerProdDeployTransition) Handle(batch *model.Batch, from, to int8, o
 		}
 
 	} else {
-		return fmt.Errorf("当前状态不能触发Prod部署")
+		return fmt.Errorf("当前状态 %v 不能触发Prod部署", batch.Status)
 	}
 
 	// 操作记录

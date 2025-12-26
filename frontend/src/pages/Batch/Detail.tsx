@@ -18,7 +18,7 @@ import './Detail.css'
 import './status-card.css'
 import {ReleaseApp} from "@/types/release_app.ts";
 import {Batch, BatchAction, BatchStatus} from "@/types/batch.ts";
-import {getAvailableActions} from "@/pages/Batch/utils/actions.tsx";
+import getAvailableActions from "@/pages/Batch/utils/actions.tsx";
 import {BATCH_STATUS_CONFIG} from "@/components/StatusTag";
 import {BatchStatusConfig} from "@/pages/Batch/utils/status.tsx";
 
@@ -672,7 +672,7 @@ export default function BatchDetail() {
 
         {/* 上方: 批次信息和时间线 Section */}
         <Badge.Ribbon placement="start" className="batch-status-ribbon"
-                      style={{top: 50}}
+                      style={{top: 32}}
                       text={BatchStatusConfig[batch.status]?.label || 'unknown'}
                       color={BATCH_STATUS_CONFIG[batch.status]?.color || 'default'}>
           <Card
@@ -785,7 +785,7 @@ export default function BatchDetail() {
                   </>
                 ) : (
                   /* 没有构建修改时，显示编辑应用和封板按钮（草稿状态） */
-                  batch.status < 10 && (
+                  (batch.status < 10) && (
                     <>
                       <Button icon={<EditOutlined/>} onClick={handleManageApps} size="small">
                         添加应用

@@ -1,7 +1,9 @@
 package transitions
 
 import (
+	"devops-cd/internal/pkg/logger"
 	"devops-cd/pkg/constants"
+
 	"gorm.io/gorm"
 )
 
@@ -11,7 +13,7 @@ func AllTransitions(db *gorm.DB) []StateTransition {
 		{
 			From:        constants.BatchStatusDraft,
 			To:          constants.BatchStatusSealed,
-			Handler:     TriggerSealTransition{db: db},
+			Handler:     TriggerSealTransition{db: db, logger: logger.Sugar()},
 			AllowSource: SourceOutside,
 		},
 		// 已封板 -> 触发预发布（需要检查审批状态）

@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
-import {Alert, Button, Card, Checkbox, Empty, Form, Input, message, Select, Space, Spin, Switch} from 'antd'
+import {Alert, Button, Card, Checkbox, Form, Input, message, Select, Space, Spin, Switch} from 'antd'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import type {ProjectEnvConfig, UpdateProjectEnvConfigsRequest} from '@/services/projectEnvConfig'
 import {projectEnvConfigService} from '@/services/projectEnvConfig'
@@ -25,35 +25,39 @@ const ENVIRONMENTS = [
 interface EnvFormValues {
   allow_clusters: string[]
   default_clusters: string[]
-  deployment_name_template: string
   artifacts_json?: ArtifactsV1
 }
 
-type ChartSourceType = 'helm_repo' | 'webhook'
+type ChartSourceType = 'helm_repo' | 'webhook' | 'pipeline_artifact'
 type ValuesLayerType = 'git' | 'http_file' | 'inline' | 'pipeline_artifact'
 
 interface ArtifactsV1 {
   schema_version: 1
   namespace_template: string
-  config_chart?: ChartSpecV1
-  app_chart?: ChartSpecV1
+  config_chart?: StageSpecV1
+  app_chart?: StageSpecV1
 }
 
-interface ChartSpecV1 {
+interface StageSpecV1 {
   enabled: boolean
-  depends_on_config_chart?: boolean
-  release_name_template?: string
-  chart: ChartSourceSpecV1
-  values?: ValuesLayerV1[]
+  type: 'helm'
+  data?: HelmStageData
 }
 
-interface ChartSourceSpecV1 {
-  type: ChartSourceType
+interface HelmStageData {
+  // release naming
+  release_name_template?: string
+
+  // chart source
+  chart_source_type?: ChartSourceType
   repo_url?: string
   credential_ref?: string
   chart_name_template?: string
   chart_version_template?: string
   artifact_url_template?: string
+
+  // values layers（helm 特有）
+  values?: ValuesLayerV1[]
 }
 
 interface ValuesLayerV1 {
@@ -66,35 +70,28 @@ interface ValuesLayerV1 {
   content?: string
 }
 
-const defaultArtifactsFromLegacy = (legacy: Partial<ProjectEnvConfig>): ArtifactsV1 => {
+const defaultArtifactsFromLegacy = (_legacy: Partial<ProjectEnvConfig>): ArtifactsV1 => {
   return {
     schema_version: 1,
-    namespace_template: legacy.namespace || '',
+    namespace_template: '',
     config_chart: {
       enabled: false,
-      chart: {type: 'helm_repo'},
-      values: [],
+      type: 'helm',
+      data: {
+        chart_source_type: 'helm_repo',
+        values: [],
+      },
     },
     app_chart: {
       enabled: true,
-      depends_on_config_chart: true,
-      chart: {
-        type: 'helm_repo',
-        repo_url: legacy.chart_repo_url || '',
+      type: 'helm',
+      data: {
+        chart_source_type: 'helm_repo',
+        repo_url: '',
         chart_name_template: '{{.app_type}}',
         chart_version_template: '{{.build.image_tag}}',
+        values: [],
       },
-      values:
-        legacy.values_repo_url && legacy.values_path_template
-          ? [
-            {
-              type: 'git',
-              repo_url: legacy.values_repo_url,
-              ref_template: 'main',
-              path_template: legacy.values_path_template,
-            },
-          ]
-          : [],
     },
   }
 }
@@ -158,17 +155,10 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
     const configs: ProjectEnvConfig[] = configsResponse.data || []
     const envConfigMap = new Map<string, EnvFormValues>()
     configs.forEach((config) => {
-      const legacyForDefault: Partial<ProjectEnvConfig> = {
-        namespace: config.namespace || '',
-        chart_repo_url: config.chart_repo_url || '',
-        values_repo_url: config.values_repo_url || '',
-        values_path_template: config.values_path_template || '',
-      }
-      const artifacts = (config.artifacts_json as ArtifactsV1 | undefined) || defaultArtifactsFromLegacy(legacyForDefault)
+      const artifacts = (config.artifacts_json as ArtifactsV1 | undefined) || defaultArtifactsFromLegacy({})
       envConfigMap.set(config.env, {
         allow_clusters: config.allow_clusters || [],
         default_clusters: config.default_clusters || [],
-        deployment_name_template: config.deployment_name_template || '',
         artifacts_json: artifacts,
       })
     })
@@ -178,13 +168,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
         envConfigMap.get(key) || {
           allow_clusters: [],
           default_clusters: [],
-          deployment_name_template: '',
-          artifacts_json: defaultArtifactsFromLegacy({
-            namespace: '',
-            chart_repo_url: '',
-            values_repo_url: '',
-            values_path_template: ''
-          }),
+          artifacts_json: defaultArtifactsFromLegacy({}),
         }
 
       if (key === 'pre') {
@@ -383,7 +367,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
               </Form.Item>
 
               {/* Namespace */}
-              <Form.Item label="Namespace (Go Template)" tooltip="">
+              <Form.Item label="Namespace (Go Template support)" tooltip="">
                 <Space.Compact style={{width: '100%'}}>
                   <Form.Item
                     name={['artifacts_json', 'namespace_template']}
@@ -418,6 +402,9 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                         <Form.Item name={['artifacts_json', 'config_chart', 'enabled']} valuePropName="checked" noStyle>
                           <Switch size="small"/>
                         </Form.Item>
+                        <Form.Item name={['artifacts_json', 'config_chart', 'type']} noStyle initialValue="helm">
+                          <Input style={{display: 'none'}}/>
+                        </Form.Item>
                         <Button
                           type="link"
                           size="small"
@@ -436,37 +423,38 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                 {!collapsed.config && (
                   <>
                     <Form.Item
-                      label="Release Name Template"
-                      name={['artifacts_json', 'config_chart', 'release_name_template']}
+                      label="Release Name (Go Template support)"
+                      name={['artifacts_json', 'config_chart', 'data', 'release_name_template']}
                     >
                       <Input placeholder="{{.app_name}}-config"/>
                     </Form.Item>
 
-                    <Form.Item label="Chart Source Type" name={['artifacts_json', 'config_chart', 'chart', 'type']}>
+                    <Form.Item label="Chart Source Type" name={['artifacts_json', 'config_chart', 'data', 'chart_source_type']}>
                       <Select
                         options={[
                           {label: 'helm_repo', value: 'helm_repo'},
                           {label: 'webhook', value: 'webhook'},
+                          {label: 'pipeline_artifact', value: 'pipeline_artifact'},
                         ]}
                       />
                     </Form.Item>
 
                     <Form.Item noStyle shouldUpdate>
                       {({getFieldValue}) => {
-                        const t = getFieldValue(['artifacts_json', 'config_chart', 'chart', 'type']) as ChartSourceType
+                        const t = getFieldValue(['artifacts_json', 'config_chart', 'data', 'chart_source_type']) as ChartSourceType
                         return (
                           <>
                             {t === 'helm_repo' && (
                               <>
                                 <Form.Item
                                   label="Repo URL"
-                                  name={['artifacts_json', 'config_chart', 'chart', 'repo_url']}
+                                  name={['artifacts_json', 'config_chart', 'data', 'repo_url']}
                                 >
                                   <Input placeholder="https://charts.example.com"/>
                                 </Form.Item>
                                 <Form.Item
                                   label="Credential"
-                                  name={['artifacts_json', 'config_chart', 'chart', 'credential_ref']}
+                                  name={['artifacts_json', 'config_chart', 'data', 'credential_ref']}
                                 >
                                   <CredentialPicker
                                     projectId={projectId}
@@ -477,19 +465,19 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                   />
                                 </Form.Item>
                                 <Form.Item
-                                  label="Chart Name Template"
-                                  name={['artifacts_json', 'config_chart', 'chart', 'chart_name_template']}
+                                  label="Chart Name (Go Template support)"
+                                  name={['artifacts_json', 'config_chart', 'data', 'chart_name_template']}
                                 >
                                   <Input placeholder="{{.app_name}}-config"/>
                                 </Form.Item>
                                 <Form.Item
-                                  label="Chart Version Template"
-                                  name={['artifacts_json', 'config_chart', 'chart', 'chart_version_template']}
+                                  label="Chart Version (Go Template support)"
+                                  name={['artifacts_json', 'config_chart', 'data', 'chart_version_template']}
                                 >
                                   <Input placeholder="{{.build.image_tag}}"/>
                                 </Form.Item>
 
-                                <Form.List name={['artifacts_json', 'config_chart', 'values']}>
+                                <Form.List name={['artifacts_json', 'config_chart', 'data', 'values']}>
                                   {(fields, {add, remove}) => (
                                     <>
                                       {fields.map((field) => (
@@ -525,6 +513,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                               const tp = getFieldValue([
                                                 'artifacts_json',
                                                 'config_chart',
+                                                'data',
                                                 'values',
                                                 field.name,
                                                 'type',
@@ -569,18 +558,18 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                 </Form.List>
                               </>
                             )}
-                              {t === 'webhook' && (
+                              {(t === 'webhook' || t === 'pipeline_artifact') && (
                                 <>
                                   <Form.Item
-                                    label="Webhook URL (Go Template)"
-                                    name={['artifacts_json', 'config_chart', 'chart', 'artifact_url_template']}
+                                    label="Webhook URL (Go Template support)"
+                                    name={['artifacts_json', 'config_chart', 'data', 'artifact_url_template']}
                                     tooltip="从流水线产物拉取 chart.tgz 的 URL 模板"
                                   >
                                     <Input placeholder="https://artifact.example.com/{{.build.image_tag}}/config.tgz"/>
                                   </Form.Item>
                                   <Form.Item
                                     label="Credential"
-                                    name={['artifacts_json', 'config_chart', 'chart', 'credential_ref']}
+                                    name={['artifacts_json', 'config_chart', 'data', 'credential_ref']}
                                   >
                                     <CredentialPicker
                                       projectId={projectId}
@@ -611,6 +600,9 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                     <Form.Item name={['artifacts_json', 'app_chart', 'enabled']} valuePropName="checked" noStyle>
                       <Switch size="small"/>
                     </Form.Item>
+                    <Form.Item name={['artifacts_json', 'app_chart', 'type']} noStyle initialValue="helm">
+                      <Input style={{display: 'none'}}/>
+                    </Form.Item>
                     <Button type="link" size="small"
                             onClick={() =>
                               setChartCollapsed((prev) => ({
@@ -625,33 +617,34 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
               >
                 {!collapsed.app && (
                   <>
-                    <Form.Item label="Release Name (Go Template)"
-                               name={['artifacts_json', 'app_chart', 'release_name_template']}>
+                    <Form.Item label="Release Name (Go Template support)"
+                               name={['artifacts_json', 'app_chart', 'data', 'release_name_template']}>
                       <Input placeholder="{{.app_name}}"/>
                     </Form.Item>
 
-                    <Form.Item label="Chart Source Type" name={['artifacts_json', 'app_chart', 'chart', 'type']}>
+                    <Form.Item label="Chart Source Type" name={['artifacts_json', 'app_chart', 'data', 'chart_source_type']}>
                       <Select
                         options={[
                           {label: 'helm_repo', value: 'helm_repo'},
-                          {label: 'webhook', value: 'webhook'}
+                          {label: 'webhook', value: 'webhook'},
+                          {label: 'pipeline_artifact', value: 'pipeline_artifact'},
                         ]}
                       />
                     </Form.Item>
 
                     <Form.Item noStyle shouldUpdate>
                       {({getFieldValue}) => {
-                        const t = getFieldValue(['artifacts_json', 'app_chart', 'chart', 'type']) as ChartSourceType
+                        const t = getFieldValue(['artifacts_json', 'app_chart', 'data', 'chart_source_type']) as ChartSourceType
                         return (
                           <>
                             {t === 'helm_repo' && (
                               <>
-                                <Form.Item label="Repo URL" name={['artifacts_json', 'app_chart', 'chart', 'repo_url']}>
+                                <Form.Item label="Repo URL" name={['artifacts_json', 'app_chart', 'data', 'repo_url']}>
                                   <Input placeholder="https://charts.example.com"/>
                                 </Form.Item>
                                 <Form.Item
                                   label="Credential"
-                                  name={['artifacts_json', 'app_chart', 'chart', 'credential_ref']}
+                                  name={['artifacts_json', 'app_chart', 'data', 'credential_ref']}
                                 >
                                   <CredentialPicker
                                     projectId={projectId}
@@ -663,19 +656,19 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                 </Form.Item>
 
                                 <Form.Item
-                                  label="Chart Name Template"
-                                  name={['artifacts_json', 'app_chart', 'chart', 'chart_name_template']}
+                                  label="Chart Name (Go Template support)"
+                                  name={['artifacts_json', 'app_chart', 'data', 'chart_name_template']}
                                 >
                                   <Input placeholder="{{.app_type}}"/>
                                 </Form.Item>
                                 <Form.Item
-                                  label="Chart Version Template"
-                                  name={['artifacts_json', 'app_chart', 'chart', 'chart_version_template']}
+                                  label="Chart Version (Go Template support)"
+                                  name={['artifacts_json', 'app_chart', 'data', 'chart_version_template']}
                                 >
                                   <Input placeholder="{{.build.image_tag}}"/>
                                 </Form.Item>
 
-                                <Form.List name={['artifacts_json', 'app_chart', 'values']}>
+                                <Form.List name={['artifacts_json', 'app_chart', 'data', 'values']}>
                                   {(fields, {add, remove}) => (
                                     <>
                                       {fields.map((field) => (
@@ -711,6 +704,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                               const tp = getFieldValue([
                                                 'artifacts_json',
                                                 'app_chart',
+                                                'data',
                                                 'values',
                                                 field.name,
                                                 'type',
@@ -755,8 +749,34 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                 </Form.List>
                               </>
                             )}
-                            {t === 'webhook' && (
-                              <Empty description="暂无实现"/>
+                            {(t === 'webhook' || t === 'pipeline_artifact') && (
+                              <>
+                                <Form.Item
+                                  label="Artifact URL (Go Template support)"
+                                  name={['artifacts_json', 'app_chart', 'data', 'artifact_url_template']}
+                                  tooltip="从流水线产物拉取 chart.tgz 的 URL 模板"
+                                >
+                                  <Input placeholder="https://artifact.example.com/{{.build.image_tag}}/app.tgz"/>
+                                </Form.Item>
+                                <Form.Item
+                                  label="Credential"
+                                  name={['artifacts_json', 'app_chart', 'data', 'credential_ref']}
+                                >
+                                  <CredentialPicker
+                                    projectId={projectId}
+                                    credentials={credentials}
+                                    allowedTypes={['basic_auth', 'token']}
+                                    namePrefix={credentialNamePrefix}
+                                    onCreated={() => queryClient.invalidateQueries({queryKey: ['credentials']})}
+                                  />
+                                </Form.Item>
+                                <Alert
+                                  type="info"
+                                  showIcon
+                                  message="提示"
+                                  description="webhook/pipeline_artifact chart 将使用 Artifact URL 下载 chart.tgz。"
+                                />
+                              </>
                             )}
                           </>
                         )

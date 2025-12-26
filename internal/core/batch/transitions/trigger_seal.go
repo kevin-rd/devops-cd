@@ -4,15 +4,16 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
+	"time"
+
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"time"
 )
 
 // TriggerSealTransition 处理封板
 type TriggerSealTransition struct {
 	db     *gorm.DB
-	logger *zap.Logger
+	logger *zap.SugaredLogger
 }
 
 func (h TriggerSealTransition) Handle(batch *model.Batch, from, to int8, options *TransitionOptions) error {
@@ -101,7 +102,7 @@ func (h TriggerSealTransition) Handle(batch *model.Batch, from, to int8, options
 		}
 	}
 
-	h.logger.Info(fmt.Sprintf("Batch:%d 封板完成,计算了 %d 个应用的环境配置", batch.ID, len(releaseAppEnvInfos)))
+	h.logger.Infof("Batch:%d 封板完成,计算了 %d 个应用的环境配置", batch.ID, len(releaseAppEnvInfos))
 
 	// 记录时间/操作人
 	now := time.Now()

@@ -19,12 +19,12 @@ export type BatchActionMeta = {
   action: BatchAction
 }
 
-export function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
+function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
   const actions: Array<BatchActionMeta> = []
   if (!batch) return actions
 
   // 审批通过：可以封板
-  if (batch.status === BatchStatus.Draft && batch.approval_status === 'approved') {
+  if (batch.status === BatchStatus.Draft && batch.approval_status === 'approved' && batch.app_count > 0) {
     actions.push({
       key: 'seal',
       label: t('batch.seal'),
@@ -120,4 +120,6 @@ export function getAvailableActions(batch: Batch, statistics: BatchStatistics) {
 
   return actions
 }
+
+export default getAvailableActions
 

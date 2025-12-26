@@ -23,7 +23,7 @@ type Deployment struct {
 	Values         datatypes.JSONMap `gorm:"type:json" json:"values"` // 合并后的helm values
 
 	// 状态追踪
-	TaskID        *string `gorm:"size:100" json:"task_id"`                        // K8s部署任务ID
+	DriverType    *string `gorm:"column:driver_type;size:32" json:"driver_type"`  // main 阶段 driver（如 helm）；为空表示尚未启动 main
 	Status        string  `gorm:"size:20;not null;default:pending" json:"status"` // pending/running/success/failed
 	RetryCount    int     `gorm:"default:0" json:"retry_count"`
 	MaxRetryCount int     `gorm:"default:3" json:"max_retry_count"`

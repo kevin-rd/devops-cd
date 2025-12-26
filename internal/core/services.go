@@ -6,6 +6,7 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
+
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 )
@@ -58,7 +59,7 @@ func (e *CoreEngine) NewTag(appID int64, build *model.Build) {
 
 	if release.Batch.Status < constants.BatchStatusSealed { // 1. 如果批次未封板
 
-		if release.BuildID == nil || *release.BuildID == *release.LatestBuildID || release.LatestBuildID == nil {
+		if release.BuildID == nil || release.LatestBuildID == nil || *release.BuildID == *release.LatestBuildID {
 			// 1.1 如果没有build_id, 或者build_id == latest_build_id
 			if err := e.releaseSM.UpdateStatus(context.TODO(), release.ID, release_app.WithModelEffects(func(r *model.ReleaseApp) {
 				r.BuildID = &build.ID

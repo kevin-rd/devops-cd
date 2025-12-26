@@ -5,11 +5,12 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
-	"go.uber.org/zap"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type Handler interface {
@@ -128,14 +129,14 @@ func (sm *ReleaseStateMachine) HandlePreWaiting(ctx context.Context, release *mo
 
 // HandlePreCanTrigger handle PreCanTrigger:11 -> PreTriggered:12, gen deployments record
 func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
-	log := sm.logger.With(zap.Int64("release_id", release.ID))
+	log := sm.logger.With(zap.Int64("release_id", release.ID)).Sugar()
 
 	// 1. 校验 Build
 	if release.BuildID == nil {
 		return 0, nil, fmt.Errorf("build_id 为空")
 	}
 	var build model.Build
-	if err := sm.db.First(&build, release.BuildID).Error; err != nil {
+	if err := sm.db.WithContext(ctx).First(&build, release.BuildID).Error; err != nil {
 		return 0, nil, fmt.Errorf("build record not found: %w", err)
 	}
 	if build.BuildStatus != constants.BuildStatusSuccess {
@@ -144,7 +145,7 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 
 	// 2. 加载 App
 	var app model.Application
-	if err := sm.db.Preload("Project").First(&app, release.AppID).Error; err != nil {
+	if err := sm.db.WithContext(ctx).Preload("Project").First(&app, release.AppID).Error; err != nil {
 		return 0, nil, fmt.Errorf("app record not found: %w", err)
 	}
 
@@ -158,45 +159,21 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 		return 0, nil, fmt.Errorf("应用未配置 Pre 环境")
 	}
 
-	// 3.1 查询project级配置
-	var projectConfigs model.ProjectEnvConfig
-	if err := sm.db.Where("project_id = ? AND env = ?", app.ProjectID, constants.EnvTypePre).First(&projectConfigs).Error; err != nil {
-		return 0, nil, fmt.Errorf("查询项目 Pre 环境配置失败: %w", err)
-	}
-
 	// 4. 为每个集群创建 Deployment
-	// 计算Deployment Name
-	// 为Helm计算values.yaml
 	var failed []string
 	for _, config := range configs {
-		namespace, err := ParseNamespaceTemplate(&projectConfigs, &app, &build, &config)
-		if err != nil {
-			return 0, nil, fmt.Errorf("计算 namespace 失败: %w", err)
-		}
-		if strings.TrimSpace(namespace) == "" {
-			return 0, nil, fmt.Errorf("项目 Pre 环境配置未配置 namespace_template/namespace")
-		}
-
-		deploymentName, err := ParseDeploymentName(&app, &projectConfigs, &config)
-		if err != nil {
-			return 0, nil, fmt.Errorf("计算 Deployment Name 失败: %w", err)
-		}
-
-		values, err := ParseValues(sm.db, &app, &build, &projectConfigs, &config)
-		if err != nil {
-			return 0, nil, fmt.Errorf("计算 values.yaml 失败: %w", err)
-		}
-
 		dep := model.Deployment{
 			BatchID:   release.BatchID,
 			AppID:     release.AppID,
 			ReleaseID: release.ID,
 
-			Env:            constants.EnvTypePre,
-			ClusterName:    config.Cluster,
-			Namespace:      namespace,
-			DeploymentName: deploymentName,
-			Values:         values,
+			Env:         constants.EnvTypePre,
+			ClusterName: config.Cluster,
+
+			// namespace/deployment_name 由 deployment 层在 Pending 阶段根据 artifacts_json 统一计算并回填
+			// todo: 是否删除这几个字段
+			Namespace:      "default",
+			DeploymentName: app.Name,
 
 			Status:     "pending",
 			RetryCount: 0,
@@ -341,43 +318,21 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 		return 0, nil, fmt.Errorf("应用未配置生产环境")
 	}
 
-	// 3.1 查询 project 级配置
-	var projectConfigs model.ProjectEnvConfig
-	if err := sm.db.Where("project_id = ? AND env = ?", app.ProjectID, constants.EnvTypeProd).First(&projectConfigs).Error; err != nil {
-		return 0, nil, fmt.Errorf("查询项目 Prod 环境配置失败: %w", err)
-	}
-
-	// 4. 为每个集群创建 Deployment（与 Pre 保持一致：namespace/deployment_name/values）
+	// 4. 为每个集群创建 Deployment（namespace/deployment_name 由 deployment 层在 Pending 阶段计算）
 	var failed []string
 	for _, config := range configs {
-		namespace, err := ParseNamespaceTemplate(&projectConfigs, &app, &build, &config)
-		if err != nil {
-			return 0, nil, fmt.Errorf("计算 namespace 失败: %w", err)
-		}
-		if strings.TrimSpace(namespace) == "" {
-			return 0, nil, fmt.Errorf("项目 Prod 环境配置未配置 namespace_template/namespace")
-		}
-
-		deploymentName, err := ParseDeploymentName(&app, &projectConfigs, &config)
-		if err != nil {
-			return 0, nil, fmt.Errorf("计算 Deployment Name 失败: %w", err)
-		}
-
-		values, err := ParseValues(sm.db, &app, &build, &projectConfigs, &config)
-		if err != nil {
-			return 0, nil, fmt.Errorf("计算 values.yaml 失败: %w", err)
-		}
-
 		dep := model.Deployment{
 			BatchID:   release.BatchID,
 			AppID:     release.AppID,
 			ReleaseID: release.ID,
 
-			Env:            constants.EnvTypeProd,
-			ClusterName:    config.Cluster,
-			Namespace:      namespace,
-			DeploymentName: deploymentName,
-			Values:         values,
+			Env:         constants.EnvTypeProd,
+			ClusterName: config.Cluster,
+
+			// namespace/deployment_name 由 deployment 层在 Pending 阶段根据 artifacts_json 统一计算并回填
+			// todo: 是否删除这几个字段
+			Namespace:      "default",
+			DeploymentName: app.Name,
 
 			Status:     "pending",
 			RetryCount: 0,

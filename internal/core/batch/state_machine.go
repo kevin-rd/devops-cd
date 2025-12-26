@@ -6,6 +6,7 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
+
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -127,8 +128,10 @@ func (sm *StateMachine) ChangeStatus(ctx context.Context, batch *model.Batch, to
 // canTransition 检查是否可以进行状态转换
 func (sm *StateMachine) canTransition(from, to int8, source int8) (transitions2.TransitionHandler, bool) {
 	if transitions, ok := sm.transitions[from]; ok {
-		if transition, ok := transitions[to]; ok && transition.AllowSource&source != 0 {
-			return transition.Handler, true
+		if transition, ok := transitions[to]; ok {
+			if transition.AllowSource&source != 0 {
+				return transition.Handler, true
+			}
 		}
 	}
 

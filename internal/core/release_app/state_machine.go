@@ -5,6 +5,7 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
+
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -49,7 +50,7 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	nextStatus, updateFunc, err := handler.Handle(ctx, release)
 	if err != nil {
 		handlerName := handler.Name()
-		log.Errorf("[ReleaseApp SM: %d-%d] %s 处理失败: %v", release.BatchID, release.ID, handlerName, err)
+		log.Errorf("[ReleaseApp SM: %d-%d] %s.Handle() 处理失败: %v", release.BatchID, release.ID, handlerName, err)
 
 		// 使用'即时闭包'包裹原始updateFunc
 		f := func(name string, err error, before func(*model.ReleaseApp)) func(*model.ReleaseApp) {

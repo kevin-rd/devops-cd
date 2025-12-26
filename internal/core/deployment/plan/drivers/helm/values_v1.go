@@ -1,13 +1,10 @@
-package release_app
+package helm
 
 import (
 	"bytes"
-	"devops-cd/internal/model"
-	"devops-cd/internal/pkg/crypto"
+	"devops-cd/internal/core/deployment/helpers/tpl"
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
@@ -15,47 +12,17 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"devops-cd/internal/model"
+	"devops-cd/internal/pkg/crypto"
+
+	"gopkg.in/yaml.v3"
+	"gorm.io/gorm"
 )
 
-// RenderTemplateContext 构建模板变量上下文（白名单字段）
-func RenderTemplateContext(app *model.Application, build *model.Build, appEnvConfig *model.AppEnvConfig) map[string]interface{} {
-	ctx := map[string]interface{}{}
-	if app != nil {
-		ctx["app_name"] = app.Name
-		ctx["app_type"] = app.AppType
-		if app.Project != nil {
-			ctx["project"] = app.Project.Name
-		}
-	}
-	if appEnvConfig != nil {
-		ctx["env"] = appEnvConfig.Env
-		ctx["cluster"] = appEnvConfig.Cluster
-	}
-	if build != nil {
-		ctx["build"] = map[string]interface{}{
-			"image_tag": build.ImageTag,
-		}
-	}
-	return ctx
-}
-
-func ParseNamespaceTemplate(projectConfig *model.ProjectEnvConfig, app *model.Application, build *model.Build, appEnvConfig *model.AppEnvConfig) (string, error) {
-	artifacts, err := LoadArtifactsV1(projectConfig)
-	if err != nil {
-		return "", err
-	}
-
-	tpl := strings.TrimSpace(artifacts.NamespaceTemplate)
-	if tpl == "" {
-		// fallback：旧字段
-		return strings.TrimSpace(projectConfig.Namespace), nil
-	}
-	return parseTemplate(tpl, RenderTemplateContext(app, build, appEnvConfig))
-}
-
-// ParseValuesV1 根据 artifacts_json 中 app_chart.values[] 生成最终 values map（后者覆盖前者）
-func ParseValuesV1(db *gorm.DB, app *model.Application, build *model.Build, projectConfig *model.ProjectEnvConfig, appEnvConfig *model.AppEnvConfig, layers []ValuesLayerV1) (map[string]interface{}, error) {
-	ctx := RenderTemplateContext(app, build, appEnvConfig)
+// ParseValuesV1 根据 artifacts_json 中 values[] 生成最终 values map（后者覆盖前者）
+func ParseValuesV1(db *gorm.DB, app *model.Application, build *model.Build, env string, cluster string, layers []model.ValuesLayer) (map[string]interface{}, error) {
+	ctx := tpl.RenderTemplateContext(app, build, env, cluster)
 
 	merged := map[string]interface{}{}
 	for idx, layer := range layers {
@@ -86,11 +53,12 @@ func ParseValuesV1(db *gorm.DB, app *model.Application, build *model.Build, proj
 			},
 		})
 	}
-	return merged, nil
+
+	return marshalMeta(merged)
 }
 
 // loadValuesLayerContent 加载某一层 values 的 YAML 内容
-func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer ValuesLayerV1) ([]byte, error) {
+func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer model.ValuesLayer) ([]byte, error) {
 	cred, err := resolveCredentialData(db, layer.CredentialRef)
 	if err != nil {
 		return nil, err
@@ -104,7 +72,7 @@ func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer Value
 		if urlTpl == "" {
 			return nil, fmt.Errorf("url_template 为空")
 		}
-		url, err := parseTemplate(urlTpl, ctx)
+		url, err := tpl.ParseTemplate(urlTpl, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +86,7 @@ func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer Value
 		if ref == "" {
 			ref = "main"
 		} else {
-			r, err := parseTemplate(ref, ctx)
+			r, err := tpl.ParseTemplate(ref, ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -128,18 +96,18 @@ func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer Value
 		if pathTpl == "" {
 			return nil, fmt.Errorf("path_template 为空")
 		}
-		relPath, err := parseTemplate(pathTpl, ctx)
+		relPath, err := tpl.ParseTemplate(pathTpl, ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		repo, env, cleanupKey, err := prepareGitAuth(repo, cred)
+		repoURL, env, cleanupKey, err := prepareGitAuth(repo, cred)
 		if err != nil {
 			return nil, err
 		}
 		defer cleanupKey()
 
-		dir, cleanup, err := gitCheckoutToTemp(repo, ref, env)
+		dir, cleanup, err := gitCheckoutToTemp(repoURL, ref, env)
 		if err != nil {
 			return nil, err
 		}
@@ -182,14 +150,11 @@ func gitCheckoutToTemp(repoURL, ref string, extraEnv []string) (dir string, clea
 	}
 	cleanup = func() { _ = os.RemoveAll(base) }
 
-	// git init && git remote add origin && git fetch && git checkout
 	run := func(args ...string) error {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = base
 		// 避免 git 交互
-		cmd.Env = append(os.Environ(),
-			"GIT_TERMINAL_PROMPT=0",
-		)
+		cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 		if len(extraEnv) > 0 {
 			cmd.Env = append(cmd.Env, extraEnv...)
 		}
@@ -221,7 +186,6 @@ func gitCheckoutToTemp(repoURL, ref string, extraEnv []string) (dir string, clea
 	return base, cleanup, nil
 }
 
-// normalizeYAMLToStringMap 将 YAML 解析出来的 map[interface{}]interface{} 递归转换成 map[string]interface{}
 func normalizeYAMLToStringMap(v interface{}) interface{} {
 	switch t := v.(type) {
 	case map[string]interface{}:
@@ -266,7 +230,6 @@ func deepMerge(dst, src map[string]interface{}) map[string]interface{} {
 	return dst
 }
 
-// marshalMeta 便于将 values 合并结果存入 datatypes.JSONMap（避免 yaml 里出现奇怪类型）
 func marshalMeta(m map[string]interface{}) (map[string]interface{}, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
@@ -289,20 +252,13 @@ func resolveCredentialData(db *gorm.DB, ref string) (map[string]string, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db is nil, cannot resolve credential_ref")
 	}
-	id := int64(0)
+	idStr := ref
 	if strings.HasPrefix(ref, "id:") {
-		v := strings.TrimPrefix(ref, "id:")
-		parsed, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("credential_ref 非法: %s", ref)
-		}
-		id = parsed
-	} else {
-		parsed, err := strconv.ParseInt(ref, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("credential_ref 非法: %s", ref)
-		}
-		id = parsed
+		idStr = strings.TrimPrefix(ref, "id:")
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("credential_ref 非法: %s", ref)
 	}
 
 	var c model.Credential
@@ -349,7 +305,6 @@ func prepareGitAuth(repoURL string, cred map[string]string) (finalURL string, en
 
 	switch cred["_type"] {
 	case "token":
-		// v1: 仅对 https URL 进行 userinfo 注入（避免交互）
 		tok := strings.TrimSpace(cred["token"])
 		if tok != "" && strings.HasPrefix(repoURL, "https://") {
 			finalURL = injectUserInfo(repoURL, tok, "")
@@ -374,14 +329,12 @@ func prepareGitAuth(repoURL string, cred map[string]string) (finalURL string, en
 		if err := os.WriteFile(keyPath, []byte(key), 0600); err != nil {
 			return finalURL, env, cleanup, err
 		}
-		// 简化：跳过 known_hosts 校验（后续可扩展）
 		env = append(env, fmt.Sprintf("GIT_SSH_COMMAND=ssh -i %s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", keyPath))
 	}
 	return
 }
 
 func injectUserInfo(rawURL, user, pass string) string {
-	// 仅处理 https://host/.. 形式：https:// + user[:pass]@ + rest
 	s := strings.TrimPrefix(rawURL, "https://")
 	if pass == "" {
 		return "https://" + urlEscapeUser(user) + "@" + s
@@ -390,7 +343,6 @@ func injectUserInfo(rawURL, user, pass string) string {
 }
 
 func urlEscapeUser(s string) string {
-	// 最小实现：避免引入 net/url，先替换最危险的字符
 	s = strings.ReplaceAll(s, "@", "%40")
 	s = strings.ReplaceAll(s, ":", "%3A")
 	s = strings.ReplaceAll(s, "/", "%2F")

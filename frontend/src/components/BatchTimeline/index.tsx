@@ -142,7 +142,10 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({batch, onAction, ha
     }
 
     // 预发布步骤 (index 2) - 只在有预发布应用时显示
-    if (stepIndex === 2 && hasPreApps) {
+    if (stepIndex === 2 ) {
+      if (!hasPreApps) {
+        return <FastForwardOutlined />
+      }
       // 如果正在预发布中，显示转圈图标
       if (batch.status === BatchStatus.PreTriggered || batch.status === BatchStatus.PreDeploying) {
         return <LoadingOutlined className="timeline-icon-loading"/>
@@ -164,8 +167,7 @@ export const BatchTimeline: React.FC<BatchTimelineProps> = ({batch, onAction, ha
     }
 
     // 生产部署步骤 (index 3 for hasPreApps, index 2 for !hasPreApps)
-    const prodStepIndex = hasPreApps ? 3 : 2
-    if (stepIndex === prodStepIndex) {
+    if (stepIndex === 3) {
       // 如果正在生产部署中，显示转圈图标
       if (batch.status === BatchStatus.ProdTriggered || batch.status === BatchStatus.ProdDeploying) {
         return <LoadingOutlined className="timeline-icon-loading"/>

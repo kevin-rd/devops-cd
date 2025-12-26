@@ -2,9 +2,11 @@ package deployment
 
 import (
 	"context"
-	"devops-cd/internal/adapter/deploy"
+	"devops-cd/internal/core/deployment/plan/drivers"
+	helmDriver "devops-cd/internal/core/deployment/plan/drivers/helm"
 	"devops-cd/internal/model"
 	"fmt"
+
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -12,12 +14,15 @@ import (
 type StateMachine struct {
 	db       *gorm.DB
 	logger   *zap.Logger
-	deployer deploy.Deployer
+	registry drivers.Registry
 	handlers map[string]Handler
 }
 
-func NewDeploymentStateMachine(db *gorm.DB, logger *zap.Logger, deployer deploy.Deployer) *StateMachine {
-	sm := &StateMachine{db: db, logger: logger, deployer: deployer, handlers: make(map[string]Handler)}
+func NewDeploymentStateMachine(db *gorm.DB, logger *zap.Logger) *StateMachine {
+	reg := drivers.StaticRegistry{
+		"helm": helmDriver.New(db),
+	}
+	sm := &StateMachine{db: db, logger: logger, registry: reg, handlers: make(map[string]Handler)}
 	sm.registerHandlers()
 	return sm
 }

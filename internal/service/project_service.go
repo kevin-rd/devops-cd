@@ -4,8 +4,9 @@ import (
 	pkgErrors "devops-cd/pkg/responses"
 	"encoding/json"
 	"fmt"
-	"github.com/samber/lo"
 	"time"
+
+	"github.com/samber/lo"
 
 	"devops-cd/internal/dto"
 	"devops-cd/internal/model"
@@ -423,9 +424,7 @@ func (s *projectService) convertMapToEnvConfigs(projectID int64, allowedEnvClust
 			config.DefaultClusters = "[]"
 		}
 
-		// namespace 和 deployment_name_template 暂时设置为空字符串
-		config.Namespace = ""
-		config.DeploymentNameTemplate = ""
+		// legacy namespace/deployment_name_template 字段已移除（由 artifacts_json 替代）
 
 		envConfigs = append(envConfigs, config)
 	}
@@ -528,36 +527,19 @@ func (s *projectService) UpdateEnvConfigs(projectID int64, configs map[string]*d
 			existing.DefaultClusters = string(defaultClustersJSON)
 		}
 
-		if reqConfig.Namespace != nil {
-			existing.Namespace = *reqConfig.Namespace
-		}
-
-		if reqConfig.DeploymentNameTemplate != nil {
-			existing.DeploymentNameTemplate = *reqConfig.DeploymentNameTemplate
-		}
-
-		if reqConfig.ChartRepoURL != nil {
-			existing.ChartRepoURL = *reqConfig.ChartRepoURL
-		}
-
-		if reqConfig.ValuesRepoURL != nil {
-			existing.ValuesRepoURL = reqConfig.ValuesRepoURL
-		}
-
-		if reqConfig.ValuesPathTemplate != nil {
-			existing.ValuesPathTemplate = reqConfig.ValuesPathTemplate
-		}
-
 		// v1: artifacts_json（可选，优先级高）
 		if reqConfig.SchemaVersion != nil {
 			existing.SchemaVersion = *reqConfig.SchemaVersion
 		}
 		if reqConfig.ArtifactsJSON != nil && len(reqConfig.ArtifactsJSON) > 0 {
-			raw := string(reqConfig.ArtifactsJSON)
-			existing.ArtifactsJSON = &raw
-			// 若未显式传 schema_version，默认保持 1
+			normalized, sv, err := model.NormalizeArtifactsJSON(reqConfig.ArtifactsJSON, existing.SchemaVersion)
+			if err != nil {
+				return pkgErrors.Wrap(pkgErrors.CodeBadRequest, fmt.Sprintf("环境 %s 的 artifacts_json 格式错误", env), err)
+			}
+			existing.ArtifactsJSON = &normalized
+			// 若未显式传 schema_version，默认保持 1（或使用 artifacts_json 中的 schema_version）
 			if existing.SchemaVersion == 0 {
-				existing.SchemaVersion = 1
+				existing.SchemaVersion = sv
 			}
 		}
 
@@ -579,17 +561,12 @@ func (s *projectService) UpdateEnvConfigs(projectID int64, configs map[string]*d
 // toEnvConfigResponse 转换环境配置为响应格式
 func (s *projectService) toEnvConfigResponse(config *model.ProjectEnvConfig) *dto.ProjectEnvConfigResponse {
 	resp := &dto.ProjectEnvConfigResponse{
-		ID:                     config.ID,
-		ProjectID:              config.ProjectID,
-		Env:                    config.Env,
-		Namespace:              config.Namespace,
-		DeploymentNameTemplate: config.DeploymentNameTemplate,
-		ChartRepoURL:           config.ChartRepoURL,
-		ValuesRepoURL:          config.ValuesRepoURL,
-		ValuesPathTemplate:     config.ValuesPathTemplate,
-		SchemaVersion:          config.SchemaVersion,
-		CreatedAt:              config.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:              config.UpdatedAt.Format(time.RFC3339),
+		ID:            config.ID,
+		ProjectID:     config.ProjectID,
+		Env:           config.Env,
+		SchemaVersion: config.SchemaVersion,
+		CreatedAt:     config.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     config.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if config.ArtifactsJSON != nil && *config.ArtifactsJSON != "" {

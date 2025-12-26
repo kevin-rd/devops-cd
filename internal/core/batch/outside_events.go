@@ -41,10 +41,10 @@ func (sm *StateMachine) ProcessStateChange(batchID int64, event string, operator
 		transitions.WithOperator(operator),
 		transitions.WithReason(reason),
 	); err != nil {
-		sm.logger.Sugar().Errorf("处理批次操作：%v失败： %v", event, err)
+		sm.logger.Sugar().Errorf("处理批次操作：%v失败: %v", event, err)
 		return err
 	}
 
-	sm.logger.Sugar().Infof("处理批次操作：%v by %v 成功", event, operator)
+	sm.logger.Sugar().Infof("处理批次操作: %v by %v 成功", event, operator)
 	return nil
 }

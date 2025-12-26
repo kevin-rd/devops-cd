@@ -2,18 +2,17 @@ package core
 
 import (
 	"context"
-	"devops-cd/internal/adapter/deploy"
 	"devops-cd/internal/adapter/notification"
 	"devops-cd/internal/core/batch"
 	"devops-cd/internal/core/deployment"
 	"devops-cd/internal/core/release_app"
 	"devops-cd/internal/model"
 	"devops-cd/internal/pkg/config"
-	"devops-cd/internal/repository"
 	"devops-cd/pkg/constants"
 	"fmt"
-	"github.com/samber/lo"
 	"time"
+
+	"github.com/samber/lo"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -40,7 +39,7 @@ func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) 
 
 	// 创建部署服务
 	//deployService := deploy.NewMockDeployer()
-	deployService := deploy.NewHelmDeployer(repository.NewConfigRepository(db))
+	//deployService := deploy.NewHelmDeployer(repository.NewConfigRepository(db))
 	// deployService := deploy.NewK8sDeployer( deploy.NewMockK8sDeployClient(), notification.NewLogNotifier(logger), db, nil, logger)
 
 	depCfg := release_app.Config{}
@@ -65,7 +64,7 @@ func NewCoreEngine(db *gorm.DB, logger *zap.Logger, coreCfg *config.CoreConfig) 
 
 		batchSM:      batch.NewBatchStateMachine(db, logger),
 		releaseSM:    release_app.NewReleaseStateMachine(db, logger, resolver),
-		deploymentSM: deployment.NewDeploymentStateMachine(db, logger, deployService),
+		deploymentSM: deployment.NewDeploymentStateMachine(db, logger),
 
 		batchTask: make(map[int64]context.CancelFunc, 10),
 	}
