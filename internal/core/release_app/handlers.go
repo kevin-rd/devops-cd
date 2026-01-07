@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -80,14 +81,14 @@ func (sm *ReleaseStateMachine) registerHandlers() {
 	sm.handlers[constants.ReleaseAppStatusPreCanTrigger] = HandlerFunc(sm.HandlePreCanTrigger)
 	sm.handlers[constants.ReleaseAppStatusPreTriggered] = HandlerFunc(sm.HandlePreTriggered)
 	sm.handlers[constants.ReleaseAppStatusPreDeployed] = HandlerFunc(sm.HandlePreDeployed)
-	sm.handlers[constants.ReleaseAppStatusPreFailed] = HandlerFunc(sm.HandleEmpty)
+	sm.handlers[constants.ReleaseAppStatusPreFailed] = HandlerFunc(sm.HandlePreFailed)
 
 	// Prod
 	sm.handlers[constants.ReleaseAppStatusProdWaiting] = HandlerFunc(sm.HandleProdWaiting)
 	sm.handlers[constants.ReleaseAppStatusProdCanTrigger] = HandlerFunc(sm.HandleProdCanTrigger)
 	sm.handlers[constants.ReleaseAppStatusProdTriggered] = HandlerFunc(sm.HandleProdTriggered)
 	sm.handlers[constants.ReleaseAppStatusProdDeployed] = HandlerFunc(sm.HandleProdDeployed)
-	sm.handlers[constants.ReleaseAppStatusProdFailed] = HandlerFunc(sm.HandleEmpty)
+	sm.handlers[constants.ReleaseAppStatusProdFailed] = HandlerFunc(sm.HandleProdFailed)
 }
 
 // handlers
@@ -409,4 +410,140 @@ func (sm *ReleaseStateMachine) HandleProdDeployed(ctx context.Context, release *
 func (sm *ReleaseStateMachine) HandleEmpty(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
 	// todo
 	return 0, nil, nil
+}
+
+// ================== failed handlers（降频重查） ==================
+
+const (
+	// CoreEngine 的 batchWork ticker 当前是 10s，这里用来做无状态分片，避免 failed 每轮都打 DB。
+	failedCheckSlot     = 10 * time.Second
+	failedCheckInterval = 60 * time.Second
+)
+
+func shouldCheckFailed(releaseID int64) bool {
+	if releaseID <= 0 {
+		return true
+	}
+	slots := int64(failedCheckInterval / failedCheckSlot)
+	if slots <= 1 {
+		return true
+	}
+	// 每个 slot（10s）只处理 1/N 的 release_id，保证整体频率 ~ interval
+	slotIndex := (time.Now().Unix() / int64(failedCheckSlot.Seconds())) % slots
+	return (releaseID % slots) == slotIndex
+}
+
+type depAgg struct {
+	total   int
+	success int
+	failed  int
+	pending int
+}
+
+func (sm *ReleaseStateMachine) aggregateDeployments(ctx context.Context, releaseID int64, env string) (*depAgg, error) {
+	var deployments []model.Deployment
+	if err := sm.db.WithContext(ctx).Select("status").Where("release_id = ? AND env = ?", releaseID, env).Find(&deployments).Error; err != nil {
+		return nil, err
+	}
+	agg := &depAgg{total: len(deployments)}
+	for _, dep := range deployments {
+		switch dep.Status {
+		case constants.DeploymentStatusSuccess:
+			agg.success++
+		case constants.DeploymentStatusFailed:
+			agg.failed++
+		default:
+			agg.pending++
+		}
+	}
+	return agg, nil
+}
+
+// HandlePreFailed
+// - 如果已经有 Pre deployments：仅检查 deployments 是否“全 success”，全 success 则回到 PreDeployed
+// - 如果没有 deployments：按依赖失败处理（降频重跑 resolver），依赖满足后才回到 PreCanTrigger
+func (sm *ReleaseStateMachine) HandlePreFailed(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+	if !shouldCheckFailed(release.ID) {
+		return 0, nil, nil
+	}
+
+	agg, err := sm.aggregateDeployments(ctx, release.ID, constants.EnvTypePre)
+	if err != nil {
+		return 0, nil, fmt.Errorf("聚合Deployment失败: %w", err)
+	}
+
+	// case 1: deployments 已存在 -> 只按 deployments 结论回升/维持
+	if agg.total > 0 {
+		if agg.failed == 0 && agg.pending == 0 && agg.success == agg.total {
+			return constants.ReleaseAppStatusPreDeployed, func(r *model.ReleaseApp) { r.Reason = "" }, nil
+		}
+		// 仍有失败/进行中，不自动回升（避免误判）
+		return 0, func(r *model.ReleaseApp) {
+			r.Reason = fmt.Sprintf("预发布失败(重查): total=%d success=%d failed=%d pending=%d", agg.total, agg.success, agg.failed, agg.pending)
+		}, nil
+	}
+
+	// case 2: 没有 deployments -> 多数是依赖失败/触发前失败，只有依赖满足才允许回到可触发
+	if sm.resolver == nil {
+		return 0, nil, nil
+	}
+	result, err := sm.resolver.CheckRelease(ctx, release, constants.EnvTypePre)
+	if err != nil {
+		return 0, nil, err
+	}
+	if result != nil && result.IsReady() {
+		return constants.ReleaseAppStatusPreCanTrigger, func(r *model.ReleaseApp) { r.Reason = "" }, nil
+	}
+	return 0, func(r *model.ReleaseApp) {
+		if result == nil {
+			return
+		}
+		reason := result.Summary()
+		if strings.TrimSpace(reason) != "" {
+			r.Reason = reason
+		}
+	}, nil
+}
+
+// HandleProdFailed 同 PreFailed，但按方案A回升以触发 OnProdDeployCompleted
+// - deployments 全 success：回到 ProdTriggered（下一轮 HandleProdTriggered -> ProdDeployed，并执行 OnProdDeployCompleted）
+// - 无 deployments：按依赖失败处理，依赖满足才回到 ProdCanTrigger
+func (sm *ReleaseStateMachine) HandleProdFailed(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+	if !shouldCheckFailed(release.ID) {
+		return 0, nil, nil
+	}
+
+	agg, err := sm.aggregateDeployments(ctx, release.ID, constants.EnvTypeProd)
+	if err != nil {
+		return 0, nil, fmt.Errorf("聚合Deployment失败: %w", err)
+	}
+
+	if agg.total > 0 {
+		if agg.failed == 0 && agg.pending == 0 && agg.success == agg.total {
+			return constants.ReleaseAppStatusProdTriggered, func(r *model.ReleaseApp) { r.Reason = "" }, nil
+		}
+		return 0, func(r *model.ReleaseApp) {
+			r.Reason = fmt.Sprintf("生产部署失败(重查): total=%d success=%d failed=%d pending=%d", agg.total, agg.success, agg.failed, agg.pending)
+		}, nil
+	}
+
+	if sm.resolver == nil {
+		return 0, nil, nil
+	}
+	result, err := sm.resolver.CheckRelease(ctx, release, constants.EnvTypeProd)
+	if err != nil {
+		return 0, nil, err
+	}
+	if result != nil && result.IsReady() {
+		return constants.ReleaseAppStatusProdCanTrigger, func(r *model.ReleaseApp) { r.Reason = "" }, nil
+	}
+	return 0, func(r *model.ReleaseApp) {
+		if result == nil {
+			return
+		}
+		reason := result.Summary()
+		if strings.TrimSpace(reason) != "" {
+			r.Reason = reason
+		}
+	}, nil
 }

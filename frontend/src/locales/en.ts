@@ -189,20 +189,20 @@ export default {
       link: 'Build Link',
       imageUrl: 'Image URL',
       latestBuild: 'Latest Build',
-      
+
       // Status
       statusSuccess: 'Success',
       statusFailure: 'Failure',
       statusError: 'Error',
       statusKilled: 'Killed',
-      
+
       // Event
       eventPush: 'Push',
       eventTag: 'Tag',
       eventPullRequest: 'Pull Request',
       eventPromote: 'Promote',
       eventRollback: 'Rollback',
-      
+
       // Filter
       filterByStatus: 'Filter by Status',
       filterByEvent: 'Filter by Event',
@@ -210,7 +210,7 @@ export default {
       filterByKeyword: 'Keyword Search',
       filterByTimeRange: 'Time Range',
       clearFilters: 'Clear Filters',
-      
+
       // Other
       noData: 'No build records',
       loadingBuilds: 'Loading builds...',
@@ -259,11 +259,15 @@ export default {
       statusCompleted: 'Completed',
       statusCancelled: 'Cancelled',
 
+      // 审批状态
       approvalStatus: 'Approval Status',
       approvalPending: 'Pending',
       approvalApproved: 'Approved',
       approvalRejected: 'Rejected',
       approvalSkipped: 'Skipped',
+      approvedBy: '审批人',
+      approvedAt: '审批时间',
+      rejectReason: '拒绝原因',
 
       createdAt: 'Created At',
       taggedAt: 'Sealed At',
@@ -274,9 +278,10 @@ export default {
       finalAcceptedAt: 'Acceptance Time',
       finalAcceptedBy: 'Accepted By',
       cancelledAt: 'Cancelled At',
+      cancelledBy: '取消人',
+      cancelReason: '取消原因',
 
-      approve: 'Approve',
-      reject: 'Reject',
+
       seal: 'Seal',
       startPreDeploy: 'Start Pre-deploy',
       finishPreDeploy: 'Acceptance Pre-deploy',
@@ -285,8 +290,15 @@ export default {
       prodAcceptance: 'Prod Acceptance',
       acceptFinally: 'Finish Acceptance',
       cancelBatch: 'Cancel Batch',
+      approve: '审批通过',
+      reject: '拒绝',
+      viewDetail: '查看详情',
+      addApps: '添加应用',
+      removeApps: '移除应用',
+      manageApps: '管理应用',
       viewInsights: 'Release Insights',
-
+      actionSuccess: '操作成功',
+      updateSuccess: '更新成功',
       confirmSeal: 'Confirm sealing this batch?',
       confirmStart_pre_deploy: 'Start pre-deploy?',
       confirmFinish_pre_deploy: 'Finish pre-deploy?',
@@ -301,16 +313,23 @@ export default {
       rejectReasonPlaceholder: 'Please enter reject reason',
       rejectReasonRequired: 'Reject reason is required',
 
+      // 应用信息
       appName: 'Application',
       appType: 'App Type',
       currentVersion: 'Current Version(Prod)',
       pendingDeploy: 'Pending Deploy',
       oldVersion: 'Old Version',
       deployed: 'Deployed',
+      version: 'Version',
+      tag: '标签',
+      imageTag: '镜像标签',
+      buildStatus: '构建状态',
+      deployStatus: '部署状态',
       commitInfo: 'Commit Info',
       commitMessage: 'Commit Message',
       branch: 'Branch',
-      
+      appReleaseNotes: '应用发布说明',
+
       // Timeline
       timeline: 'Timeline',
       timelineCreate: 'Create',
@@ -327,6 +346,56 @@ export default {
         prodDeploy: 'Prod Deploy',
         prodDeployed: 'Prod Deploy Finished',
       },
+
+      // 筛选
+      filterByStatus: '按状态筛选',
+      filterByApproval: '按审批状态筛选',
+      filterByInitiator: '按发起人筛选',
+      filterByKeyword: '关键字搜索',
+      filterByTimeRange: '时间范围',
+
+      // 消息
+      createSuccess: '批次创建成功',
+      deleteSuccess: '批次删除成功',
+      sealSuccess: '封板成功',
+      startPreDeploySuccess: '预发布已开始',
+      finishPreDeploySuccess: '预发布已完成',
+      startProdDeploySuccess: '生产部署已开始',
+      finishProdDeploySuccess: '生产部署已完成',
+      completeSuccess: '批次已完成',
+      cancelSuccess: '批次已取消',
+
+      // 确认
+      sealConfirm: '封板后将锁定所有应用版本，无法修改。确定要封板吗？',
+      startPreDeployConfirm: '确定要开始预发布部署吗？',
+      startProdDeployConfirm: '确定要开始生产环境部署吗？',
+      completeConfirm: '确定要进行最终验收吗？验收后批次将完成。',
+      cancelConfirm: '确定要取消这个批次吗？',
+      deleteConfirm: '确定要删除这个批次吗？',
+
+      // 提示
+      noBuildRecord: '该应用没有成功的构建记录',
+      appConflict: '该应用已在其他批次中',
+      batchNumberExists: '批次编号已存在',
+      selectAtLeastOneApp: '请至少选择一个应用',
+      operationHistory: '操作历史',
+      noApps: '暂无应用',
+      loading: '加载中...',
+      batchInfo: '批次信息',
+
+      // 创建表单
+      step1: '基本信息',
+      step2: '选择应用',
+      batchNumberPlaceholder: '如：2025 1024 zkme项目日常更新',
+      releaseNotesPlaceholder: '请输入本次批次的发布说明...',
+      appReleaseNotesPlaceholder: '请输入该应用的发布说明（可选）...',
+      selectApps: '选择应用',
+      selectedApps: '已选应用',
+      availableApps: '可选应用',
+      latestBuild: '最新构建',
+      previous: '上一步',
+      next: '下一步',
+      createBatch: '创建批次',
     },
 
     batchInsights: {
