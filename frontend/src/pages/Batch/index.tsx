@@ -589,7 +589,7 @@ export default function BatchList() {
             icon={<CheckCircleOutlined/>}
             onClick={(e) => {
               e.stopPropagation()
-              handleAction(record.id, BatchAction.Complete)
+              handleAction(record.id, BatchAction.ConfirmProd)
             }}
           >
             {t('batch.prodAcceptance')}

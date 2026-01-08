@@ -39,7 +39,7 @@ type ValuesLayer struct {
 	PathTemplate string `json:"path_template,omitempty"`
 
 	// http_file / pipeline_artifact
-	URLTemplate string `json:"url_template,omitempty"`
+	BaseURLTemplate string `json:"base_url_template,omitempty"`
 
 	// inline
 	Content string `json:"content,omitempty"`

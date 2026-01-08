@@ -66,7 +66,7 @@ interface ValuesLayerV1 {
   repo_url?: string
   ref_template?: string
   path_template?: string
-  url_template?: string
+  base_url_template?: string
   content?: string
 }
 
@@ -542,9 +542,18 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                                 )
                                               }
                                               return (
-                                                <Form.Item label="URL Template" name={[field.name, 'url_template']}>
-                                                  <Input placeholder="https://.../values.yaml"/>
-                                                </Form.Item>
+                                                <>
+                                                  <Form.Item label="Base URL (Go Template support)" name={[field.name, 'base_url_template']}>
+                                                    <Input placeholder="https://artifact.example.com"/>
+                                                  </Form.Item>
+                                                  <Form.Item
+                                                    label="Path (Go Template support, optional)"
+                                                    name={[field.name, 'path_template']}
+                                                    tooltip="可选：为空时 base_url_template 可直接写完整 URL"
+                                                  >
+                                                    <Input placeholder="/values/{{.env}}/{{.app_name}}.yaml"/>
+                                                  </Form.Item>
+                                                </>
                                               )
                                             }}
                                           </Form.Item>
@@ -733,9 +742,18 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                                 )
                                               }
                                               return (
-                                                <Form.Item label="URL Template" name={[field.name, 'url_template']}>
-                                                  <Input placeholder="https://.../values.yaml"/>
-                                                </Form.Item>
+                                                <>
+                                                  <Form.Item label="Base URL (Go Template support)" name={[field.name, 'base_url_template']}>
+                                                    <Input placeholder="https://artifact.example.com"/>
+                                                  </Form.Item>
+                                                  <Form.Item
+                                                    label="Path (Go Template support, optional)"
+                                                    name={[field.name, 'path_template']}
+                                                    tooltip="可选：为空时 base_url_template 可直接写完整 URL"
+                                                  >
+                                                    <Input placeholder="/values/{{.env}}/{{.app_name}}.yaml"/>
+                                                  </Form.Item>
+                                                </>
                                               )
                                             }}
                                           </Form.Item>

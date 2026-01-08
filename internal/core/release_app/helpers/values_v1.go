@@ -101,15 +101,37 @@ func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer model
 	case "inline":
 		return []byte(layer.Content), nil
 	case "http_file", "pipeline_artifact":
-		urlTpl := strings.TrimSpace(layer.URLTemplate)
-		if urlTpl == "" {
-			return nil, fmt.Errorf("url_template 为空")
+		baseTpl := strings.TrimSpace(layer.BaseURLTemplate)
+		if baseTpl == "" {
+			return nil, fmt.Errorf("base_url_template 为空")
 		}
-		url, err := parseTemplate(urlTpl, ctx)
+		base, err := parseTemplate(baseTpl, ctx)
 		if err != nil {
 			return nil, err
 		}
-		return httpGet(url, cred)
+		base = strings.TrimSpace(base)
+		if base == "" {
+			return nil, fmt.Errorf("base_url_template 解析结果为空")
+		}
+
+		pathTpl := strings.TrimSpace(layer.PathTemplate)
+		if pathTpl == "" {
+			return httpGet(base, cred)
+		}
+		p, err := parseTemplate(pathTpl, ctx)
+		if err != nil {
+			return nil, err
+		}
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return httpGet(base, cred)
+		}
+		if strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://") {
+			return nil, fmt.Errorf("path_template 不允许是完整 URL")
+		}
+
+		finalURL := strings.TrimRight(base, "/") + "/" + strings.TrimLeft(p, "/")
+		return httpGet(finalURL, cred)
 	case "git":
 		repo := strings.TrimSpace(layer.RepoURL)
 		if repo == "" {

@@ -69,9 +69,14 @@ func (sm *ReleaseStateMachine) Process(ctx context.Context, release *model.Relea
 	}
 
 	// 3. 状态更新
-	if nextStatus != nil || updateFunc != nil {
+	if nextStatus != nil {
 		log.Debugf("[ReleaseApp SM: %d-%d] [UpdateStatus] Handler: %T 状态更新: %v -> %v", release.BatchID, release.ID, handler, release.Status, nextStatus)
 		if err = sm.UpdateStatus(ctx, release.ID, WithStatus(nextStatus), WithModelEffects(updateFunc)); err != nil {
+			log.Errorf("[ReleaseApp SM: %d-%d] [db] 状态更新失败: %v", release.BatchID, release.ID, err)
+		}
+	} else if updateFunc != nil {
+		log.Debugf("[ReleaseApp SM: %d-%d] [UpdateStatus] Handler: %T 更新, 当前状态: %d", release.BatchID, release.ID, handler, release.Status)
+		if err = sm.UpdateStatus(ctx, release.ID, WithModelEffects(updateFunc)); err != nil {
 			log.Errorf("[ReleaseApp SM: %d-%d] [db] 状态更新失败: %v", release.BatchID, release.ID, err)
 		}
 	}
