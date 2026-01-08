@@ -19,7 +19,7 @@ func (h TriggerProdDeployTransition) Handle(batch *model.Batch, from, to int8, o
 	if batch.Status == constants.BatchStatusPreAccepted {
 		// 当前为预发布验收完成状态: 检查所有预发布已验收
 		var preAcceptedCount int64
-		if err := h.db.Model(&model.ReleaseApp{}).Where("batch_id = ? AND status = ?", batch.ID, constants.BatchStatusPreAccepted).
+		if err := h.db.Model(&model.ReleaseApp{}).Where("batch_id = ? AND status = ?", batch.ID, constants.ReleaseAppStatusPreAccepted).
 			Count(&preAcceptedCount).Error; err != nil {
 			return err
 		}

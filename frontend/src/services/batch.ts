@@ -89,5 +89,9 @@ export const batchService = {
   // 切换版本
   switchVersion: (data: SwitchVersionRequest) =>
     request.post<ApiResponse<TriggerDeployRequest>>(`/v1/release_app/switch_version`, data),
+
+  // 手动重试 deployment（仅 failed 可重试）
+  retryDeployment: (deploymentId: number, data: { operator: string; reason?: string }) =>
+    request.post<ApiResponse<{ message: string }>>(`/v1/deployment/${deploymentId}/retry`, data),
 }
 

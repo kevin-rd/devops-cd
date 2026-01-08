@@ -668,8 +668,8 @@ const RepositoryPage: React.FC = () => {
     },
     {
       title: t('application.lastTag'),
-      dataIndex: 'last_tag',
-      key: 'last_tag',
+      dataIndex: 'deployed_tag',
+      key: 'deployed_tag',
       width: 150,
       render: (text) => text && <Tag color="purple">{text}</Tag>,
     },
@@ -802,8 +802,8 @@ const RepositoryPage: React.FC = () => {
     },
     {
       title: t('application.lastTag'),
-      dataIndex: 'last_tag',
-      key: 'last_tag',
+      dataIndex: 'deployed_tag',
+      key: 'deployed_tag',
       width: 150,
       render: (text) => text && <Tag color="purple">{text}</Tag>,
     },

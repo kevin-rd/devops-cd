@@ -1,11 +1,12 @@
-import {Button, Descriptions, List, message, Modal, Popconfirm, Popover, Select, Space, Spin, Tag} from 'antd'
-import {useEffect, useState} from 'react'
+import {Button, Descriptions, Empty, List, message, Modal, Popconfirm, Popover, Select, Space, Spin, Table, Tabs, Tag} from 'antd'
+import {useEffect, useRef, useState} from 'react'
 import {CheckCircleOutlined, FastForwardOutlined, RetweetOutlined, RocketOutlined} from '@ant-design/icons'
 import type {BuildSummary} from '@/types'
-import {AppStatus, AppStatusLabel, ReleaseApp} from '@/types/release_app.ts';
+import {AppStatus, AppStatusLabel, type DeploymentRecord, ReleaseApp} from '@/types/release_app.ts';
 import {batchService} from '@/services/batch.ts'
 import {useAuthStore} from '@/stores/authStore.ts'
 import {Batch, BatchStatus} from "@/types/batch.ts";
+import dayjs from 'dayjs'
 
 interface AppNodeModalProps {
   visible: boolean
@@ -20,39 +21,232 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
   const [loading, setLoading] = useState(false)
   const [detailData, setDetailData] = useState<ReleaseApp | null>(null)
   const [selectedRecentBuildId, setSelectedRecentBuildId] = useState<number | null>(null)
+  const [retryingDeploymentId, setRetryingDeploymentId] = useState<number | null>(null)
+  const [activeDeployTab, setActiveDeployTab] = useState<'pre' | 'prod'>('prod')
+  const prevVisibleRef = useRef<boolean>(false)
+  const prevReleaseIdRef = useRef<number | null>(null)
   const {user} = useAuthStore()
 
   // 当弹窗打开时，加载详细信息
   useEffect(() => {
     if (visible && releaseApp?.id) {
-      loadReleaseAppDetail()
+      loadReleaseAppDetail(false)
     }
   }, [visible, releaseApp?.id])
 
-  const loadReleaseAppDetail = async () => {
+  const loadReleaseAppDetail = async (silent: boolean) => {
     if (!releaseApp?.id) return
 
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const response = await batchService.getReleaseApp(releaseApp.id)
-      setDetailData(response.data)
-      // 默认选择第一个 recent_build
-      if (response.data.recent_builds && response.data.recent_builds.length > 0) {
-        setSelectedRecentBuildId(response.data.recent_builds[0].id)
+      const data = response?.data
+      if (!data) {
+        // 防御：避免后端 data 为空导致渲染期异常
+        setDetailData(releaseApp)
+        return
+      }
+      setDetailData(data)
+      // 默认选择 recent_build：仅在当前未选择/选择项已不存在时才重置，避免轮询抖动
+      const builds = data.recent_builds || []
+      if (builds.length > 0) {
+        const hasSelected = selectedRecentBuildId != null && builds.some((b: BuildSummary) => b.id === selectedRecentBuildId)
+        if (!hasSelected) {
+          setSelectedRecentBuildId(builds[0].id)
+        }
+      }
+
+      // 如果该 release_app 的状态发生变化，刷新依赖图节点（由父级重新拉 batchDetail）
+      if (releaseApp?.status != null && data?.status != null && Number(data.status) !== Number(releaseApp.status)) {
+        onRefresh?.()
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '加载应用详情失败')
       // 如果加载失败，使用传入的数据
       setDetailData(releaseApp)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  // 部署中：弹窗打开时轮询该 release_app 详情，若状态变化则触发 onRefresh 更新节点
+  useEffect(() => {
+    if (!visible || !releaseApp?.id) return
+    const isDeploying = !!batch && [20, 21, 30, 31].includes(Number(batch.status))
+    if (!isDeploying) return
+
+    const timer = window.setInterval(() => {
+      loadReleaseAppDetail(true)
+    }, 3000)
+
+    return () => window.clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, releaseApp?.id, batch?.status])
+
+  const getPreferredDeployTab = (data: ReleaseApp | null): 'pre' | 'prod' => {
+    if (!data) return 'prod'
+    if (data.skip_pre_env) return 'prod'
+    const status = Number(data.status)
+    if (status >= 30) return 'prod' // Prod 阶段优先 Prod
+    if (status >= 20) return 'pre'  // Pre 阶段优先 Pre
+    return 'pre'
+  }
+
+  // 弹窗打开时：根据当前 release_app.status 选择默认 tab（不覆盖用户在同一次打开中手动切换）
+  useEffect(() => {
+    const prevVisible = prevVisibleRef.current
+    const prevReleaseId = prevReleaseIdRef.current
+    const curReleaseId = releaseApp?.id ?? null
+
+    if (visible && (!prevVisible || prevReleaseId !== curReleaseId)) {
+      setActiveDeployTab(getPreferredDeployTab(detailData || releaseApp))
+    }
+
+    prevVisibleRef.current = visible
+    prevReleaseIdRef.current = curReleaseId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, releaseApp?.id])
 
   if (!releaseApp) return null
 
   // 使用详细数据或传入的数据
   const displayData = detailData || releaseApp
+
+  const renderDeploymentsTable = (deployments: DeploymentRecord[]) => {
+    if (!deployments || deployments.length === 0) {
+      return <Empty description="暂无部署记录" image={Empty.PRESENTED_IMAGE_SIMPLE}/>
+    }
+
+    return (
+      <Table<DeploymentRecord>
+        size="small"
+        pagination={false}
+        rowKey={(r) => String(r.id)}
+        dataSource={deployments}
+        scroll={{y: 360, x: 'max-content'}}
+        columns={[
+          {title: 'Cluster', dataIndex: 'cluster_name', key: 'cluster_name', width: 120, ellipsis: true},
+          {title: 'Namespace', dataIndex: 'namespace', key: 'namespace', width: 120, ellipsis: true},
+          {title: 'Deployment', dataIndex: 'deployment_name', key: 'deployment_name', width: 140, ellipsis: true},
+          {
+            title: '状态',
+            dataIndex: 'status',
+            key: 'status',
+            width: 90,
+            render: (status: string) => {
+              const color =
+                status === 'success' ? 'green'
+                  : status === 'failed' ? 'red'
+                    : status === 'running' ? 'gold'
+                      : 'default'
+              return <Tag color={color}>{status}</Tag>
+            },
+          },
+          {
+            title: '重试',
+            key: 'retry',
+            width: 80,
+            render: (_: any, r: DeploymentRecord) => (
+              <span style={{fontVariantNumeric: 'tabular-nums'}}>
+                {r.retry_count}/{r.max_retry_count}
+              </span>
+            ),
+          },
+          {
+            title: '开始/结束',
+            key: 'time',
+            width: 220,
+            render: (_: any, r: DeploymentRecord) => {
+              const start = r.started_at ? dayjs(r.started_at) : null
+              const end = r.finished_at ? dayjs(r.finished_at) : null
+              const startText = start ? start.format('YYYY-MM-DD HH:mm:ss') : '-'
+              const endText = end ? end.format('YYYY-MM-DD HH:mm:ss') : '-'
+              return (
+                <div style={{lineHeight: 1.3}}>
+                  <div>Start: <span style={{fontVariantNumeric: 'tabular-nums'}}>{startText}</span></div>
+                  <div>End: <span style={{fontVariantNumeric: 'tabular-nums'}}>{endText}</span></div>
+                </div>
+              )
+            },
+          },
+          {
+            title: '耗时',
+            key: 'duration',
+            width: 90,
+            render: (_: any, r: DeploymentRecord) => {
+              const start = r.started_at ? dayjs(r.started_at) : null
+              const end = r.finished_at ? dayjs(r.finished_at) : null
+              if (!start || !end) return <span style={{color: '#999'}}>-</span>
+              const sec = Math.max(0, end.diff(start, 'second'))
+              const mm = Math.floor(sec / 60)
+              const ss = sec % 60
+              return (
+                <span style={{fontVariantNumeric: 'tabular-nums'}}>
+                  {mm}m {ss}s
+                </span>
+              )
+            },
+          },
+          {
+            title: '错误',
+            dataIndex: 'error_message',
+            key: 'error_message',
+            ellipsis: true,
+            render: (msg: string | null | undefined) => (
+              msg
+                ? <Popover content={<div style={{maxWidth: 520, whiteSpace: 'pre-wrap'}}>{msg}</div>}>
+                  <span style={{color: '#ff4d4f'}}>查看</span>
+                </Popover>
+                : <span style={{color: '#999'}}>-</span>
+            ),
+          },
+          {
+            title: '操作',
+            key: 'action',
+            width: 90,
+            render: (_: any, r: DeploymentRecord) => {
+              const canRetry = r.status === 'failed'
+              return (
+                <Popconfirm
+                  title="确认重试该部署？"
+                  description={`Cluster: ${r.cluster_name}`}
+                  okText="重试"
+                  cancelText="取消"
+                  disabled={!canRetry || retryingDeploymentId === r.id}
+                  onConfirm={async () => {
+                    try {
+                      setRetryingDeploymentId(r.id)
+                      await batchService.retryDeployment(r.id, {
+                        operator: user?.username || 'unknown',
+                        reason: '用户手动重试',
+                      })
+                      message.success('已触发重试')
+                      await loadReleaseAppDetail(false)
+                      onRefresh?.()
+                    } catch (error: any) {
+                      message.error(error.response?.data?.message || '重试失败')
+                    } finally {
+                      setRetryingDeploymentId(null)
+                    }
+                  }}
+                >
+                  <Button
+                    size="small"
+                    type="link"
+                    disabled={!canRetry}
+                    loading={retryingDeploymentId === r.id}
+                    style={{padding: 0}}
+                  >
+                    重试
+                  </Button>
+                </Popconfirm>
+              )
+            },
+          },
+        ]}
+      />
+    )
+  }
 
   const handleTriggerDeploy = async (action: string) => {
     if (!batch) {
@@ -166,6 +360,12 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
         open={visible}
         onCancel={onClose}
         width={650}
+        styles={{
+          body: {
+            maxHeight: '70vh',
+            overflowY: 'auto',
+          },
+        }}
         footer={
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
             <span style={{fontSize: 12, color: '#999'}}>
@@ -280,34 +480,36 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
             </Descriptions.Item>
           </Descriptions>
 
-          {/* 提交信息 todo */}
-          <Descriptions title="提交信息" column={1} size="small" bordered style={{marginTop: 16}}>
-            <Descriptions.Item label="Commit SHA">
-              <code>{displayData.commit_sha?.substring(0, 8) || '-'}</code>
-            </Descriptions.Item>
-            <Descriptions.Item label="Commit Message">
-              {displayData.commit_message || '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="分支">
-              {displayData.commit_branch || '-'}
-            </Descriptions.Item>
-          </Descriptions>
-
-          {/* 部署信息 */}
-          {(displayData.last_deploy_at || displayData.last_deploy_error) && (
-            <Descriptions title="部署信息" column={1} size="small" bordered style={{marginTop: 16}}>
-              {displayData.last_deploy_at && (
-                <Descriptions.Item label="上次部署时间">
-                  {displayData.last_deploy_at}
-                </Descriptions.Item>
-              )}
-              {displayData.last_deploy_error && (
-                <Descriptions.Item label="上次部署错误">
-                  <span style={{color: '#ff4d4f'}}>{displayData.last_deploy_error}</span>
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          )}
+          {/* 部署详情（deployment 维度） */}
+          <div style={{marginTop: 16}}>
+            <div style={{fontWeight: 500, marginBottom: 8}}>部署详情</div>
+            {(() => {
+              const items = [
+                ...(displayData.skip_pre_env
+                  ? []
+                  : [{
+                    key: 'pre',
+                    label: 'Pre',
+                    children: renderDeploymentsTable((displayData.deployments || []).filter(d => d.env === 'pre')),
+                  }]),
+                {
+                  key: 'prod',
+                  label: 'Prod',
+                  children: renderDeploymentsTable((displayData.deployments || []).filter(d => d.env === 'prod')),
+                },
+              ]
+              const keys = new Set(items.map(i => i.key))
+              const safeKey = keys.has(activeDeployTab) ? activeDeployTab : (items[0]?.key as 'pre' | 'prod' | undefined) || 'prod'
+              return (
+                <Tabs
+              size="small"
+                  activeKey={safeKey}
+                  onChange={(k) => setActiveDeployTab(k as 'pre' | 'prod')}
+                  items={items}
+                />
+              )
+            })()}
+          </div>
         </Spin>
       </Modal>
 

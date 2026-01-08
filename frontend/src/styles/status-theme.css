@@ -17,10 +17,10 @@
 
   /* Pre Border color */
   --status-pre-border-waiting: #1890ff;        /* 等待 - 标准蓝 */
-  --status-pre-border-deploying: #69c0ff;      /* 部署中 - 拂晓蓝4 */
-  --status-pre-border-deployed: #91d5ff;       /* 完成 - 拂晓蓝3 */
+  --status-pre-border-deploying: #91d5ff;      /* 部署中 - 拂晓蓝3 */
+  --status-pre-border-deployed: #69c0ff;       /* 完成 - 拂晓蓝4 */
   --status-pre-border-failed: #ff4d4f;         /* 失败 - 红色 */
-  --status-pre-border-accepted: #91d5ff;
+  --status-pre-border-accepted: #40a9ff;       /* 已验收 - 拂晓蓝5 */
 
   /* ========== 生产部署状态（橙红系列 + 火山背景） ========== */
   /* 生产部署 - 火山1背景 #fff2e8 */

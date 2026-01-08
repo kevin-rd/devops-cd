@@ -9,11 +9,13 @@ const (
 	ReleaseAppStatusPreTriggered   int8 = 22 // Pre 均已触发
 	ReleaseAppStatusPreDeployed    int8 = 23 // Pre 均部署完成
 	ReleaseAppStatusPreFailed      int8 = 24
+	ReleaseAppStatusPreAccepted    int8 = 25
 	ReleaseAppStatusProdWaiting    int8 = 30 // Prod 等待被触发
 	ReleaseAppStatusProdCanTrigger int8 = 31 // Prod 可以触发
 	ReleaseAppStatusProdTriggered  int8 = 32 // Prod 均已触发
 	ReleaseAppStatusProdDeployed   int8 = 33 // Prod 均部署完成
 	ReleaseAppStatusProdFailed     int8 = 34
+	ReleaseAppStatusProdAccepted   int8 = 35
 )
 
 func Range10(status int8) (start, end int8) {

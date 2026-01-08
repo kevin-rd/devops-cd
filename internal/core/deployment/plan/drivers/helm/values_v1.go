@@ -21,8 +21,8 @@ import (
 )
 
 // ParseValuesV1 根据 artifacts_json 中 values[] 生成最终 values map（后者覆盖前者）
-func ParseValuesV1(db *gorm.DB, app *model.Application, build *model.Build, env string, cluster string, layers []model.ValuesLayer) (map[string]interface{}, error) {
-	ctx := tpl.RenderTemplateContext(app, build, env, cluster)
+func ParseValuesV1(db *gorm.DB, app *model.Application, build *model.Build, env string, cluster string, layers []model.ValuesLayer, tplOpts *tpl.ContextOptions) (map[string]interface{}, error) {
+	ctx := tpl.RenderTemplateContext(app, build, env, cluster, tplOpts)
 
 	merged := map[string]interface{}{}
 	for idx, layer := range layers {

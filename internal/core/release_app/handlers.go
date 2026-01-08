@@ -82,6 +82,7 @@ func (sm *ReleaseStateMachine) registerHandlers() {
 	sm.handlers[constants.ReleaseAppStatusPreTriggered] = HandlerFunc(sm.HandlePreTriggered)
 	sm.handlers[constants.ReleaseAppStatusPreDeployed] = HandlerFunc(sm.HandlePreDeployed)
 	sm.handlers[constants.ReleaseAppStatusPreFailed] = HandlerFunc(sm.HandlePreFailed)
+	sm.handlers[constants.ReleaseAppStatusPreAccepted] = HandlerFunc(sm.HandlePreAccepted)
 
 	// Prod
 	sm.handlers[constants.ReleaseAppStatusProdWaiting] = HandlerFunc(sm.HandleProdWaiting)
@@ -89,6 +90,7 @@ func (sm *ReleaseStateMachine) registerHandlers() {
 	sm.handlers[constants.ReleaseAppStatusProdTriggered] = HandlerFunc(sm.HandleProdTriggered)
 	sm.handlers[constants.ReleaseAppStatusProdDeployed] = HandlerFunc(sm.HandleProdDeployed)
 	sm.handlers[constants.ReleaseAppStatusProdFailed] = HandlerFunc(sm.HandleProdFailed)
+	sm.handlers[constants.ReleaseAppStatusProdAccepted] = HandlerFunc(sm.HandleProdAccepted)
 }
 
 // handlers
@@ -252,6 +254,11 @@ func (sm *ReleaseStateMachine) HandlePreDeployed(ctx context.Context, release *m
 	return 0, nil, nil
 }
 
+// HandlePreAccepted 预发布已验收（状态机无动作，避免被识别为未知状态）
+func (sm *ReleaseStateMachine) HandlePreAccepted(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+	return 0, nil, nil
+}
+
 // HandleProdWaiting handle ProdWaiting:20 -> ProdCanTrigger:21
 func (sm *ReleaseStateMachine) HandleProdWaiting(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
 	if sm.resolver == nil {
@@ -407,6 +414,11 @@ func (sm *ReleaseStateMachine) HandleProdDeployed(ctx context.Context, release *
 	return 0, nil, nil
 }
 
+// HandleProdAccepted 生产已验收（状态机无动作，避免被识别为未知状态）
+func (sm *ReleaseStateMachine) HandleProdAccepted(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
+	return 0, nil, nil
+}
+
 func (sm *ReleaseStateMachine) HandleEmpty(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
 	// todo
 	return 0, nil, nil
@@ -474,6 +486,13 @@ func (sm *ReleaseStateMachine) HandlePreFailed(ctx context.Context, release *mod
 
 	// case 1: deployments 已存在 -> 只按 deployments 结论回升/维持
 	if agg.total > 0 {
+
+		// 所有的都不为failed 且有未success的
+		if agg.failed == 0 && agg.success < agg.total {
+			return constants.ReleaseAppStatusPreTriggered, func(r *model.ReleaseApp) { r.Reason = "" }, nil
+		}
+
+		// 所有的都不为failed 且所有都success
 		if agg.failed == 0 && agg.pending == 0 && agg.success == agg.total {
 			return constants.ReleaseAppStatusPreDeployed, func(r *model.ReleaseApp) { r.Reason = "" }, nil
 		}

@@ -204,7 +204,7 @@ func (sm *ReleaseStateMachine) UpdateStatus(ctx context.Context, releaseAppID in
 		}
 
 		// 5. 条件更新
-		if old == to {
+		if old == to && option.toFunc != nil {
 			// 状态不变，只更新业务字段
 			result := tx.Model(rel).Where("id = ?", rel.ID).Save(rel)
 			if result.Error != nil {

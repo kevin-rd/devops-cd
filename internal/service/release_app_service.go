@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"time"
 )
 
 // GetReleaseApp 获取单个发布应用详情
@@ -98,6 +99,53 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 		}
 	}
 
+	// 3. 加载 deployments（deployment 维度信息）
+	var deployments []model.Deployment
+	if err := s.db.
+		Where("release_id = ?", release.ID).
+		Order("env ASC, cluster ASC, id DESC").
+		Find(&deployments).Error; err != nil && err != gorm.ErrRecordNotFound {
+		log.Errorf("查询 deployments 失败: %v", err)
+	} else if len(deployments) > 0 {
+		resp := make([]dto.DeploymentResponse, 0, len(deployments))
+		for _, dep := range deployments {
+			var startedAt *string
+			if dep.StartedAt != nil {
+				s := dep.StartedAt.Format(time.RFC3339)
+				startedAt = &s
+			}
+			var finishedAt *string
+			if dep.FinishedAt != nil {
+				s := dep.FinishedAt.Format(time.RFC3339)
+				finishedAt = &s
+			}
+
+			resp = append(resp, dto.DeploymentResponse{
+				ID: dep.ID,
+
+				BatchID:   dep.BatchID,
+				ReleaseID: dep.ReleaseID,
+				AppID:     dep.AppID,
+
+				Env:            dep.Env,
+				ClusterName:    dep.ClusterName,
+				Namespace:      dep.Namespace,
+				DeploymentName: dep.DeploymentName,
+				DriverType:     dep.DriverType,
+				Status:         dep.Status,
+				RetryCount:     dep.RetryCount,
+				MaxRetryCount:  dep.MaxRetryCount,
+				ErrorMessage:   dep.ErrorMessage,
+
+				StartedAt:  startedAt,
+				FinishedAt: finishedAt,
+				CreatedAt:  dep.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:  dep.UpdatedAt.Format(time.RFC3339),
+			})
+		}
+		releaseResp.Deployments = resp
+	}
+
 	return releaseResp, nil
 }
 
@@ -174,4 +222,47 @@ func (s *BatchService) UpdateBuilds(req *dto.UpdateBuildsRequest) error {
 		zap.String("operator", req.Operator))
 
 	return nil
+}
+
+// RetryDeployment 手动重试 deployment（仅 failed 可重试）
+func (s *BatchService) RetryDeployment(deploymentID int64, operator string, reason string) error {
+	if deploymentID <= 0 {
+		return fmt.Errorf("deployment_id 无效")
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var dep model.Deployment
+		if err := tx.Where("id = ?", deploymentID).First(&dep).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("deployment 不存在")
+			}
+			return err
+		}
+
+		if dep.Status != constants.DeploymentStatusFailed {
+			return fmt.Errorf("仅 failed 状态允许重试，当前状态=%s", dep.Status)
+		}
+
+		updates := map[string]any{
+			"status":        constants.DeploymentStatusPending,
+			"retry_count":   dep.RetryCount + 1,
+			"error_message": nil,
+			"started_at":    nil,
+			"finished_at":   nil,
+		}
+
+		if err := tx.Model(&model.Deployment{}).Where("id = ? AND status = ?", dep.ID, constants.DeploymentStatusFailed).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		logger.Info("手动重试 deployment",
+			zap.Int64("deployment_id", dep.ID),
+			zap.Int64("batch_id", dep.BatchID),
+			zap.Int64("release_id", dep.ReleaseID),
+			zap.Int64("app_id", dep.AppID),
+			zap.String("operator", operator),
+			zap.String("reason", reason))
+
+		return nil
+	})
 }

@@ -118,6 +118,33 @@ type ReleaseAppResponse struct {
 
 	// 最近的构建记录（自上次部署以来，最多15条）
 	RecentBuilds []BuildSummary `json:"recent_builds,omitempty"`
+
+	// 部署详情（deployment 维度）
+	Deployments []DeploymentResponse `json:"deployments,omitempty"`
+}
+
+// DeploymentResponse 部署任务响应（不包含 values，避免 payload 过大）
+type DeploymentResponse struct {
+	ID int64 `json:"id"`
+
+	BatchID   int64 `json:"batch_id"`
+	ReleaseID int64 `json:"release_id"`
+	AppID     int64 `json:"app_id"`
+
+	Env            string  `json:"env"` // pre/prod
+	ClusterName    string  `json:"cluster_name"`
+	Namespace      string  `json:"namespace"`
+	DeploymentName string  `json:"deployment_name"`
+	DriverType     *string `json:"driver_type,omitempty"`
+	Status         string  `json:"status"` // pending/running/success/failed
+	RetryCount     int     `json:"retry_count"`
+	MaxRetryCount  int     `json:"max_retry_count"`
+	ErrorMessage   *string `json:"error_message,omitempty"`
+
+	StartedAt  *string `json:"started_at,omitempty"`
+	FinishedAt *string `json:"finished_at,omitempty"`
+	CreatedAt  string  `json:"created_at"`
+	UpdatedAt  string  `json:"updated_at"`
 }
 
 // BuildSummary 构建摘要（用于展示自上次部署以来的构建列表）

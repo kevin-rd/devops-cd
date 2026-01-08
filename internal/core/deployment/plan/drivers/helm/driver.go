@@ -24,6 +24,7 @@ type ExecutePayload struct {
 	Build      *model.Build
 	ProjectCfg *model.ProjectEnvConfig
 	Artifacts  *model.ArtifactsV1
+	TplOptions *tpl.ContextOptions
 }
 
 type Driver struct {
@@ -106,7 +107,7 @@ func (d *Driver) execChart(ctx context.Context, namespace string, p *ExecutePayl
 	app := p.App
 	build := p.Build
 
-	tplCtx := tpl.RenderTemplateContext(app, build, dep.Env, dep.ClusterName)
+	tplCtx := tpl.RenderTemplateContext(app, build, dep.Env, dep.ClusterName, p.TplOptions)
 
 	cfg, err := DecodeConfig(stage.Data)
 	if err != nil {
@@ -131,7 +132,7 @@ func (d *Driver) execChart(ctx context.Context, namespace string, p *ExecutePayl
 	}
 
 	// values：由 helm driver 运行时计算（不落库）
-	valuesMap, err := ParseValuesV1(d.db, app, build, dep.Env, dep.ClusterName, cfg.Values)
+	valuesMap, err := ParseValuesV1(d.db, app, build, dep.Env, dep.ClusterName, cfg.Values, p.TplOptions)
 	if err != nil {
 		return nil, fmt.Errorf("%s: values 计算失败: %w", kind, err)
 	}

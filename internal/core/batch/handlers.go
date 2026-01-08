@@ -113,7 +113,7 @@ func (sm *StateMachine) HandleProdWaiting(ctx context.Context, batch *model.Batc
 	// 2. 更新经过 pre 的应用: PreDeployed → ProdWaiting
 	result2 := sm.db.Model(&model.ReleaseApp{}).
 		Where("batch_id = ? AND skip_pre_env = ?", batch.ID, false).
-		Where("status = ?", constants.ReleaseAppStatusPreDeployed).
+		Where("status = ?", constants.ReleaseAppStatusPreAccepted).
 		Update("status", constants.ReleaseAppStatusProdWaiting)
 
 	if result1.Error != nil || result2.Error != nil {

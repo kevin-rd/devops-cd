@@ -65,6 +65,10 @@ const AppNode = memo(({data}: AppNodeProps) => {
     if (statusNum === AppStatus.PreFailed) {
       return styles.preFailed
     }
+    // 预发布验收完成 (25)
+    if (statusNum === AppStatus.PreAccepted) {
+      return styles.preAccepted
+    }
     // 生产等待 (30) - 虚线不滚动
     if (statusNum === AppStatus.ProdWaiting) {
       return styles.prodWaiting
@@ -80,6 +84,10 @@ const AppNode = memo(({data}: AppNodeProps) => {
     // 生产部署失败 (34)
     if (statusNum === AppStatus.ProdFailed) {
       return styles.prodFailed
+    }
+    // 生产验收完成 (35)
+    if (statusNum === AppStatus.ProdAccepted) {
+      return styles.prodAccepted
     }
 
     return ''

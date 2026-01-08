@@ -46,6 +46,31 @@ export interface ReleaseApp {
   recent_builds?: BuildSummary[] // 最近的构建记录（自上次部署以来）
   default_depends_on?: number[]
   temp_depends_on?: number[]
+
+  // deployment 级部署详情（由 /v1/release_app 返回）
+  deployments?: DeploymentRecord[]
+}
+
+export interface DeploymentRecord {
+  id: number
+  batch_id: number
+  release_id: number
+  app_id: number
+
+  env: 'pre' | 'prod' | string
+  cluster_name: string
+  namespace: string
+  deployment_name: string
+  driver_type?: string | null
+  status: 'pending' | 'running' | 'success' | 'failed' | string
+  retry_count: number
+  max_retry_count: number
+  error_message?: string | null
+
+  started_at?: string | null
+  finished_at?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export enum AppStatus {
@@ -56,11 +81,13 @@ export enum AppStatus {
   PreTriggered = 22, // Pre 均已触发
   PreDeployed = 23, // Pre 均部署完成
   PreFailed = 24,
+  PreAccepted = 25, // Pre 已验收
   ProdWaiting = 30, // Prod 等待被触发
   ProdCanTrigger = 31, // Prod 可以触发
   ProdTriggered = 32, // Prod 均已触发
   ProdDeployed = 33, // Prod 均部署完成
   ProdFailed = 34,
+  ProdAccepted = 35, // Prod 已验收
 }
 
 export interface LabelValue {
@@ -76,9 +103,11 @@ export const AppStatusLabel: Record<number, LabelValue> = {
   [AppStatus.PreTriggered]: {label: 'Pre部署中', color: 'yellow'},
   [AppStatus.PreDeployed]: {label: 'Pre完成', color: 'green'},
   [AppStatus.PreFailed]: {label: 'Pre失败', color: 'red'},
+  [AppStatus.PreAccepted]: {label: 'Pre已验收', color: 'cyan'},
   [AppStatus.ProdWaiting]: {label: 'Prod等待', color: 'blue'},
   [AppStatus.ProdCanTrigger]: {label: 'Prod可触发部署', color: 'green'},
   [AppStatus.ProdTriggered]: {label: 'Prod已触发', color: 'yellow'},
   [AppStatus.ProdDeployed]: {label: 'Prod完成', color: 'green'},
   [AppStatus.ProdFailed]: {label: 'Prod失败', color: 'red'},
+  [AppStatus.ProdAccepted]: {label: 'Prod已验收', color: 'cyan'},
 }

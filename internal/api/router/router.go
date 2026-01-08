@@ -87,6 +87,7 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 	buildHandler := handler.NewBuildHandler(buildService, batchService)
 	releaseAppHandler := handler.NewReleaseAppHandler(batchService)
 	credentialHandler := handler.NewCredentialHandler(credentialService)
+	deploymentHandler := handler.NewDeploymentHandler(batchService)
 
 	// API v1
 	v1 := r.Group("/api/v1")
@@ -242,6 +243,12 @@ func Setup(cfg *config.Config, coreEngine *core.CoreEngine, logger *zap.Logger) 
 				releaseAppGroup.PUT(":id/dependencies", releaseAppHandler.UpdateDependencies)
 				releaseAppGroup.POST("/switch_version", batchHandler.SwitchVersion) // 切换版本
 				releaseAppGroup.POST("/manual_deploy", batchHandler.ManualDeploy)   // 手动部署
+			}
+
+			// Deployment 任务管理
+			deploymentGroup := authed.Group("/deployment")
+			{
+				deploymentGroup.POST("/:id/retry", deploymentHandler.Retry) // 手动重试 deployment
 			}
 
 			// 构建记录管理

@@ -69,6 +69,62 @@ export default function BatchDetail() {
 
   const batch = batchData
 
+  // 部署中：轮询轻量状态接口，持续刷新所有 app 状态（避免只靠手动刷新）
+  const shouldPollStatus =
+    !!batch &&
+    [BatchStatus.PreTriggered, BatchStatus.PreDeploying, BatchStatus.ProdTriggered, BatchStatus.ProdDeploying].includes(
+      Number(batch.status) as BatchStatus
+    )
+
+  useQuery({
+    queryKey: ['batchStatus', id],
+    queryFn: async () => {
+      const res = await batchService.getStatus(Number(id), 1, 200)
+      return res.data as Batch
+    },
+    enabled: !!id && shouldPollStatus,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
+    onSuccess: (statusBatch) => {
+      // 将 /status 的 apps/status 合并进当前 batchDetail（保留 name/type 等重字段）
+      queryClient.setQueryData(['batchDetail', id], (old: Batch | undefined) => {
+        if (!old) return statusBatch
+
+        const statusApps = statusBatch.apps || []
+        const appIdToStatus = new Map<number, ReleaseApp>()
+        statusApps.forEach((a) => {
+          appIdToStatus.set(a.app_id, a)
+        })
+
+        const mergedApps = (old.apps || []).map((app) => {
+          const statusApp = appIdToStatus.get(app.app_id)
+          if (!statusApp) return app
+          return {
+            ...app,
+            status: statusApp.status,
+            reasons: statusApp.reasons ?? app.reasons,
+            build_id: statusApp.build_id ?? app.build_id,
+            latest_build_id: statusApp.latest_build_id ?? app.latest_build_id,
+            is_locked: statusApp.is_locked ?? app.is_locked,
+            skip_pre_env: statusApp.skip_pre_env ?? app.skip_pre_env,
+            recent_builds: statusApp.recent_builds ?? app.recent_builds,
+          }
+        })
+
+        return {
+          ...old,
+          status: statusBatch.status ?? old.status,
+          updated_at: statusBatch.updated_at ?? old.updated_at,
+          pre_deploy_started_at: statusBatch.pre_deploy_started_at ?? old.pre_deploy_started_at,
+          pre_deploy_finished_at: statusBatch.pre_deploy_finished_at ?? old.pre_deploy_finished_at,
+          prod_deploy_started_at: statusBatch.prod_deploy_started_at ?? old.prod_deploy_started_at,
+          prod_deploy_finished_at: statusBatch.prod_deploy_finished_at ?? old.prod_deploy_finished_at,
+          apps: mergedApps,
+        }
+      })
+    },
+  })
+
   // 根据批次状态设置默认视图（仅在首次加载且没有 URL 参数指定时）
   useEffect(() => {
     // 如果 URL 中有明确指定 tab 参数，则不自动切换

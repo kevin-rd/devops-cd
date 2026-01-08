@@ -82,12 +82,25 @@ func (sm *StateMachine) executeStages(ctx context.Context, deploymentID int64) (
 
 	// Load App / ProjectEnvConfig
 	var app model.Application
-	if err := sm.db.WithContext(ctx).Preload("Project").First(&app, dep.AppID).Error; err != nil {
+	if err := sm.db.WithContext(ctx).Preload("Project").Preload("Repository").First(&app, dep.AppID).Error; err != nil {
 		return "", "", "", fmt.Errorf("load app failed: %w", err)
 	}
 	var projectCfg model.ProjectEnvConfig
 	if err := sm.db.WithContext(ctx).Where("project_id = ? AND env = ?", app.ProjectID, dep.Env).First(&projectCfg).Error; err != nil {
 		return "", "", "", fmt.Errorf("load project_env_config failed: %w", err)
+	}
+
+	// repo.app_count：当前 project 下，该 repo 关联的应用数（排除 deleted）
+	var repoAppCount int64
+	if err := sm.db.WithContext(ctx).
+		Model(&model.Application{}).
+		Where("project_id = ? AND repo_id = ?", app.ProjectID, app.RepoID).
+		Count(&repoAppCount).Error; err != nil {
+		return "", "", "", fmt.Errorf("count repo apps failed: %w", err)
+	}
+	tplOpts := &tpl.ContextOptions{
+		Repo:         app.Repository,
+		RepoAppCount: &repoAppCount,
 	}
 
 	// 解析 artifacts_json
@@ -110,7 +123,8 @@ func (sm *StateMachine) executeStages(ctx context.Context, deploymentID int64) (
 	if nsTpl == "" {
 		return "", "", "", fmt.Errorf("namespace_template 为空")
 	}
-	ns, err := tpl.ParseTemplate(nsTpl, tpl.RenderTemplateContext(&app, rel.Build, dep.Env, dep.ClusterName))
+	renderCtx := tpl.RenderTemplateContext(&app, rel.Build, dep.Env, dep.ClusterName, tplOpts)
+	ns, err := tpl.ParseTemplate(nsTpl, renderCtx)
 	if err != nil {
 		return "", "", "", fmt.Errorf("namespace_template 解析失败: %w", err)
 	}
@@ -124,6 +138,7 @@ func (sm *StateMachine) executeStages(ctx context.Context, deploymentID int64) (
 		Build:      rel.Build,
 		ProjectCfg: &projectCfg,
 		Artifacts:  arts,
+		TplOptions: tplOpts,
 	}
 
 	// 2) Pre: config chart
@@ -152,7 +167,7 @@ func (sm *StateMachine) executeStages(ctx context.Context, deploymentID int64) (
 	deploymentName = app.Name
 	if mainType == "helm" && arts.AppChart != nil {
 		if cfg, err2 := helmDriver.DecodeConfig(arts.AppChart.Data); err2 == nil && strings.TrimSpace(cfg.ReleaseNameTemplate) != "" {
-			if dn, err3 := tpl.ParseTemplate(cfg.ReleaseNameTemplate, tpl.RenderTemplateContext(&app, rel.Build, dep.Env, dep.ClusterName)); err3 == nil && strings.TrimSpace(dn) != "" {
+			if dn, err3 := tpl.ParseTemplate(cfg.ReleaseNameTemplate, renderCtx); err3 == nil && strings.TrimSpace(dn) != "" {
 				deploymentName = dn
 			}
 		}

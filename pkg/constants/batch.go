@@ -31,9 +31,13 @@ var batchStatusName = map[int8]string{
 	BatchStatusPreWaiting:    "PreWaiting",
 	BatchStatusPreDeploying:  "PreDeploying",
 	BatchStatusPreDeployed:   "PreDeployed",
+	BatchStatusPreFailed:     "PreFailed",
+	BatchStatusPreAccepted:   "PreAccepted",
 	BatchStatusProdWaiting:   "ProdWaiting",
 	BatchStatusProdDeploying: "ProdDeploying",
 	BatchStatusProdDeployed:  "ProdDeployed",
+	BatchStatusProdFailed:    "ProdFailed",
+	BatchStatusProdAccepted:  "ProdAccepted",
 	BatchStatusCompleted:     "Completed",
 	BatchStatusCancelled:     "Cancelled",
 }
