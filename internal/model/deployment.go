@@ -27,6 +27,8 @@ type Deployment struct {
 	Status        string  `gorm:"size:20;not null;default:pending" json:"status"` // pending/running/success/failed
 	RetryCount    int     `gorm:"default:0" json:"retry_count"`
 	MaxRetryCount int     `gorm:"default:3" json:"max_retry_count"`
+	// superseded_by：被哪条新 deployment 替代（NULL=当前生效）
+	SupersededBy *int64 `gorm:"column:superseded_by" json:"superseded_by,omitempty"`
 
 	// 错误信息
 	ErrorMessage *string `gorm:"type:text" json:"error_message"`

@@ -39,9 +39,9 @@ func (sm *ReleaseStateMachine) SwitchVersion(releaseAppID, buildID int64, operat
 		WithToFunc(func(r model.ReleaseApp) int8 {
 			if r.SkipPreEnv {
 				return constants.ReleaseAppStatusProdCanTrigger
-			} else {
-				return constants.ReleaseAppStatusPreCanTrigger
 			}
+
+			return constants.ReleaseAppStatusPreCanTrigger
 		}),
 		WithOperatorAndReason(operator, reason),
 		WithData("build_id", buildID),

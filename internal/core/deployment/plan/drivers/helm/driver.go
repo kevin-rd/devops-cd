@@ -85,22 +85,33 @@ func (d *Driver) CheckStatus(ctx context.Context, req *drivers.ExecuteRequest) (
 	rel, err := statusCli.Run(dep.DeploymentName)
 	if err != nil {
 		// release 不存在：视为 running（可能正在安装中或尚未创建）
-		return &drivers.ExecuteResult{Status: drivers.StatusRunning, Message: err.Error()}, nil
+		return drivers.Running(err.Error()), nil
 	}
 
 	switch rel.Info.Status {
 	case release.StatusDeployed:
-		return &drivers.ExecuteResult{Status: drivers.StatusSuccess}, nil
+		allReady, anyFailed, msg, err := CheckReleaseWorkloadsReady(ctx, restClientGetter, rel.Manifest, dep.Namespace)
+		if err != nil {
+			// Helm release 已 deployed，但 readiness 判定失败（内部错误），直接失败便于快速暴露问题
+			return drivers.Failed(fmt.Sprintf("helm readiness check error: %v", err)), nil
+		}
+		if anyFailed {
+			return drivers.Failed(msg), nil
+		}
+		if !allReady {
+			return drivers.Running(msg), nil
+		}
+		return drivers.Success(), nil
 	case release.StatusFailed:
-		return &drivers.ExecuteResult{Status: drivers.StatusFailed, Message: "helm release failed"}, nil
+		return drivers.Failed("helm release failed"), nil
 	default:
-		return &drivers.ExecuteResult{Status: drivers.StatusRunning, Message: string(rel.Info.Status)}, nil
+		return drivers.Running(string(rel.Info.Status)), nil
 	}
 }
 
 func (d *Driver) execChart(ctx context.Context, namespace string, p *ExecutePayload, stage *model.StageSpecV1, kind string) (*drivers.ExecuteResult, error) {
 	if stage == nil || !stage.Enabled {
-		return &drivers.ExecuteResult{Status: drivers.StatusSuccess}, nil
+		return drivers.Success(), nil
 	}
 
 	dep := p.Deployment
@@ -168,9 +179,9 @@ func (d *Driver) execChart(ctx context.Context, namespace string, p *ExecutePayl
 	}
 
 	if err := NewHelmDeployer(nil).Deploy(ctx, &param); err != nil {
-		return &drivers.ExecuteResult{Status: drivers.StatusFailed, Message: err.Error()}, err
+		return drivers.Failed(err.Error()), err
 	}
-	return &drivers.ExecuteResult{Status: drivers.StatusSuccess}, nil
+	return drivers.Success(), nil
 }
 
 func (d *Driver) resolveBasicAuth(ref string) (string, string, error) {

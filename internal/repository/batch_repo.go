@@ -2,6 +2,7 @@ package repository
 
 import (
 	"devops-cd/internal/dto"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -164,10 +165,8 @@ func (r *BatchRepository) GetReleaseAppsByBatchID(batchID int64, page, pageSize 
 // GetBuildByAppIDAndTag 根据应用ID和镜像标签查询构建记录
 func (r *BatchRepository) GetBuildByAppIDAndTag(appID int64, imageTag string) (*model.Build, error) {
 	var build model.Build
-	err := r.db.Where("app_id = ? AND image_tag = ?", appID, imageTag).
-		First(&build).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := r.db.Where("app_id = ? AND image_tag = ? AND build_status = ?", appID, imageTag, "success").Order("build_created DESC").First(&build).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil // 未找到，返回 nil 而不是错误
 		}
 		return nil, err

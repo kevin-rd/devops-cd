@@ -4,6 +4,7 @@ import (
 	"devops-cd/internal/model"
 	"devops-cd/pkg/constants"
 	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -22,29 +23,26 @@ func (h *TriggerProdAccepted) Handle(batch *model.Batch, from, to int8, options 
 
 	// 必须全部 ProdDeployed
 	var totalCount int64
-	if err := h.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ?", batch.ID).
-		Count(&totalCount).Error; err != nil {
+	if err := h.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).Count(&totalCount).Error; err != nil {
 		return err
 	}
 	if totalCount == 0 {
-		return fmt.Errorf("批次无发布记录，无法进行生产验收")
+		return fmt.Errorf("批次无发布记录，无法进行生产验收(数据可能异常, 请联系管理员)")
 	}
 
+	// 检查未部署的应用count (未部署/未验证)
 	var prodDeployedCount int64
-	if err := h.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ?", batch.ID).
-		Where("status = ?", constants.ReleaseAppStatusProdDeployed).
+	if err := h.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).
+		Where("status NOT IN ?", []int8{constants.ReleaseAppStatusProdDeployed, constants.ReleaseAppStatusProdFailed}).
 		Count(&prodDeployedCount).Error; err != nil {
 		return err
 	}
-	if prodDeployedCount != totalCount {
+	if prodDeployedCount > 0 {
 		return fmt.Errorf("有未完成生产部署的应用，无法验收")
 	}
 
 	// 批量更新：ProdDeployed -> ProdAccepted
-	if err := h.db.Model(&model.ReleaseApp{}).
-		Where("batch_id = ?", batch.ID).
+	if err := h.db.Model(&model.ReleaseApp{}).Where("batch_id = ?", batch.ID).
 		Where("status = ?", constants.ReleaseAppStatusProdDeployed).
 		Update("status", constants.ReleaseAppStatusProdAccepted).Error; err != nil {
 		return err

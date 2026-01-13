@@ -34,6 +34,27 @@ type ExecuteResult struct {
 	Message string
 }
 
+func Success() *ExecuteResult {
+	return &ExecuteResult{
+		Status:  StatusSuccess,
+		Message: "",
+	}
+}
+
+func Running(message string) *ExecuteResult {
+	return &ExecuteResult{
+		Status:  StatusRunning,
+		Message: message,
+	}
+}
+
+func Failed(message string) *ExecuteResult {
+	return &ExecuteResult{
+		Status:  StatusFailed,
+		Message: message,
+	}
+}
+
 type Driver interface {
 	Name() string
 	Execute(ctx context.Context, req *ExecuteRequest) (*ExecuteResult, error)

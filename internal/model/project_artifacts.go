@@ -30,7 +30,7 @@ type StageSpecV1 struct {
 }
 
 type ValuesLayer struct {
-	Type          string `json:"type"` // git | http_file | inline | pipeline_artifact
+	Type          string `json:"type"` // git | http_file | inline_yaml | file
 	CredentialRef string `json:"credential_ref,omitempty"`
 
 	// git
@@ -38,10 +38,10 @@ type ValuesLayer struct {
 	RefTemplate  string `json:"ref_template,omitempty"`
 	PathTemplate string `json:"path_template,omitempty"`
 
-	// http_file / pipeline_artifact
+	// http_file / file(url-archive)
 	BaseURLTemplate string `json:"base_url_template,omitempty"`
 
-	// inline
+	// inline_yaml
 	Content string `json:"content,omitempty"`
 }
 

@@ -102,7 +102,7 @@ func (s *BatchService) GetReleaseApp(releaseAppID int64) (*dto.ReleaseAppRespons
 	// 3. 加载 deployments（deployment 维度信息）
 	var deployments []model.Deployment
 	if err := s.db.
-		Where("release_id = ?", release.ID).
+		Where("release_id = ? AND superseded_by IS NULL", release.ID).
 		Order("env ASC, cluster ASC, id DESC").
 		Find(&deployments).Error; err != nil && err != gorm.ErrRecordNotFound {
 		log.Errorf("查询 deployments 失败: %v", err)
@@ -239,6 +239,9 @@ func (s *BatchService) RetryDeployment(deploymentID int64, operator string, reas
 			return err
 		}
 
+		if dep.SupersededBy != nil {
+			return fmt.Errorf("deployment 已被替代，禁止重试")
+		}
 		if dep.Status != constants.DeploymentStatusFailed {
 			return fmt.Errorf("仅 failed 状态允许重试，当前状态=%s", dep.Status)
 		}

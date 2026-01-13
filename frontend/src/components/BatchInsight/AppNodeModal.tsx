@@ -405,7 +405,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
                 )}
                 <Popover title={displayData.target_tag} content={
                   <div style={{display: 'flex', flexDirection: 'column', minWidth: '300px'}}>
-                    <code>    Commit SHA: {displayData.commit_sha?.substring(0, 8) || '-'}</code>
+                    <code> Commit SHA: {displayData.commit_sha?.substring(0, 8) || '-'}</code>
                     <code>Commit Message: {displayData.commit_message}</code>
                     <code> Commit Branch: {displayData.commit_branch}</code>
                   </div>
@@ -502,7 +502,7 @@ const AppNodeModal: React.FC<AppNodeModalProps> = ({visible, releaseApp, batch, 
               const safeKey = keys.has(activeDeployTab) ? activeDeployTab : (items[0]?.key as 'pre' | 'prod' | undefined) || 'prod'
               return (
                 <Tabs
-              size="small"
+                  size="small"
                   activeKey={safeKey}
                   onChange={(k) => setActiveDeployTab(k as 'pre' | 'prod')}
                   items={items}

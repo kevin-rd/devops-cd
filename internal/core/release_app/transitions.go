@@ -52,14 +52,14 @@ func (sm *ReleaseStateMachine) registerTransitions() {
 			Handler:     SwitchVersionProdDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
-		// 提前Pre发布
+		// 提前触发 Pre发布
 		{
 			From:        []int8{constants.ReleaseAppStatusTagged},
 			To:          constants.ReleaseAppStatusPreCanTrigger,
 			Handler:     ManualTriggerPreDeploy{sm: sm},
 			AllowSource: TransitionSourceOutside,
 		},
-		// 手动触发Prod发布(Pre发布完成后提前触发Prod/没有Pre环境直接提交触发Prod)
+		// 手动触发 Prod发布(Pre发布完成后提前触发Prod/没有Pre环境直接提交触发Prod)
 		{
 			From:        []int8{constants.ReleaseAppStatusTagged, constants.ReleaseAppStatusPreDeployed},
 			To:          constants.ReleaseAppStatusProdCanTrigger,
@@ -120,9 +120,9 @@ func (h SwitchVersionPreDeploy) Handle(release *model.ReleaseApp, from int8, opt
 		return fmt.Errorf("查询latestBuild记录失败: %w", err)
 	}
 
-	// 1. 预发布已完成/生产已完成时才可以手动重新执行预发布
-	if batch.Status >= constants.BatchStatusPreDeployed && batch.Status < constants.BatchStatusProdWaiting ||
-		batch.Status >= constants.BatchStatusProdDeployed && batch.Status < constants.BatchStatusFinalAccepted {
+	// 1. 预发布/生产中或已完成时均可以手动重新执行预发布
+	if batch.Status >= constants.BatchStatusPreDeploying && batch.Status < constants.BatchStatusProdWaiting ||
+		batch.Status >= constants.BatchStatusProdDeploying && batch.Status < constants.BatchStatusFinalAccepted {
 		// 可以进行
 	} else {
 		return fmt.Errorf("当前批次状态不允许手动重新预发布")

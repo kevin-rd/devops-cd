@@ -28,8 +28,8 @@ interface EnvFormValues {
   artifacts_json?: ArtifactsV1
 }
 
-type ChartSourceType = 'helm_repo' | 'webhook' | 'pipeline_artifact'
-type ValuesLayerType = 'git' | 'http_file' | 'inline' | 'pipeline_artifact'
+type ChartSourceType = 'helm_repo' | 'webhook'
+type ValuesLayerType = 'git' | 'http_file' | 'inline_yaml' | 'file'
 
 interface ArtifactsV1 {
   schema_version: 1
@@ -434,7 +434,6 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                         options={[
                           {label: 'helm_repo', value: 'helm_repo'},
                           {label: 'webhook', value: 'webhook'},
-                          {label: 'pipeline_artifact', value: 'pipeline_artifact'},
                         ]}
                       />
                     </Form.Item>
@@ -494,8 +493,8 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                               options={[
                                                 {label: 'git', value: 'git'},
                                                 {label: 'http_file', value: 'http_file'},
-                                                {label: 'inline', value: 'inline'},
-                                                {label: 'pipeline_artifact', value: 'pipeline_artifact'},
+                                                {label: 'inline_yaml', value: 'inline_yaml'},
+                                                {label: 'file', value: 'file'},
                                               ]}
                                             />
                                           </Form.Item>
@@ -534,27 +533,50 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                                   </>
                                                 )
                                               }
-                                              if (tp === 'inline') {
+                                              if (tp === 'inline_yaml') {
                                                 return (
                                                   <Form.Item label="Content" name={[field.name, 'content']}>
                                                     <Input.TextArea rows={6} placeholder="key: value"/>
                                                   </Form.Item>
                                                 )
                                               }
-                                              return (
-                                                <>
-                                                  <Form.Item label="Base URL (Go Template support)" name={[field.name, 'base_url_template']}>
-                                                    <Input placeholder="https://artifact.example.com"/>
-                                                  </Form.Item>
-                                                  <Form.Item
-                                                    label="Path (Go Template support, optional)"
-                                                    name={[field.name, 'path_template']}
-                                                    tooltip="可选：为空时 base_url_template 可直接写完整 URL"
-                                                  >
-                                                    <Input placeholder="/values/{{.env}}/{{.app_name}}.yaml"/>
-                                                  </Form.Item>
-                                                </>
-                                              )
+                                              if (tp === 'http_file') {
+                                                return (
+                                                  <>
+                                                    <Form.Item label="Base URL (Go Template support)" name={[field.name, 'base_url_template']}>
+                                                      <Input placeholder="https://artifact.example.com"/>
+                                                    </Form.Item>
+                                                    <Form.Item
+                                                      label="Path (Go Template support, optional)"
+                                                      name={[field.name, 'path_template']}
+                                                      tooltip="可选：为空时 base_url_template 可直接写完整 URL"
+                                                    >
+                                                      <Input placeholder="/values/{{.env}}/{{.app_name}}.yaml"/>
+                                                    </Form.Item>
+                                                  </>
+                                                )
+                                              }
+                                              if (tp === 'file') {
+                                                return (
+                                                  <>
+                                                    <Form.Item
+                                                      label="Archive URL (Go Template support, optional)"
+                                                      name={[field.name, 'base_url_template']}
+                                                      tooltip="填写时表示下载压缩包（zip/tar/tgz）并解压；不填则从本地缓存目录读取文件"
+                                                    >
+                                                      <Input placeholder="https://artifact.example.com/values-{{.build.image_tag}}.tgz"/>
+                                                    </Form.Item>
+                                                    <Form.Item
+                                                      label="Path (Go Template support)"
+                                                      name={[field.name, 'path_template']}
+                                                      tooltip="若填写 Archive URL：此处为压缩包内目标文件路径；否则为本地相对路径"
+                                                    >
+                                                      <Input placeholder="values/{{.env}}/{{.app_name}}.yaml"/>
+                                                    </Form.Item>
+                                                  </>
+                                                )
+                                              }
+                                              return null
                                             }}
                                           </Form.Item>
                                         </Card>
@@ -567,7 +589,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                 </Form.List>
                               </>
                             )}
-                              {(t === 'webhook' || t === 'pipeline_artifact') && (
+                              {(t === 'webhook') && (
                                 <>
                                   <Form.Item
                                     label="Webhook URL (Go Template support)"
@@ -636,7 +658,6 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                         options={[
                           {label: 'helm_repo', value: 'helm_repo'},
                           {label: 'webhook', value: 'webhook'},
-                          {label: 'pipeline_artifact', value: 'pipeline_artifact'},
                         ]}
                       />
                     </Form.Item>
@@ -694,8 +715,8 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                               options={[
                                                 {label: 'git', value: 'git'},
                                                 {label: 'http_file', value: 'http_file'},
-                                                {label: 'inline', value: 'inline'},
-                                                {label: 'pipeline_artifact', value: 'pipeline_artifact'},
+                                                {label: 'inline_yaml', value: 'inline_yaml'},
+                                                {label: 'file', value: 'file'},
                                               ]}
                                             />
                                           </Form.Item>
@@ -734,27 +755,50 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                                   </>
                                                 )
                                               }
-                                              if (tp === 'inline') {
+                                              if (tp === 'inline_yaml') {
                                                 return (
                                                   <Form.Item label="Content" name={[field.name, 'content']}>
                                                     <Input.TextArea rows={6} placeholder="key: value"/>
                                                   </Form.Item>
                                                 )
                                               }
-                                              return (
-                                                <>
-                                                  <Form.Item label="Base URL (Go Template support)" name={[field.name, 'base_url_template']}>
-                                                    <Input placeholder="https://artifact.example.com"/>
-                                                  </Form.Item>
-                                                  <Form.Item
-                                                    label="Path (Go Template support, optional)"
-                                                    name={[field.name, 'path_template']}
-                                                    tooltip="可选：为空时 base_url_template 可直接写完整 URL"
-                                                  >
-                                                    <Input placeholder="/values/{{.env}}/{{.app_name}}.yaml"/>
-                                                  </Form.Item>
-                                                </>
-                                              )
+                                              if (tp === 'http_file') {
+                                                return (
+                                                  <>
+                                                    <Form.Item label="Base URL (Go Template support)" name={[field.name, 'base_url_template']}>
+                                                      <Input placeholder="https://artifact.example.com"/>
+                                                    </Form.Item>
+                                                    <Form.Item
+                                                      label="Path (Go Template support, optional)"
+                                                      name={[field.name, 'path_template']}
+                                                      tooltip="可选：为空时 base_url_template 可直接写完整 URL"
+                                                    >
+                                                      <Input placeholder="/values/{{.env}}/{{.app_name}}.yaml"/>
+                                                    </Form.Item>
+                                                  </>
+                                                )
+                                              }
+                                              if (tp === 'file') {
+                                                return (
+                                                  <>
+                                                    <Form.Item
+                                                      label="Archive URL (Go Template support, optional)"
+                                                      name={[field.name, 'base_url_template']}
+                                                      tooltip="填写时表示下载压缩包（zip/tar/tgz）并解压；不填则从本地缓存目录读取文件"
+                                                    >
+                                                      <Input placeholder="https://artifact.example.com/values-{{.build.image_tag}}.tgz"/>
+                                                    </Form.Item>
+                                                    <Form.Item
+                                                      label="Path (Go Template support)"
+                                                      name={[field.name, 'path_template']}
+                                                      tooltip="若填写 Archive URL：此处为压缩包内目标文件路径；否则为本地相对路径"
+                                                    >
+                                                      <Input placeholder="values/{{.env}}/{{.app_name}}.yaml"/>
+                                                    </Form.Item>
+                                                  </>
+                                                )
+                                              }
+                                              return null
                                             }}
                                           </Form.Item>
                                         </Card>
@@ -767,7 +811,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                 </Form.List>
                               </>
                             )}
-                            {(t === 'webhook' || t === 'pipeline_artifact') && (
+                            {(t === 'webhook') && (
                               <>
                                 <Form.Item
                                   label="Artifact URL (Go Template support)"
@@ -792,7 +836,7 @@ const TabEnvConfig = ({projectId, refreshTrigger}: TabEnvConfigProps) => {
                                   type="info"
                                   showIcon
                                   message="提示"
-                                  description="webhook/pipeline_artifact chart 将使用 Artifact URL 下载 chart.tgz。"
+                                  description="webhook chart 将使用 Artifact URL 下载 chart.tgz。"
                                 />
                               </>
                             )}

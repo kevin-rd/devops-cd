@@ -1013,10 +1013,10 @@ export default function BatchList() {
       </div>
     )
     return (
-      <Badge.Ribbon className="batch-status-ribbon" placement="start"
+      <Badge.Ribbon key={record.id} className="batch-status-ribbon" placement="start"
                     text={BatchStatusConfig[currentStatus]?.label || 'unknown: ' + currentStatus}
                     color={BatchStatusConfig[currentStatus]?.color}>
-        <div key={record.id} className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
+        <div className={`batch-card ${isExpanded ? 'expanded' : ''} ${statusClass}`}>
           <div className="batch-card-main" onClick={() => {
             if (record.status >= BatchStatus.Sealed) {
               navigate(`/batch/${record.id}/detail?tab=graph`)

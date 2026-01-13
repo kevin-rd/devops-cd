@@ -2,6 +2,7 @@ package helm
 
 import (
 	"bytes"
+	"devops-cd/internal/core/common/valueslayer"
 	"devops-cd/internal/core/deployment/helpers/tpl"
 	"encoding/json"
 	"fmt"
@@ -65,9 +66,9 @@ func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer model
 	}
 
 	switch layer.Type {
-	case "inline":
+	case "inline_yaml":
 		return []byte(layer.Content), nil
-	case "http_file", "pipeline_artifact":
+	case "http_file":
 		baseTpl := strings.TrimSpace(layer.BaseURLTemplate)
 		if baseTpl == "" {
 			return nil, fmt.Errorf("base_url_template 为空")
@@ -100,6 +101,12 @@ func loadValuesLayerContent(db *gorm.DB, ctx map[string]interface{}, layer model
 
 		finalURL := strings.TrimRight(base, "/") + "/" + strings.TrimLeft(p, "/")
 		return httpGet(finalURL, cred)
+	case "file":
+		return valueslayer.LoadFileLayer(layer.BaseURLTemplate, layer.PathTemplate, func(t string) (string, error) {
+			return tpl.ParseTemplate(t, ctx)
+		}, func(req *http.Request) {
+			applyHTTPAuth(req, cred)
+		})
 	case "git":
 		repo := strings.TrimSpace(layer.RepoURL)
 		if repo == "" {

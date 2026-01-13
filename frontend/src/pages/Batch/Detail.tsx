@@ -517,8 +517,8 @@ export default function BatchDetail() {
                   size="small"
                   optionLabelProp="label"
                   status={isModified ? 'warning' : undefined}
-                  dropdownMatchSelectWidth={false}
-                  dropdownStyle={{width: 280}}
+                  popupMatchSelectWidth={false}
+                  styles={{popup: {root: {width: 280}}}}
                 >
                   {record.recent_builds.map((build: BuildSummary) => {
                     const isInitial = build.id === initialBuildId

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type Handler interface {
@@ -95,7 +96,7 @@ func (sm *ReleaseStateMachine) registerHandlers() {
 
 // handlers
 
-// HandlePreWaiting handle PreWaiting:10 -> PreCanTrigger:11
+// HandlePreWaiting handle PreWaiting:20 -> PreCanTrigger:21
 func (sm *ReleaseStateMachine) HandlePreWaiting(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
 	if sm.resolver == nil {
 		return constants.ReleaseAppStatusPreCanTrigger, nil, nil
@@ -130,7 +131,7 @@ func (sm *ReleaseStateMachine) HandlePreWaiting(ctx context.Context, release *mo
 	}, nil
 }
 
-// HandlePreCanTrigger handle PreCanTrigger:11 -> PreTriggered:12, gen deployments record
+// HandlePreCanTrigger handle PreCanTrigger:21 -> PreTriggered:22, gen deployments record
 func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
 	log := sm.logger.With(zap.Int64("release_id", release.ID)).Sugar()
 
@@ -165,29 +166,41 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 	// 4. 为每个集群创建 Deployment
 	var failed []string
 	for _, config := range configs {
-		dep := model.Deployment{
-			BatchID:   release.BatchID,
-			AppID:     release.AppID,
-			ReleaseID: release.ID,
+		// v2+：允许同一 release/env/cluster 多次创建 deployment（例如 v1 -> v2）
+		// 用 superseded_by 表示旧记录已被新记录替代，查询 current 时只取 superseded_by IS NULL
+		err := sm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			// 1) 创建新 deployment
+			dep := model.Deployment{
+				BatchID:   release.BatchID,
+				AppID:     release.AppID,
+				ReleaseID: release.ID,
 
-			Env:         constants.EnvTypePre,
-			ClusterName: config.Cluster,
+				Env:         constants.EnvTypePre,
+				ClusterName: config.Cluster,
 
-			// namespace/deployment_name 由 deployment 层在 Pending 阶段根据 artifacts_json 统一计算并回填
-			// todo: 是否删除这几个字段
-			Namespace:      "default",
-			DeploymentName: app.Name,
+				// namespace/deployment_name 由 deployment 层在 Pending 阶段根据 artifacts_json 统一计算并回填
+				// todo: 是否删除这几个字段
+				Namespace:      "default",
+				DeploymentName: app.Name,
 
-			Status:     "pending",
-			RetryCount: 0,
-		}
+				Status:     constants.DeploymentStatusPending,
+				RetryCount: 0,
+			}
+			if err := tx.Create(&dep).Error; err != nil {
+				return err
+			}
 
-		// 正确使用 FirstOrCreate
-		result := sm.db.Where("release_id = ? AND env = ? AND cluster = ?", release.ID, constants.EnvTypePre, config.Cluster).FirstOrCreate(&dep)
+			// 2) 简化策略：将同一 release/env/cluster 下所有 current 记录（若有脏数据可能 >1 条）
+			if err := tx.Model(&model.Deployment{}).Where("release_id = ? AND env = ? AND cluster = ?", release.ID, constants.EnvTypePre, config.Cluster).
+				Where("superseded_by IS NULL AND id <> ?", dep.ID).Update("superseded_by", dep.ID).Error; err != nil {
+				return err
+			}
 
-		if result.Error != nil {
+			return nil
+		})
+		if err != nil {
 			failed = append(failed, config.Cluster)
-			log.Error("创建 Deployment 失败", zap.String("cluster", config.Cluster), zap.Error(result.Error))
+			log.Error("创建/替代 Deployment 失败", zap.String("cluster", config.Cluster), zap.Error(err))
 		}
 	}
 
@@ -201,13 +214,13 @@ func (sm *ReleaseStateMachine) HandlePreCanTrigger(ctx context.Context, release 
 	return constants.ReleaseAppStatusPreTriggered, nil, nil
 }
 
-// HandlePreTriggered handle PreTriggered:12 -> PreDeployed:13, check deployments record
+// HandlePreTriggered handle PreTriggered:22 -> PreDeployed:23, check deployments record
 func (sm *ReleaseStateMachine) HandlePreTriggered(ctx context.Context, release *model.ReleaseApp) (int8, func(*model.ReleaseApp), error) {
-	log := sm.logger.With(zap.Int64("release_id", release.ID), zap.Int64("batch_id", release.BatchID))
+	log := sm.logger.With(zap.Int64("release_id", release.ID), zap.Int64("batch_id", release.BatchID)).Sugar()
 
 	// 1. 查询该 ReleaseApp 下的所有 Deployment
 	var deployments []model.Deployment
-	if err := sm.db.Where("release_id = ? AND env = ?", release.ID, constants.EnvTypePre).Find(&deployments).Error; err != nil {
+	if err := sm.db.Where("release_id = ? AND env = ? AND superseded_by IS NULL", release.ID, constants.EnvTypePre).Find(&deployments).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询Deployment 失败: %w", err)
 	}
 	if len(deployments) == 0 {
@@ -244,7 +257,7 @@ func (sm *ReleaseStateMachine) HandlePreTriggered(ctx context.Context, release *
 	}
 
 	// 4. 还有进行中的 → 继续等待
-	log.Debug("预发布进行中，等待所有 Deployment 完成")
+	log.Debugf("[ReleaseApp SM: %d-%d] 预发布进行中，等待所有 Deployment 完成", release.BatchID, release.ID)
 	return 0, nil, nil
 }
 
@@ -329,27 +342,36 @@ func (sm *ReleaseStateMachine) HandleProdCanTrigger(ctx context.Context, release
 	// 4. 为每个集群创建 Deployment（namespace/deployment_name 由 deployment 层在 Pending 阶段计算）
 	var failed []string
 	for _, config := range configs {
-		dep := model.Deployment{
-			BatchID:   release.BatchID,
-			AppID:     release.AppID,
-			ReleaseID: release.ID,
+		if err := sm.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			dep := model.Deployment{
+				BatchID:   release.BatchID,
+				AppID:     release.AppID,
+				ReleaseID: release.ID,
 
-			Env:         constants.EnvTypeProd,
-			ClusterName: config.Cluster,
+				Env:         constants.EnvTypeProd,
+				ClusterName: config.Cluster,
 
-			// namespace/deployment_name 由 deployment 层在 Pending 阶段根据 artifacts_json 统一计算并回填
-			// todo: 是否删除这几个字段
-			Namespace:      "default",
-			DeploymentName: app.Name,
+				// namespace/deployment_name 由 deployment 层在 Pending 阶段根据 artifacts_json 统一计算并回填
+				// todo: 是否删除这几个字段
+				Namespace:      "default",
+				DeploymentName: app.Name,
 
-			Status:     "pending",
-			RetryCount: 0,
-		}
-
-		result := sm.db.Where("release_id = ? AND env = ? AND cluster = ?", release.ID, constants.EnvTypeProd, config.Cluster).FirstOrCreate(&dep)
-		if result.Error != nil {
+				Status:     constants.DeploymentStatusPending,
+				RetryCount: 0,
+			}
+			if err := tx.Create(&dep).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&model.Deployment{}).
+				Where("release_id = ? AND env = ? AND cluster = ? AND superseded_by IS NULL AND id <> ?",
+					release.ID, constants.EnvTypeProd, config.Cluster, dep.ID).
+				Update("superseded_by", dep.ID).Error; err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
 			failed = append(failed, config.Cluster)
-			log.With(zap.String("cluster", config.Cluster)).Errorf("创建 Deployment 失败, %v", result.Error)
+			log.With(zap.String("cluster", config.Cluster)).Errorf("创建/替代 Deployment 失败, %v", err)
 		}
 	}
 
@@ -370,7 +392,7 @@ func (sm *ReleaseStateMachine) HandleProdTriggered(ctx context.Context, release 
 
 	// 1. 查询该 ReleaseApp 下的所有 Production Deployment
 	var deployments []model.Deployment
-	if err := sm.db.Where("release_id = ? AND env = ?", release.ID, constants.EnvTypeProd).Find(&deployments).Error; err != nil {
+	if err := sm.db.Where("release_id = ? AND env = ? AND superseded_by IS NULL", release.ID, constants.EnvTypeProd).Find(&deployments).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询Deployment 失败: %w", err)
 	}
 	if len(deployments) == 0 {
@@ -454,7 +476,7 @@ type depAgg struct {
 
 func (sm *ReleaseStateMachine) aggregateDeployments(ctx context.Context, releaseID int64, env string) (*depAgg, error) {
 	var deployments []model.Deployment
-	if err := sm.db.WithContext(ctx).Select("status").Where("release_id = ? AND env = ?", releaseID, env).Find(&deployments).Error; err != nil {
+	if err := sm.db.WithContext(ctx).Select("status").Where("release_id = ? AND env = ? AND superseded_by IS NULL", releaseID, env).Find(&deployments).Error; err != nil {
 		return nil, err
 	}
 	agg := &depAgg{total: len(deployments)}
